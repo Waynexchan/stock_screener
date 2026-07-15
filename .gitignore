@@ -1,0 +1,8 @@
+.env
+*.env
+credentials*
+*credentials*
+*.key
+*.pem
+__pycache__/
+.yfinance_cache/

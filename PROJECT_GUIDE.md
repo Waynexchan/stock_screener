@@ -1,0 +1,117 @@
+# Project Guide
+
+## Project Philosophy
+
+The goal is to help a Stage 2 swing trader review the market in under 10 minutes.
+
+This project is not designed to predict the market. It is designed to identify high-probability opportunities that deserve human chart review.
+
+The screener favours deterministic rules, repeatable outputs, and focused daily workflow over complex prediction systems.
+
+## Stage 2 Philosophy
+
+Stage 2 is used because sustained advances usually occur after a stock has moved out of a base and into an organised uptrend. The project therefore looks for price above key moving averages, moving average alignment, a rising 200-day moving average, proximity to highs, and sufficient liquidity.
+
+Trend is important because it reduces the number of structurally weak stocks under review. A trader still needs discretion, but the screener should start from stocks already showing evidence of institutional demand.
+
+Relative Strength matters because the best opportunities often come from stocks outperforming the broader universe before they become obvious. The project ranks Stage 2 candidates by weighted 3-month, 6-month, and 12-month performance to prioritise leadership.
+
+## Risk Management Philosophy
+
+ATR is used because volatility differs meaningfully between stocks. A fixed percentage can make a calm stock look acceptable while underestimating risk in a volatile stock, or reject a volatile leader that is behaving normally for its own range.
+
+Fixed extension percentages were removed from the core pullback quality model because they are too blunt. The current design measures distance from key moving averages in ATR units so extension is judged relative to the stock's own volatility.
+
+Extension is measured using volatility because a stock two ATRs above support is very different from one six ATRs above support, even when the percentage move looks similar. This supports better risk/reward review.
+
+## Industry Ranking Philosophy
+
+Industry leadership matters because strong stocks often cluster. One isolated leader can work, but multiple strong candidates in the same group can indicate broader institutional sponsorship.
+
+Institutional money rotates between industries. Ranking industries helps the trader focus on where capital appears to be flowing instead of treating every stock as an unrelated opportunity.
+
+Industry ranking is often more important than any single stock because the best individual setups usually come from the strongest groups. The screener therefore calculates Industry Strength Score from average RS Score and candidate breadth.
+
+## AI Philosophy
+
+AI must not select stocks.
+
+Rule-based screening always selects stocks. The AI module analyses only the Top Action List after screening is complete.
+
+AI only:
+
+- Prioritises
+- Summarises
+- Explains
+
+AI must not:
+
+- Analyse the full universe
+- Add tickers not already selected
+- Override deterministic screening
+- Make buy or sell decisions
+- Predict market direction
+
+The human trader always makes the final decision.
+
+## Project Design Principles
+
+- Keep logic deterministic.
+- Minimise false positives.
+- Optimise for long-term expectancy instead of prediction.
+- Preserve modular code.
+- Avoid unnecessary complexity.
+- Optimise for daily workflow.
+- Keep AI outside the stock-selection path.
+- Preserve backward compatibility whenever possible.
+- Keep reports readable without requiring external services.
+- Fail gracefully when optional services such as email or AI are unavailable.
+
+## Current Architecture
+
+`run_screener.py` owns the main workflow:
+
+1. Read SPY and QQQ for market status.
+2. Load or rebuild the stock universe.
+3. Download price history.
+4. Apply Stage 2 filters.
+5. Calculate Relative Strength.
+6. Build category candidates.
+7. Rank industries.
+8. Dedupe and build the Top Action List.
+9. Generate optional AI commentary from the Top Action List.
+10. Export CSV, Markdown, HTML, and email summary reports.
+11. Call `send_email.py`.
+
+`ai_analysis.py` is intentionally separate so AI remains an optional report-layer assistant.
+
+`send_email.py` is separate so SMTP concerns do not complicate screening logic.
+
+`config.py` keeps deterministic screening thresholds, AI settings, email enablement, and debug flags centralised. Configuration should not be hardcoded elsewhere because this project is intended to remain maintainable as a long-term production assistant.
+
+The AI prompt is deliberately narrow. It receives only Market Status, Top Industries, and the Top Action List, with each stock reduced to the fields needed for prioritisation. This keeps cost controlled and protects the rule-based selection boundary.
+
+AI ranking is a review aid, not a stock-selection system. `AI Conviction Score` describes how well a Top Action List ticker matches the defined Stage 2 swing trading system today. It is not a probability of profit, not a buy signal, and not a replacement for chart review. `AI Priority Rank` and `AI Reason` exist to reduce review time by helping the trader decide what to inspect first.
+
+AI testing is separated from the full Yahoo Finance workflow because OpenAI connectivity and JSON-ranking behavior should be diagnosable without downloading thousands of tickers, exporting reports, or sending email. `test_openai.py` verifies only the Responses API connection, while `--ai-test` verifies the real AI analysis module using fixed mock Top Action List rows. This keeps debugging fast, lowers provider cost, prevents accidental report churn, and preserves the rule that AI never participates in market-wide screening.
+
+## Data Reliability Philosophy
+
+An empty report caused by missing Yahoo Finance data is not a valid market conclusion. The project must distinguish "no stocks passed the rules" from "the data source failed." A normal report is exported only after universe size, market data, and price download success rate pass validation.
+
+The universe cache is treated as a last-known-good asset. Refreshes are built into a temporary file and validated before replacement so a partial Yahoo failure cannot overwrite a usable cache. Successful reports are also saved as last-known-good outputs so a later data failure cannot replace a useful watchlist with an empty one.
+
+Universe construction deliberately separates listing discovery from liquidity validation. NASDAQ Trader listed-symbol files define the raw common-stock universe, while Yahoo Finance historical price data is used only to verify price and volume liquidity. Company-profile data such as market cap, sector, and industry is useful when reliable, but it must not be a single point of failure for rebuilding the tradable universe.
+
+Runtime is also part of reliability. Yahoo Finance calls are bounded by per-call timeouts, finite retry attempts, and a maximum full-run duration. If the screener cannot obtain enough data inside those limits, it should produce a clear data-failure result and exit normally. Lightweight `--data-test` and universe-only `--refresh-universe` modes exist so data-source issues can be diagnosed without repeatedly sending emails or running the full trading workflow.
+
+## Future Roadmap
+
+- Add unit tests for ranking, category selection, and AI prompt boundaries.
+- Add a no-email command-line flag for local dry runs.
+- Add a no-network report mode that reuses cached data.
+- Add richer market regime context.
+- Add optional portfolio/watchlist exclusion lists.
+- Add historical outcome tracking for candidates.
+- Add stricter logging for scheduled runs.
+- Add alternate market data provider fallback if Yahoo Finance remains unavailable.

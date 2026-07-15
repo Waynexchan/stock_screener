@@ -1,0 +1,10 @@
+Stock Screener Data Failure
+
+Date and time: 2026-07-11 16:24
+Requested ticker count: 589
+Successful ticker count: 0
+Failed ticker count: 589
+Success rate: 0.0%
+SPY loaded: False
+QQQ loaded: False
+Reason rejected: Universe count below minimum valid threshold. SPY and QQQ market data unavailable. Price download success rate below threshold.

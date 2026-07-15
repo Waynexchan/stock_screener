@@ -1,0 +1,590 @@
+Ticker,Symbol,Security Name,Exchange,Sector,Industry,Market Cap,Avg Volume
+AAPL,AAPL,Apple Inc. - Common Stock,NASDAQ,Technology,Consumer Electronics,4532958920704,56524180
+GOOGL,GOOGL,Alphabet Inc. - Class A Common Stock,NASDAQ,Communication Services,Internet Content & Information,4391827931136,33540342
+GOOG,GOOG,Alphabet Inc. - Class C Capital Stock,NASDAQ,Communication Services,Internet Content & Information,4346312392704,22941180
+MSFT,MSFT,Microsoft Corporation - Common Stock,NASDAQ,Technology,Software - Infrastructure,2900729528320,41453520
+AMZN,AMZN,"Amazon.com, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Internet Retail,2610427854848,51912624
+AVGO,AVGO,Broadcom Inc. - Common Stock,NASDAQ,Technology,Semiconductors,1714869895168,27281432
+META,META,"Meta Platforms, Inc. - Class A Common Stock",NASDAQ,Communication Services,Internet Content & Information,1479647035392,17884736
+MU,MU,"Micron Technology, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,1101790838784,54281020
+AMD,AMD,"Advanced Micro Devices, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,844357632000,37624848
+ASML,ASML,ASML Holding N.V. - New York Registry Shares,NASDAQ,Technology,Semiconductor Equipment & Materials,681927180288,1937968
+INTC,INTC,Intel Corporation - Common Stock,NASDAQ,Technology,Semiconductors,604879060992,141752100
+AMAT,AMAT,"Applied Materials, Inc. - Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,478789271552,9723142
+CSCO,CSCO,"Cisco Systems, Inc. - Common Stock",NASDAQ,Technology,Communication Equipment,444160278528,26043220
+LRCX,LRCX,Lam Research Corporation - Common Stock,NASDAQ,Technology,Semiconductor Equipment & Materials,439463149568,11511062
+COST,COST,Costco Wholesale Corporation - Common Stock,NASDAQ,Consumer Defensive,Discount Stores,422045483008,2359118
+NFLX,NFLX,"Netflix, Inc. - Common Stock",NASDAQ,Communication Services,Entertainment,326968508416,40036384
+KLAC,KLAC,KLA Corporation  - Common Stock,NASDAQ,Technology,Semiconductor Equipment & Materials,307693125632,12816654
+LIN,LIN,Linde plc - Ordinary Shares,NASDAQ,Basic Materials,Specialty Chemicals,252737536000,2331590
+MRVL,MRVL,"Marvell Technology, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,214764421120,46066822
+AMGN,AMGN,Amgen Inc. - Common Stock,NASDAQ,Healthcare,Drug Manufacturers - General,201931849728,2837064
+CRWD,CRWD,"CrowdStrike Holdings, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Infrastructure,197521932288,13094436
+ADI,ADI,"Analog Devices, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,183709745152,4941644
+APP,APP,Applovin Corporation - Class A Common Stock,NASDAQ,Communication Services,Advertising Agencies,177060282368,5081464
+GILD,GILD,"Gilead Sciences, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - General,162980888576,7727784
+IBKR,IBKR,"Interactive Brokers Group, Inc. - Class A Common Stock",NASDAQ,Financial Services,Capital Markets,154915979264,5092526
+ISRG,ISRG,"Intuitive Surgical, Inc. - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,150876913664,2487250
+BKNG,BKNG,Booking Holdings Inc. - Common Stock,NASDAQ,Consumer Cyclical,Travel Services,143011561472,8305342
+FTNT,FTNT,"Fortinet, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,114476310528,6520368
+CDNS,CDNS,"Cadence Design Systems, Inc. - Common Stock",NASDAQ,Technology,Software - Application,102917988352,2551750
+HOOD,HOOD,"Robinhood Markets, Inc. - Class A Common Stock",NASDAQ,Financial Services,Capital Markets,101513945088,30469194
+EQIX,EQIX,"Equinix, Inc. - Common Stock",NASDAQ,Real Estate,REIT - Specialty,98823471104,622282
+MAR,MAR,Marriott International - Class A Common Stock,NASDAQ,Consumer Cyclical,Lodging,98342674432,1503300
+ADP,ADP,"Automatic Data Processing, Inc. - Common Stock",NASDAQ,Technology,Software - Application,96843620352,3015082
+MNST,MNST,Monster Beverage Corporation - Common Stock,NASDAQ,Consumer Defensive,Beverages - Non-Alcoholic,95453593600,5654852
+DDOG,DDOG,"Datadog, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,92677791744,6069526
+CSX,CSX,CSX Corporation - Common Stock,NASDAQ,Industrials,Railroads,90844405760,12945086
+MELI,MELI,"MercadoLibre, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Internet Retail,89397387264,579456
+ABNB,ABNB,"Airbnb, Inc. - Class A Common Stock",NASDAQ,Consumer Cyclical,Travel Services,88390680576,3938256
+ADBE,ADBE,Adobe Inc. - Common Stock,NASDAQ,Technology,Software - Application,87338696704,6653252
+CME,CME,CME Group Inc. - Class A Common Stock,NASDAQ,Financial Services,Financial Data & Stock Exchanges,85488967680,3452174
+CEG,CEG,Constellation Energy Corporation - Common Stock When-Issued,NASDAQ,Utilities,Utilities - Independent Power Producers,85436653568,3882544
+CMCSA,CMCSA,Comcast Corporation - Class A Common Stock,NASDAQ,Communication Services,Telecom Services,84983324672,37266370
+DASH,DASH,"DoorDash, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Internet Retail,83662348288,5082898
+HONA,HONA,Honeywell Aerospace Inc. - Common Stock,NASDAQ,Industrials,Aerospace & Defense,78331658240,2317846
+MDLZ,MDLZ,"Mondelez International, Inc. - Class A Common Stock",NASDAQ,Consumer Defensive,Confectioners,78187110400,8751566
+MDLN,MDLN,Medline Inc. - Class A common stock,NASDAQ,Healthcare,Medical Instruments & Supplies,76954648576,10629430
+AEP,AEP,"American Electric Power Company, Inc. - Common Stock",NASDAQ,Utilities,Utilities - Regulated Electric,75363983360,5087706
+INTU,INTU,Intuit Inc. - Common Stock,NASDAQ,Technology,Software - Application,75318411264,5319294
+HON,HON,Honeywell International Inc. - Common Stock,NASDAQ,Industrials,Conglomerates,72825749504,5181818
+CTAS,CTAS,Cintas Corporation - Common Stock,NASDAQ,Industrials,Specialty Business Services,72572829696,2125520
+ALAB,ALAB,"Astera Labs, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,69663612928,6320962
+MPWR,MPWR,"Monolithic Power Systems, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,63287304192,896078
+LITE,LITE,Lumentum Holdings Inc. - Common Stock,NASDAQ,Technology,Communication Equipment,56663298048,5957480
+FAST,FAST,Fastenal Company - Common Stock,NASDAQ,Industrials,Industrial Distribution,55794503680,6919890
+NBIS,NBIS,Nebius Group N.V. - Class A Ordinary Shares,NASDAQ,Communication Services,Internet Content & Information,54745526272,18035690
+BKR,BKR,Baker Hughes Company - Common Stock,NASDAQ,Energy,Oil & Gas Equipment & Services,52361383936,8488294
+EA,EA,Electronic Arts Inc. - Common Stock,NASDAQ,Communication Services,Electronic Gaming & Multimedia,51456712704,1980604
+EBAY,EBAY,eBay Inc. - Common Stock,NASDAQ,Consumer Cyclical,Internet Retail,50988957696,5415238
+FLEX,FLEX,Flex Ltd. - Ordinary Shares,NASDAQ,Technology,Electronic Components,50142240768,7755936
+EXC,EXC,Exelon Corporation - Common Stock,NASDAQ,Utilities,Utilities - Regulated Electric,48991207424,8699858
+FER,FER,Ferrovial N.V. - Ordinary Shares,NASDAQ,Industrials,Engineering & Construction,48466276352,1608132
+FANG,FANG,"Diamondback Energy, Inc. - Common Stock",NASDAQ,Energy,Oil & Gas E&P,48397139968,2518244
+AXON,AXON,"Axon Enterprise, Inc. - Common Stock",NASDAQ,Industrials,Aerospace & Defense,48122662912,1210816
+NDAQ,NDAQ,"Nasdaq, Inc. - Common Stock",NASDAQ,Financial Services,Financial Data & Stock Exchanges,47878684672,3995200
+CCEP,CCEP,Coca-Cola Europacific Partners plc - Ordinary Shares,NASDAQ,Consumer Defensive,Beverages - Non-Alcoholic,47204462592,1921590
+MCHP,MCHP,Microchip Technology Incorporated - Common Stock,NASDAQ,Technology,Semiconductors,45881589760,12563670
+CBRS,CBRS,Cerebras Systems Inc. - Class A Common Stock,NASDAQ,Technology,Semiconductors,45653164032,8829502
+KDP,KDP,Keurig Dr Pepper Inc. - Common Stock,NASDAQ,Consumer Defensive,Beverages - Non-Alcoholic,45306630144,13844426
+CRDO,CRDO,Credo Technology Group Holding Ltd - Ordinary Shares,NASDAQ,Technology,Semiconductors,45110870016,8678232
+CRWV,CRWV,"CoreWeave, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Infrastructure,44597649408,30250030
+IDXX,IDXX,"IDEXX Laboratories, Inc. - Common Stock",NASDAQ,Healthcare,Diagnostics & Research,44000935936,662882
+ADSK,ADSK,"Autodesk, Inc. - Common Stock",NASDAQ,Technology,Software - Application,43808415744,2716996
+COIN,COIN,"Coinbase Global, Inc. - Class A Common Stock",NASDAQ,Financial Services,Financial Data & Stock Exchanges,43597488128,9221700
+ALNY,ALNY,"Alnylam Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,41760063488,1144604
+GFS,GFS,GlobalFoundries Inc. - Ordinary Share,NASDAQ,Technology,Semiconductors,38321266688,4974334
+KMB,KMB,Kimberly-Clark Corporation - Common Stock,NASDAQ,Consumer Defensive,Household & Personal Products,38080196608,4814574
+HBAN,HBAN,Huntington Bancshares Incorporated - Common Stock,NASDAQ,Financial Services,Banks - Regional,36204552192,21908646
+MSTR,MSTR,Strategy Inc - Class A Common Stock,NASDAQ,Technology,Software - Application,36052332544,21461646
+ACGL,ACGL,Arch Capital Group Ltd. - Common Stock,NASDAQ,Financial Services,Insurance - Diversified,35707617280,2424982
+ASTS,ASTS,"AST SpaceMobile, Inc. - Class A Common Stock",NASDAQ,Technology,Communication Equipment,33041043456,23838016
+EXPE,EXPE,"Expedia Group, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Travel Services,32248733696,1673352
+BIIB,BIIB,Biogen Inc. - Common Stock,NASDAQ,Healthcare,Drug Manufacturers - General,31907334144,1159754
+MRNA,MRNA,"Moderna, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,31647674368,7906306
+KHC,KHC,The Kraft Heinz Company - Common Stock,NASDAQ,Consumer Defensive,Packaged Foods,30083180544,14384440
+GEHC,GEHC,GE HealthCare Technologies Inc. - Common Stock,NASDAQ,Healthcare,Medical Devices,29824980992,5647256
+CINF,CINF,Cincinnati Financial Corporation - Common Stock,NASDAQ,Financial Services,Insurance - Property & Casualty,29704493056,752226
+CASY,CASY,"Caseys General Stores, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Specialty Retail,29508456448,561776
+ECHO,ECHO,EchoStar Corporation - Common stock,NASDAQ,Communication Services,Telecom Services,29416071168,9245518
+CPRT,CPRT,"Copart, Inc. - Common Stock",NASDAQ,Industrials,Specialty Business Services,28908886016,10873922
+ILMN,ILMN,"Illumina, Inc. - Common Stock",NASDAQ,Healthcare,Diagnostics & Research,28547282944,1897672
+MDB,MDB,"MongoDB, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Infrastructure,28543682560,2181198
+AFRM,AFRM,"Affirm Holdings, Inc. - Class A Common Stock",NASDAQ,Financial Services,Credit Services,28325720064,4914074
+FISV,FISV,"Fiserv, Inc. - Common Stock",NASDAQ,Unknown,Unknown,27905181696,7750316
+INIO,INIO,INNIO N.V. - Ordinary Shares,NASDAQ,Industrials,Specialty Industrial Machinery,27712499712,5047961
+DXCM,DXCM,"DexCom, Inc. - Common Stock",NASDAQ,Healthcare,Medical Devices,27493449728,5947304
+JBHT,JBHT,"J.B. Hunt Transport Services, Inc. - Common Stock",NASDAQ,Industrials,Integrated Freight & Logistics,26953539584,971414
+FTAI,FTAI,FTAI Aviation Ltd. - Common Stock,NASDAQ,Industrials,Aerospace & Defense,25446731776,1266822
+MKSI,MKSI,MKS Inc. - Common Stock,NASDAQ,Technology,Scientific & Technical Instruments,24691431424,1365902
+FWONK,FWONK,Liberty Media Corporation - Series C Liberty Formula One Common Stock,NASDAQ,Communication Services,Entertainment,24684662784,2114370
+MTSI,MTSI,"MACOM Technology Solutions Holdings, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,24587077632,1699170
+INSM,INSM,Insmed Incorporated - Common Stock,NASDAQ,Healthcare,Biotechnology,24189573120,4172302
+FSLR,FSLR,"First Solar, Inc. - Common Stock",NASDAQ,Technology,Solar,24130801664,2610442
+DLTR,DLTR,"Dollar Tree, Inc. - Common Stock",NASDAQ,Consumer Defensive,Discount Stores,23839258624,4007370
+FOXA,FOXA,Fox Corporation - Class A Common Stock,NASDAQ,Communication Services,Entertainment,23715987456,5833694
+LPLA,LPLA,LPL Financial Holdings Inc. - Common Stock,NASDAQ,Financial Services,Capital Markets,23609341952,1068902
+INCY,INCY,Incyte Corporation - Common Stock,NASDAQ,Healthcare,Biotechnology,23346542592,1783686
+FFIV,FFIV,"F5, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,23026952192,743080
+CHRW,CHRW,"C.H. Robinson Worldwide, Inc. - Common Stock",NASDAQ,Industrials,Integrated Freight & Logistics,22378196992,1757356
+ENTG,ENTG,"Entegris, Inc. - Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,22336319488,3498966
+GH,GH,"Guardant Health, Inc. - Common Stock",NASDAQ,Healthcare,Diagnostics & Research,22274136064,2750564
+EXE,EXE,Expand Energy Corporation - Common Stock,NASDAQ,Energy,Oil & Gas E&P,21702842368,3378990
+CHTR,CHTR,"Charter Communications, Inc. - Class A Common Stock",NASDAQ,Communication Services,Telecom Services,21496270848,3948208
+FOX,FOX,Fox Corporation - Class B Common Stock,NASDAQ,Communication Services,Entertainment,21230176256,1779980
+EVRG,EVRG,"Evergy, Inc. - Common Stock",NASDAQ,Utilities,Utilities - Regulated Electric,20315111424,2072176
+LNT,LNT,Alliant Energy Corporation - Common Stock,NASDAQ,Utilities,Utilities - Regulated Electric,20153356288,2553782
+CTSH,CTSH,Cognizant Technology Solutions Corporation - Class A Common Stock,NASDAQ,Technology,Information Technology Services,19861270528,10813936
+LSCC,LSCC,Lattice Semiconductor Corporation - Common Stock,NASDAQ,Technology,Semiconductors,18705682432,2375510
+ARXS,ARXS,"Arxis, Inc. - Class A Common Stock",NASDAQ,Industrials,Aerospace & Defense,18444546048,1202500
+ASND,ASND,Ascendis Pharma A/S - Ordinary Share,NASDAQ,Healthcare,Biotechnology,18005231616,823820
+EWBC,EWBC,"East West Bancorp, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,17713616896,961092
+NBIX,NBIX,"Neurocrine Biosciences, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,17521840128,1227380
+AMKR,AMKR,"Amkor Technology, Inc. - Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,17264320512,5805802
+CDW,CDW,CDW Corporation - Common Stock,NASDAQ,Technology,Information Technology Services,17038476288,2210896
+AKAM,AKAM,"Akamai Technologies, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,16453271552,5331440
+HST,HST,"Host Hotels & Resorts, Inc. - Common Stock",NASDAQ,Real Estate,REIT - Hotel & Motel,16199442432,8993068
+GEN,GEN,Gen Digital Inc. - Common Stock,NASDAQ,Technology,Software - Infrastructure,16066911232,7908442
+LAMR,LAMR,Lamar Advertising Company - Class A Common Stock,NASDAQ,Real Estate,REIT - Specialty,15988417536,680112
+GRAB,GRAB,Grab Holdings Limited - Class A Ordinary Shares,NASDAQ,Technology,Software - Application,15950999552,52313238
+CG,CG,The Carlyle Group Inc. - Common Stock,NASDAQ,Financial Services,Asset Management,15417705472,3657016
+JAZZ,JAZZ,Jazz Pharmaceuticals plc - Ordinary Shares,NASDAQ,Healthcare,Biotechnology,15275994112,929970
+BBIO,BBIO,"BridgeBio Pharma, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,15118530560,3530784
+COO,COO,"The Cooper Companies, Inc.  - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,14471271424,3113622
+CHKP,CHKP,Check Point Software Technologies Ltd. - Ordinary Shares,NASDAQ,Technology,Software - Infrastructure,14208117760,1674562
+EXEL,EXEL,"Exelixis, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,14038180864,2769350
+IREN,IREN,IREN Limited - Ordinary Shares,NASDAQ,Financial Services,Capital Markets,13873440768,48499750
+BTSG,BTSG,"BrightSpring Health Services, Inc. - Common Stock",NASDAQ,Healthcare,Health Information Services,13547718656,3436854
+IONS,IONS,"Ionis Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,13518478336,1916004
+LOGI,LOGI,Logitech International S.A. - Registered Shares,NASDAQ,Technology,Computer Hardware,13492344832,1158640
+LULU,LULU,lululemon athletica inc. - Common Stock,NASDAQ,Consumer Cyclical,Apparel Retail,13448190976,4064964
+ICLR,ICLR,ICON plc - Ordinary Shares,NASDAQ,Healthcare,Diagnostics & Research,13256662016,1280696
+ALGN,ALGN,"Align Technology, Inc. - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,13214977024,1082654
+COKE,COKE,"Coca-Cola Consolidated, Inc. - Common Stock",NASDAQ,Consumer Defensive,Beverages - Non-Alcoholic,13021973504,583570
+AUR,AUR,"Aurora Innovation, Inc.  - Class A Common Stock",NASDAQ,Consumer Cyclical,Auto Parts,13002776576,31448032
+DKNG,DKNG,DraftKings Inc. - Class A Common Stock,NASDAQ,Consumer Cyclical,Gambling,12844775424,12676976
+AGNC,AGNC,AGNC Investment Corp. - Common Stock,NASDAQ,Real Estate,REIT - Mortgage,12627221504,15058018
+AXSM,AXSM,"Axsome Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,12572135424,976678
+LGN,LGN,Legence Corp. - Class A Common stock,NASDAQ,Industrials,Engineering & Construction,12454880256,1573744
+AEIS,AEIS,"Advanced Energy Industries, Inc. - Common Stock",NASDAQ,Industrials,Electrical Equipment & Parts,12454116352,1025644
+GLPI,GLPI,"Gaming and Leisure Properties, Inc. - Common Stock",NASDAQ,Real Estate,REIT - Specialty,12447600640,2161902
+CSGP,CSGP,"CoStar Group, Inc. - Common Stock",NASDAQ,Real Estate,Real Estate Services,12250671104,7829300
+AAL,AAL,"American Airlines Group, Inc. - Common Stock",NASDAQ,Industrials,Airlines,11852021760,95922434
+ARWR,ARWR,"Arrowhead Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,11830581248,2078826
+CYTK,CYTK,"Cytokinetics, Incorporated - Common Stock",NASDAQ,Healthcare,Biotechnology,11742797824,2829078
+DRS,DRS,"Leonardo DRS, Inc. - Common Stock",NASDAQ,Industrials,Aerospace & Defense,11662838784,1059152
+FROG,FROG,JFrog Ltd. - Ordinary shares,NASDAQ,Technology,Software - Application,11483361280,3104888
+APA,APA,APA Corporation - Common Stock,NASDAQ,Energy,Oil & Gas E&P,11438297088,6045598
+BMRN,BMRN,BioMarin Pharmaceutical Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,11401848832,2185622
+HAS,HAS,"Hasbro, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Leisure,11340478464,2002542
+CGNX,CGNX,Cognex Corporation - Common Stock,NASDAQ,Technology,Scientific & Technical Instruments,11283239936,2502020
+LINE,LINE,"Lineage, Inc. - Common Stock",NASDAQ,Real Estate,REIT - Industrial,11032905728,1034072
+HUT,HUT,Hut 8 Corp. - Common Stock,NASDAQ,Financial Services,Capital Markets,10937392128,4725106
+BPOP,BPOP,"Popular, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,10794576896,525588
+CART,CART,Maplebear Inc. - Common Stock,NASDAQ,Consumer Cyclical,Internet Retail,10759664640,4328526
+JKHY,JKHY,"Jack Henry & Associates, Inc. - Common Stock",NASDAQ,Technology,Information Technology Services,10435228672,1601950
+KTOS,KTOS,"Kratos Defense & Security Solutions, Inc. - Common Stock",NASDAQ,Industrials,Aerospace & Defense,10379231232,5118556
+DPZ,DPZ,Domino's Pizza Inc - Common Stock,NASDAQ,Consumer Cyclical,Restaurants,10366394368,986980
+GSAT,GSAT,"Globalstar, Inc. - Common Stock",NASDAQ,Communication Services,Telecom Services,10353341440,1443814
+ALGM,ALGM,"Allegro MicroSystems, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,10337357824,3043108
+FIVE,FIVE,"Five Below, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Specialty Retail,10087530496,1274088
+APGE,APGE,"Apogee Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,9992667136,2867030
+IBRX,IBRX,"ImmunityBio, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,9887021056,13660830
+HSIC,HSIC,"Henry Schein, Inc. - Common Stock",NASDAQ,Healthcare,Medical Distribution,9845825536,1545618
+ENSG,ENSG,"The Ensign Group, Inc. - Common Stock",NASDAQ,Healthcare,Medical Care Facilities,9831685120,909458
+BSY,BSY,"Bentley Systems, Incorporated - Class B Common Stock",NASDAQ,Technology,Software - Application,9800479744,3061946
+AAOI,AAOI,"Applied Optoelectronics, Inc. - Common Stock",NASDAQ,Technology,Communication Equipment,9705362432,12731512
+CORT,CORT,Corcept Therapeutics Incorporated - Common Stock,NASDAQ,Healthcare,Biotechnology,9684187136,1099190
+AVAV,AVAV,"AeroVironment, Inc. - Common Stock",NASDAQ,Industrials,Aerospace & Defense,9660567552,1581518
+FORM,FORM,"FormFactor, Inc. - Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,9634429952,2076426
+GLXY,GLXY,Galaxy Digital Inc. - Class A common stock,NASDAQ,Financial Services,Capital Markets,9587643392,6656124
+APLD,APLD,Applied Digital Corporation - Common Stock,NASDAQ,Technology,Information Technology Services,9447541760,22745006
+HALO,HALO,"Halozyme Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,9423802368,1812322
+BRKR,BRKR,Bruker Corporation - Common Stock,NASDAQ,Healthcare,Medical Devices,9383187456,2617548
+KYMR,KYMR,"Kymera Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,9337058304,834616
+COLB,COLB,"Columbia Banking System, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,9182633984,2919698
+ALKS,ALKS,Alkermes plc - Ordinary Shares,NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,9097165824,2363838
+MANH,MANH,"Manhattan Associates, Inc. - Common Stock",NASDAQ,Technology,Software - Application,8936220672,671242
+MTCH,MTCH,"Match Group, Inc. - Common Stock",NASDAQ,Communication Services,Internet Content & Information,8840801280,3604018
+AAON,AAON,"AAON, Inc. - Common Stock",NASDAQ,Industrials,Building Products & Equipment,8815338496,1178518
+DOCU,DOCU,"DocuSign, Inc. - Common Stock",NASDAQ,Technology,Software - Application,8739534848,3917252
+CELH,CELH,"Celsius Holdings, Inc. - Common Stock",NASDAQ,Consumer Defensive,Beverages - Non-Alcoholic,8477033984,9620248
+CBSH,CBSH,"Commerce Bancshares, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,8459447808,1255762
+MXL,MXL,"MaxLinear, Inc - Common Stock",NASDAQ,Technology,Semiconductors,8338520064,5753758
+CIFR,CIFR,Cipher Digital Inc. - Common Stock,NASDAQ,Technology,Information Technology Services,8197345792,25507622
+FRVO,FRVO,Fervo Energy Company - Class A common stock,NASDAQ,Utilities,Utilities - Renewable,8188183552,4499185
+MBLY,MBLY,Mobileye Global Inc. - Class A Common Stock,NASDAQ,Consumer Cyclical,Auto Parts,8059720704,6700928
+HQY,HQY,"HealthEquity, Inc. - Common Stock",NASDAQ,Healthcare,Health Information Services,7989880320,1005712
+IMVT,IMVT,"Immunovant, Inc.  - Common Stock",NASDAQ,Healthcare,Biotechnology,7963932672,2001606
+CHYM,CHYM,"Chime Financial, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,7951869440,5352288
+MIDD,MIDD,The Middleby Corporation - Common Stock,NASDAQ,Industrials,Specialty Industrial Machinery,7917962240,687710
+MIRM,MIRM,"Mirum Pharmaceuticals, Inc. - common stock",NASDAQ,Healthcare,Biotechnology,7658632192,1088720
+MRCY,MRCY,Mercury Systems Inc - Common Stock,NASDAQ,Industrials,Aerospace & Defense,7578062848,710810
+CBC,CBC,"Central Bancompany, Inc. - Class A Common Stock",NASDAQ,Financial Services,Banks - Regional,7543106048,754474
+FIGR,FIGR,"Figure Technology Solutions, Inc. - Class A Common Stock",NASDAQ,Financial Services,Capital Markets,7497529856,4114886
+CRUS,CRUS,"Cirrus Logic, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,7378206208,619182
+LNTH,LNTH,"Lantheus Holdings, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,7154507264,1030876
+LSTR,LSTR,"Landstar System, Inc. - Common Stock",NASDAQ,Industrials,Integrated Freight & Logistics,7064192512,509082
+LQDA,LQDA,Liquidia Corporation - Common Stock,NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,7019094528,2015680
+CPB,CPB,The Campbell's Company - Common Stock,NASDAQ,Consumer Defensive,Packaged Foods,6954169344,9495866
+CORZ,CORZ,"Core Scientific, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,6812281856,14571228
+LKQ,LKQ,LKQ Corporation - Common Stock,NASDAQ,Consumer Cyclical,Auto Parts,6764696576,3137784
+ACMR,ACMR,"ACM Research, Inc. - Class A Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,6756834304,1802854
+AVT,AVT,"Avnet, Inc. - Common Stock",NASDAQ,Technology,Electronics & Computer Distribution,6740739072,1480962
+DBX,DBX,"Dropbox, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Infrastructure,6663066624,4049202
+CAMT,CAMT,Camtek Ltd. - Ordinary Shares,NASDAQ,Technology,Semiconductor Equipment & Materials,6648553984,510458
+COGT,COGT,"Cogent Biosciences, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,6610882560,2404950
+NAVN,NAVN,"Navan, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,6528683520,4365648
+MWH,MWH,"SOLV Energy, Inc. - Class A common stock",NASDAQ,Utilities,Utilities - Renewable,6418508288,1836472
+CHRD,CHRD,Chord Energy Corporation - Common Stock,NASDAQ,Energy,Oil & Gas E&P,6379823616,793050
+KLIC,KLIC,"Kulicke and Soffa Industries, Inc. - Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,6349548032,1068602
+CHDN,CHDN,"Churchill Downs, Incorporated - Common Stock",NASDAQ,Consumer Cyclical,Gambling,6336146432,1041128
+MORN,MORN,"Morningstar, Inc. - Common Stock",NASDAQ,Financial Services,Financial Data & Stock Exchanges,6310369280,525802
+DSGX,DSGX,The Descartes Systems Group Inc. - Common Stock,NASDAQ,Technology,Software - Application,6237863424,539624
+CROX,CROX,"Crocs, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Footwear & Accessories,6225119232,1214504
+CVLT,CVLT,"Commvault Systems, Inc. - Common Stock",NASDAQ,Technology,Software - Application,6212424704,830236
+CGON,CGON,"CG Oncology, Inc. - Common stock",NASDAQ,Healthcare,Biotechnology,6205925888,1051688
+CWST,CWST,"Casella Waste Systems, Inc. - Class A Common Stock",NASDAQ,Industrials,Waste Management,6201332736,756834
+CZR,CZR,"Caesars Entertainment, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Resorts & Casinos,6190247424,7121460
+GLBE,GLBE,Global-E Online Ltd. - ordinary shares,NASDAQ,Consumer Cyclical,Internet Retail,6189598208,1801114
+HWC,HWC,Hancock Whitney Corporation - Common Stock,NASDAQ,Financial Services,Banks - Regional,6055196160,928598
+GTX,GTX,Garrett Motion Inc. - Common Stock,NASDAQ,Consumer Cyclical,Auto Parts,5943234560,3196134
+CRSP,CRSP,CRISPR Therapeutics AG - Common Shares,NASDAQ,Healthcare,Biotechnology,5916926464,1770232
+DFTX,DFTX,"Definium Therapeutics, Inc.  - Common Shares",NASDAQ,Healthcare,Biotechnology,5865924096,3000690
+DUOL,DUOL,"Duolingo, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,5859550208,1703652
+LYFT,LYFT,"Lyft, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,5835720192,14442442
+CAR,CAR,"Avis Budget Group, Inc. - Common Stock",NASDAQ,Industrials,Rental & Leasing Services,5773515264,1910776
+NOVT,NOVT,Novanta Inc. - Common Shares,NASDAQ,Technology,Scientific & Technical Instruments,5759383552,544594
+ERAS,ERAS,"Erasca, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,5743884288,7210468
+IRDM,IRDM,Iridium Communications Inc - Common Stock,NASDAQ,Communication Services,Telecom Services,5695149568,2874984
+ENPH,ENPH,"Enphase Energy, Inc. - Common Stock",NASDAQ,Technology,Solar,5676549632,8549482
+ACIW,ACIW,"ACI Worldwide, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,5579187200,865076
+BLLN,BLLN,"BillionToOne, Inc. - Class A common stock",NASDAQ,Healthcare,Diagnostics & Research,5535556608,738134
+MMYT,MMYT,MakeMyTrip Limited - Ordinary Shares,NASDAQ,Consumer Cyclical,Travel Services,5527911424,1106092
+FTDR,FTDR,"Frontdoor, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Personal Services,5513441280,629342
+DOX,DOX,Amdocs Limited - Ordinary Shares,NASDAQ,Technology,Software - Infrastructure,5493986816,1379488
+AMRX,AMRX,"Amneal Pharmaceuticals, Inc. - Class A Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,5476532736,1967118
+AUGO,AUGO,Aura Minerals Inc. - Common Shares,NASDAQ,Basic Materials,Gold,5465909760,1010590
+GTLB,GTLB,GitLab Inc. - Class A Common Stock,NASDAQ,Technology,Software - Infrastructure,5416623104,6260936
+LAUR,LAUR,"Laureate Education, Inc. - Common Stock",NASDAQ,Consumer Defensive,Education & Training Services,5347170816,1334824
+BGC,BGC,"BGC Group, Inc. - Class A Common Stock",NASDAQ,Financial Services,Capital Markets,5279204352,3565554
+CELC,CELC,Celcuity Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,5264320512,1469528
+GNTX,GNTX,Gentex Corporation - Common Stock,NASDAQ,Consumer Cyclical,Auto Parts,5219449856,2511550
+CAI,CAI,"Caris Life Sciences, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,5173056512,2916922
+DNTH,DNTH,"Dianthus Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,5157212160,950644
+FRMI,FRMI,Fermi Inc. - Common Stock,NASDAQ,Real Estate,REIT - Specialty,5142951936,18632936
+FFIN,FFIN,"First Financial Bankshares, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,4997673984,917082
+GLNG,GLNG,Golar LNG Limited - Common Shares,NASDAQ,Energy,Oil & Gas Midstream,4988226048,1435348
+KNSA,KNSA,"Kiniksa Pharmaceuticals International, plc - Class A Ordinary Shares",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,4964810240,827410
+DAVE,DAVE,Dave Inc.  - Class A Common Stock,NASDAQ,Technology,Software - Application,4924990464,600134
+ALHC,ALHC,"Alignment Healthcare, Inc. - Common Stock",NASDAQ,Healthcare,Healthcare Plans,4920264704,6258390
+EQPT,EQPT,EquipmentShare.com Inc - Class A Common Stock,NASDAQ,Industrials,Rental & Leasing Services,4843078144,2443504
+EBC,EBC,"Eastern Bankshares, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,4806952448,3271476
+CECO,CECO,CECO Environmental Corp. - Common Stock,NASDAQ,Industrials,Pollution & Treatment Controls,4797809152,961892
+FLY,FLY,Firefly Aerospace Inc. - Common Stock,NASDAQ,Industrials,Aerospace & Defense,4746397696,7788898
+MARA,MARA,"MARA Holdings, Inc. - Common Stock",NASDAQ,Financial Services,Capital Markets,4727754240,43157322
+INDV,INDV,"Indivior Pharmaceuticals, Inc.  - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,4704542208,2107000
+LIF,LIF,"Life360, Inc. - Common Stock",NASDAQ,Technology,Software - Application,4676338688,789308
+LBRDK,LBRDK,Liberty Broadband Corporation - Class C Common Stock,NASDAQ,Communication Services,Telecom Services,4612016640,2296270
+FULT,FULT,Fulton Financial Corporation - Common Stock,NASDAQ,Financial Services,Banks - Regional,4608230912,1939634
+LIVN,LIVN,LivaNova PLC - Ordinary Shares,NASDAQ,Healthcare,Medical Devices,4593542656,821706
+MRX,MRX,Marex Group plc - Ordinary Shares,NASDAQ,Financial Services,Capital Markets,4497118208,990890
+IPGP,IPGP,IPG Photonics Corporation - Common Stock,NASDAQ,Technology,Semiconductor Equipment & Materials,4468039168,574668
+ALM,ALM,Almonty Industries Inc. - Common Shares,NASDAQ,Basic Materials,Other Industrial Metals & Mining,4457584640,5051586
+CRNX,CRNX,"Crinetics Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,4452740096,1287932
+ACAD,ACAD,ACADIA Pharmaceuticals Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,4446995456,1632978
+ACLS,ACLS,"Axcelis Technologies, Inc. - Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,4441048064,692474
+HLNE,HLNE,Hamilton Lane Incorporated - Class A Common Stock,NASDAQ,Financial Services,Asset Management,4429377536,1062780
+DIOD,DIOD,Diodes Incorporated - Common Stock,NASDAQ,Technology,Semiconductors,4422180864,738186
+DLO,DLO,DLocal Limited - Class A Common Shares,NASDAQ,Technology,Software - Infrastructure,4378724352,2867900
+MMED,MMED,"MiniMed Group, Inc. - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,4378339840,924532
+CENX,CENX,Century Aluminum Company - Common Stock,NASDAQ,Basic Materials,Aluminum,4331104256,2029398
+LFST,LFST,"LifeStance Health Group, Inc. - Common Stock",NASDAQ,Healthcare,Medical Care Facilities,4303273984,5254678
+EWTX,EWTX,"Edgewise Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,4256379648,1565278
+MMSI,MMSI,"Merit Medical Systems, Inc. - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,4240863488,864604
+IRTC,IRTC,"iRhythm Holdings, Inc.  - Common Stock",NASDAQ,Healthcare,Medical Devices,4156437504,574102
+MKTX,MKTX,"MarketAxess Holdings, Inc. - Common Stock",NASDAQ,Financial Services,Capital Markets,4141412352,702296
+EXLS,EXLS,"ExlService Holdings, Inc. - Common Stock",NASDAQ,Technology,Information Technology Services,4128194816,2760632
+MNDY,MNDY,monday.com Ltd. - Ordinary Shares,NASDAQ,Technology,Software - Application,4112260096,1796068
+DNLI,DNLI,Denali Therapeutics Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,4099472640,1922054
+LFTO,LFTO,"Liftoff Mobile, Inc. - Common Stock",NASDAQ,Communication Services,Advertising Agencies,4072113664,1724405
+NAMS,NAMS,NewAmsterdam Pharma Company N.V. - Ordinary Shares,NASDAQ,Healthcare,Biotechnology,4071765760,1403610
+CVBF,CVBF,CVB Financial Corporation - Common Stock,NASDAQ,Financial Services,Banks - Regional,4024943104,1740428
+CALM,CALM,"Cal-Maine Foods, Inc. - Common Stock",NASDAQ,Consumer Defensive,Farm Products,3972526848,760792
+CAKE,CAKE,The Cheesecake Factory Incorporated - Common Stock,NASDAQ,Consumer Cyclical,Restaurants,3934087168,1294182
+NMRK,NMRK,"Newmark Group, Inc. - Class A Common Stock",NASDAQ,Real Estate,Real Estate Services,3917570304,1480008
+CLBT,CLBT,Cellebrite DI Ltd. - Ordinary Shares,NASDAQ,Technology,Software - Infrastructure,3903733248,2295540
+CHEF,CHEF,"The Chefs' Warehouse, Inc. - Common Stock",NASDAQ,Consumer Defensive,Food Distribution,3899156992,519794
+EXTR,EXTR,"Extreme Networks, Inc. - Common Stock",NASDAQ,Technology,Communication Equipment,3897186816,2681158
+MAT,MAT,"Mattel, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Leisure,3876190464,4559570
+CPRX,CPRX,"Catalyst Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,3850029056,2570718
+LBTYA,LBTYA,Liberty Global Ltd. - Class A Common Shares,NASDAQ,Communication Services,Telecom Services,3820501248,1962752
+DYN,DYN,"Dyne Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,3813789184,1783222
+BULL,BULL,Webull Corporation - Class A Ordinary Shares,NASDAQ,Technology,Software - Application,3813139712,13052156
+FIBK,FIBK,"First Interstate BancSystem, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,3803143936,1201530
+COCO,COCO,"The Vita Coco Company, Inc. - Common Stock",NASDAQ,Consumer Defensive,Beverages - Non-Alcoholic,3778572800,1324324
+ITRI,ITRI,"Itron, Inc. - Common Stock",NASDAQ,Technology,Scientific & Technical Instruments,3773721856,814766
+AXTI,AXTI,AXT Inc - Common Stock,NASDAQ,Technology,Semiconductor Equipment & Materials,3704260608,10336234
+LBTYK,LBTYK,Liberty Global Ltd. - Class C Common Shares,NASDAQ,Communication Services,Telecom Services,3685262080,1256914
+FHB,FHB,"First Hawaiian, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,3645819648,1755050
+IDYA,IDYA,"IDEAYA Biosciences, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,3624746240,1162528
+KYIV,KYIV,Kyivstar Group Ltd. - Common Shares,NASDAQ,Communication Services,Telecom Services,3619941632,675610
+FFBC,FFBC,First Financial Bancorp. - Common Stock,NASDAQ,Financial Services,Banks - Regional,3608521216,923912
+BEAM,BEAM,Beam Therapeutics Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,3579168000,2248912
+LASR,LASR,"nLIGHT, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,3567850752,1277618
+ELVN,ELVN,"Enliven Therapeutics, Inc.  - Common Stock",NASDAQ,Healthcare,Biotechnology,3559055104,1404250
+FA,FA,First Advantage Corporation - Common Stock,NASDAQ,Industrials,Specialty Business Services,3521655552,1562802
+MEOH,MEOH,Methanex Corporation - Common Stock,NASDAQ,Basic Materials,Chemicals,3517753088,854920
+ATRO,ATRO,Astronics Corporation - Common Stock,NASDAQ,Industrials,Aerospace & Defense,3495347712,788521
+AMBA,AMBA,"Ambarella, Inc. - Ordinary Shares",NASDAQ,Technology,Semiconductor Equipment & Materials,3437510912,1541580
+ICHR,ICHR,Ichor Holdings - Ordinary Shares,NASDAQ,Technology,Semiconductor Equipment & Materials,3424641792,1220514
+ADPT,ADPT,Adaptive Biotechnologies Corporation - Common Stock,NASDAQ,Healthcare,Diagnostics & Research,3391340544,2657764
+BATRK,BATRK,"Atlanta Braves Holdings, Inc. - Series C Common Stock",NASDAQ,Communication Services,Entertainment,3384869376,502406
+ALMS,ALMS,Alumis Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,3378537472,1277700
+BTDR,BTDR,Bitdeer Technologies Group - Ordinary Shares,NASDAQ,Technology,Software - Application,3369894144,9824108
+CCC,CCC,CCC Intelligent Solutions Holdings Inc. - Common Stock,NASDAQ,Technology,Software - Application,3275128064,11851416
+CARG,CARG,"CarGurus, Inc. - Class A Common Stock",NASDAQ,Consumer Cyclical,Auto & Truck Dealerships,3268380416,1470742
+CLSK,CLSK,"CleanSpark, Inc. - Common Stock",NASDAQ,Financial Services,Capital Markets,3238400512,22357178
+COLM,COLM,Columbia Sportswear Company - Common Stock,NASDAQ,Consumer Cyclical,Apparel Manufacturing,3238234880,572042
+ARQT,ARQT,"Arcutis Biotherapeutics, Inc. - Common stock",NASDAQ,Healthcare,Biotechnology,3228401920,1873452
+ADEA,ADEA,Adeia Inc.  - Common Stock,NASDAQ,Technology,Software - Application,3219474688,2288964
+ETOR,ETOR,eToro Group Ltd. - Class A Common Shares,NASDAQ,Financial Services,Capital Markets,3218461440,999254
+ALGT,ALGT,Allegiant Travel Company - Common Stock,NASDAQ,Industrials,Airlines,3189552896,664392
+CLMT,CLMT,"Calumet, Inc - Common Stock",NASDAQ,Basic Materials,Specialty Chemicals,3173898752,917810
+LUNR,LUNR,"Intuitive Machines, Inc. - Class A Common Stock",NASDAQ,Industrials,Aerospace & Defense,3141656064,14544664
+FLNC,FLNC,"Fluence Energy, Inc. - Class A Common Stock",NASDAQ,Utilities,Utilities - Renewable,3133281792,12596914
+NMIH,NMIH,NMI Holdings Inc - Common Stock,NASDAQ,Financial Services,Insurance - Specialty,3117886464,626810
+CLDX,CLDX,"Celldex Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,3011740672,956190
+ASO,ASO,"Academy Sports and Outdoors, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Specialty Retail,2966958848,1535970
+GRAL,GRAL,"GRAIL, Inc. - Common Stock",NASDAQ,Healthcare,Diagnostics & Research,2965965824,714692
+EXPO,EXPO,"Exponent, Inc. - Common Stock",NASDAQ,Industrials,Engineering & Construction,2958238976,589066
+EEFT,EEFT,"Euronet Worldwide, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,2938636032,736142
+ACHC,ACHC,"Acadia Healthcare Company, Inc. - Common Stock",NASDAQ,Healthcare,Medical Care Facilities,2934667776,3148664
+MGNI,MGNI,"Magnite, Inc. - Common Stock",NASDAQ,Communication Services,Advertising Agencies,2918721792,3014756
+IRON,IRON,"Disc Medicine, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2913062656,589000
+FRSH,FRSH,Freshworks Inc. - Class A Common Stock,NASDAQ,Technology,Software - Application,2858329344,16510396
+KLRA,KLRA,"Kailera Therapeutics, Inc. - Common stock",NASDAQ,Healthcare,Biotechnology,2849147648,822442
+FSLY,FSLY,"Fastly, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,2837344768,8388936
+NESR,NESR,National Energy Services Reunited Corp - Ordinary Shares,NASDAQ,Energy,Oil & Gas Equipment & Services,2813638400,2168736
+COHU,COHU,"Cohu, Inc. - Common Stock",NASDAQ,Technology,Semiconductor Equipment & Materials,2796082944,1619048
+KEEL,KEEL,Keel Infrastructure Corp. - Common Stock,NASDAQ,Technology,Information Technology Services,2771573760,49287524
+FRPT,FRPT,"Freshpet, Inc. - Common Stock",NASDAQ,Consumer Defensive,Packaged Foods,2770670592,1668074
+CLOV,CLOV,"Clover Health Investments, Corp.  - Class A Common stock",NASDAQ,Healthcare,Healthcare Plans,2770359552,8237668
+BWIN,BWIN,"The Baldwin Insurance Group, Inc. - Class A Common Stock",NASDAQ,Financial Services,Insurance Brokers,2769689600,1728764
+MBX,MBX,"MBX Biosciences, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2751137536,837468
+HUBG,HUBG,"Hub Group, Inc. - Class A Common Stock",NASDAQ,Industrials,Integrated Freight & Logistics,2748238848,783026
+BRZE,BRZE,"Braze, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,2681760000,2886294
+IMNM,IMNM,"Immunome, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2673841920,1352994
+ESTA,ESTA,Establishment Labs Holdings Inc. - Common Shares,NASDAQ,Healthcare,Medical Devices,2626662400,639994
+HTO,HTO,H2O America  - Common Stock,NASDAQ,Utilities,Utilities - Regulated Water,2611668224,500538
+BUSE,BUSE,First Busey Corporation - Common Stock,NASDAQ,Financial Services,Banks - Regional,2507712768,740678
+BCRX,BCRX,"BioCryst Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,2500960512,5090446
+DRH,DRH,Diamondrock Hospitality Company - Common Stock,NASDAQ,Real Estate,REIT - Hotel & Motel,2479710208,2113288
+NRIX,NRIX,"Nurix Therapeutics, Inc. - Common stock",NASDAQ,Healthcare,Biotechnology,2478637312,2170414
+ABCL,ABCL,AbCellera Biologics Inc. - Common Shares,NASDAQ,Healthcare,Biotechnology,2476594432,8686254
+ALRM,ALRM,"Alarm.com Holdings, Inc. - Common Stock",NASDAQ,Technology,Software - Application,2457696256,555986
+MLYS,MLYS,"Mineralys Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2441108480,1637988
+AXGN,AXGN,"Axogen, Inc. - Common Stock",NASDAQ,Healthcare,Medical Devices,2440330240,1203244
+ASTH,ASTH,Astrana Health Inc. - Common Stock,NASDAQ,Healthcare,Medical Care Facilities,2438016512,597866
+AVPT,AVPT,"AvePoint, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Infrastructure,2429717248,2324614
+INTR,INTR,Inter & Co. Inc. - Class A Common Shares,NASDAQ,Financial Services,Banks - Regional,2414941440,6457734
+KOD,KOD,Kodiak Sciences Inc - Common Stock,NASDAQ,Healthcare,Biotechnology,2411773184,736134
+HTFL,HTFL,"Heartflow, Inc. - Common Stock",NASDAQ,Healthcare,Health Information Services,2411724800,1553012
+NKTR,NKTR,Nektar Therapeutics - Common Stock,NASDAQ,Healthcare,Biotechnology,2400159744,1161592
+DRVN,DRVN,Driven Brands Holdings Inc. - Common Stock,NASDAQ,Consumer Cyclical,Auto & Truck Dealerships,2386913024,1606066
+LCID,LCID,"Lucid Group, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Auto Manufacturers,2372761344,16762146
+DJT,DJT,Trump Media & Technology Group Corp. - Common Stock,NASDAQ,Communication Services,Internet Content & Information,2365185536,4689250
+FLYW,FLYW,Flywire Corporation - Voting Common Stock,NASDAQ,Technology,Software - Infrastructure,2314085376,2488366
+HAPN,HAPN,"Happen, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,2271259904,2496538
+INOD,INOD,Innodata Inc. - Common Stock,NASDAQ,Technology,Information Technology Services,2249300992,2188848
+JBLU,JBLU,JetBlue Airways Corporation - Common Stock,NASDAQ,Industrials,Airlines,2239553536,26896470
+AGIO,AGIO,"Agios Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2234943232,1080838
+DHC,DHC,Diversified Healthcare Trust  - Common Shares of Beneficial Interest,NASDAQ,Real Estate,REIT - Healthcare Facilities,2234646784,1862762
+GENB,GENB,"Generate Biomedicines, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2231831040,825212
+MRVI,MRVI,"Maravai LifeSciences Holdings, Inc. - Class A common stock",NASDAQ,Healthcare,Biotechnology,2228001024,2891254
+NN,NN,NextNav Inc. - Common stock,NASDAQ,Technology,Software - Infrastructure,2221193472,2872076
+AEHR,AEHR,Aehr Test Systems - Common Stock,NASDAQ,Technology,Semiconductor Equipment & Materials,2200469504,2315966
+EZPW,EZPW,"EZCORP, Inc. - Class A Non-Voting Common Stock",NASDAQ,Financial Services,Credit Services,2190065408,921806
+KARD,KARD,"Kardigan, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2175407616,1270710
+HYMC,HYMC,Hycroft Mining Holding Corporation - Class A Common Stock,NASDAQ,Basic Materials,Gold,2157937408,2327194
+HRMY,HRMY,"Harmony Biosciences Holdings, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2157081088,828580
+INTA,INTA,"Intapp, Inc. - Common Stock",NASDAQ,Technology,Software - Application,2110716928,1051592
+ADMA,ADMA,ADMA Biologics Inc - Common Stock,NASDAQ,Healthcare,Biotechnology,2074365824,5038084
+GLUE,GLUE,"Monte Rosa Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,2045246592,1144680
+ALKT,ALKT,"Alkami Technology, Inc. - Common Stock",NASDAQ,Technology,Software - Application,2035504768,1995486
+NEOG,NEOG,Neogen Corporation - Common Stock,NASDAQ,Healthcare,Medical Devices,2033066240,2421854
+AMLX,AMLX,"Amylyx Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,2031374080,1394020
+NEXT,NEXT,NextDecade Corporation - Common Stock,NASDAQ,Energy,Oil & Gas Equipment & Services,2008646912,3050064
+AUPH,AUPH,Aurinia Pharmaceuticals Inc - Common Shares,NASDAQ,Healthcare,Biotechnology,2007472000,1545968
+AVAH,AVAH,Aveanna Healthcare Holdings Inc. - Common Stock,NASDAQ,Healthcare,Medical Care Facilities,1981572352,1879432
+NEO,NEO,"NeoGenomics, Inc. - Common Stock",NASDAQ,Healthcare,Diagnostics & Research,1974010496,2639654
+BAND,BAND,Bandwidth Inc. - Class A Common Stock,NASDAQ,Technology,Software - Infrastructure,1972266112,1404130
+ABSI,ABSI,Absci Corporation - Common Stock,NASDAQ,Healthcare,Biotechnology,1968431872,6377816
+BRUN,BRUN,Boost Run Inc. - Class A Common Stock,NASDAQ,Technology,Software - Infrastructure,1950974592,1718584
+NCNO,NCNO,"nCino, Inc. - Common Stock",NASDAQ,Technology,Software - Application,1944564864,3850164
+IOVA,IOVA,"Iovance Biotherapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1924425344,14798998
+ATAI,ATAI,AtaiBeckley Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,1910785152,6673602
+BCAX,BCAX,Bicara Therapeutics Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,1905412096,694952
+FCEL,FCEL,"FuelCell Energy, Inc. - Common Stock",NASDAQ,Industrials,Electrical Equipment & Parts,1900465920,12544512
+GT,GT,The Goodyear Tire & Rubber Company - Common Stock,NASDAQ,Consumer Cyclical,Auto Parts,1894220544,10187336
+ANAB,ANAB,"AnaptysBio, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1877769728,639456
+GSHD,GSHD,"Goosehead Insurance, Inc. - Class A Common Stock",NASDAQ,Financial Services,Insurance Brokers,1876083072,521464
+LIFE,LIFE,Ethos Technologies Inc. - Class A Common Stock,NASDAQ,Financial Services,Insurance Brokers,1862490368,531166
+EOSE,EOSE,"Eos Energy Enterprises, Inc. - Common Stock",NASDAQ,Industrials,Electrical Equipment & Parts,1855615104,26165886
+DMRA,DMRA,"Damora Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1845364608,567278
+MQ,MQ,"Marqeta, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Infrastructure,1831567616,4492244
+AMSC,AMSC,American Superconductor Corporation - Common Stock,NASDAQ,Industrials,Specialty Industrial Machinery,1798436224,1376770
+FIVN,FIVN,"Five9, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,1794659840,3494414
+APPN,APPN,Appian Corporation - Class A Common Stock,NASDAQ,Technology,Software - Infrastructure,1791255680,1041088
+BL,BL,"BlackLine, Inc. - Common Stock",NASDAQ,Technology,Software - Application,1752788096,1371764
+HOPE,HOPE,"Hope Bancorp, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,1736051968,1026688
+MAZE,MAZE,"Maze Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1730092800,668732
+HCSG,HCSG,"Healthcare Services Group, Inc. - Common Stock",NASDAQ,Healthcare,Medical Care Facilities,1726427136,742042
+LIND,LIND,Lindblad Expeditions Holdings Inc.  - Common Stock,NASDAQ,Consumer Cyclical,Travel Services,1720032000,890280
+LINC,LINC,Lincoln Educational Services Corporation - Common Stock,NASDAQ,Consumer Defensive,Education & Training Services,1659945728,521110
+INVA,INVA,"Innoviva, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1646673280,815824
+FTRE,FTRE,Fortrea Holdings Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,1634424192,1549516
+AEVA,AEVA,"Aeva Technologies, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,1619494016,2492326
+AIP,AIP,"Arteris, Inc.  - Common Stock",NASDAQ,Technology,Semiconductors,1618789760,1135400
+AVBP,AVBP,"ArriVent BioPharma, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1614752640,560276
+ATRC,ATRC,"AtriCure, Inc. - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,1609876480,943730
+HLMN,HLMN,Hillman Solutions Corp. - Common Stock,NASDAQ,Industrials,Tools & Accessories,1593221888,1622368
+HROW,HROW,"Harrow, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,1593138176,874972
+MLTX,MLTX,MoonLake Immunotherapeutics - Class A Ordinary Shares,NASDAQ,Healthcare,Biotechnology,1583494016,1081232
+EYE,EYE,"National Vision Holdings, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Specialty Retail,1583105280,2455690
+LILAK,LILAK,Liberty Latin America Ltd. - Class C Common Stock,NASDAQ,Communication Services,Telecom Services,1536681984,1620687
+LILA,LILA,Liberty Latin America Ltd. - Class A Common Stock,NASDAQ,Communication Services,Telecom Services,1534668032,832041
+APPS,APPS,"Digital Turbine, Inc. - Common Stock",NASDAQ,Technology,Software - Application,1533613696,6379046
+HLIT,HLIT,Harmonic Inc. - Common Stock,NASDAQ,Technology,Communication Equipment,1526544768,3415504
+CDNA,CDNA,"CareDx, Inc. - Common Stock",NASDAQ,Healthcare,Diagnostics & Research,1507940224,812846
+CSWC,CSWC,Capital Southwest Corporation - Common Stock,NASDAQ,Financial Services,Asset Management,1474599424,662222
+MLKN,MLKN,"MillerKnoll, Inc. - Common Stock",NASDAQ,Consumer Cyclical,"Furnishings, Fixtures & Appliances",1464586880,887758
+AHCO,AHCO,AdaptHealth Corp.  - Common Stock,NASDAQ,Healthcare,Medical Devices,1463942656,1528402
+CNXC,CNXC,Concentrix Corporation - Common Stock,NASDAQ,Technology,Information Technology Services,1436366848,1937284
+CDNL,CDNL,Cardinal Infrastructure Group Inc. - Class A Common Stock,NASDAQ,Industrials,Engineering & Construction,1432734208,627340
+MRTN,MRTN,"Marten Transport, Ltd. - Common Stock",NASDAQ,Industrials,Trucking,1424546176,939686
+GIII,GIII,"G-III Apparel Group, LTD. - Common Stock",NASDAQ,Consumer Cyclical,Apparel Manufacturing,1413384192,576332
+CRML,CRML,Critical Metals Corp. - Ordinary Shares,NASDAQ,Basic Materials,Other Industrial Metals & Mining,1404256512,10573104
+IART,IART,Integra LifeSciences Holdings Corporation - Common Stock,NASDAQ,Healthcare,Medical Devices,1404234112,1066268
+MNKD,MNKD,MannKind Corporation - Common Stock,NASDAQ,Healthcare,Biotechnology,1396454784,6049632
+BLKB,BLKB,"Blackbaud, Inc. - Common Stock",NASDAQ,Technology,Software - Application,1382097024,843984
+BLFS,BLFS,"BioLife Solutions, Inc. - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,1373382016,800380
+ATEC,ATEC,"Alphatec Holdings, Inc. - Common Stock",NASDAQ,Healthcare,Medical Devices,1371800704,3866288
+IMTX,IMTX,Immatics N.V. - Ordinary Shares,NASDAQ,Healthcare,Biotechnology,1359897984,503764
+CAPR,CAPR,"Capricor Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1344134912,1217632
+AVLN,AVLN,Avalyn Pharma Inc. - common stock,NASDAQ,Healthcare,Biotechnology,1318022912,564268
+JBIO,JBIO,"Jade Biosciences, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1309095936,1064954
+ARDX,ARDX,"Ardelyx, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1301844864,4244966
+MGTX,MGTX,MeiraGTx Holdings plc - Ordinary Shares,NASDAQ,Healthcare,Biotechnology,1289124480,920546
+CRVS,CRVS,"Corvus Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1280697088,1630112
+HQ,HQ,Horizon Quantum Holdings Ltd. - Class A Ordinary Shares,NASDAQ,Technology,Software - Infrastructure,1226528128,732448
+ALVO,ALVO,Alvotech - Ordinary Shares,NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,1220973568,763604
+ARHS,ARHS,"Arhaus, Inc. - Class A Common Stock",NASDAQ,Consumer Cyclical,Specialty Retail,1220075392,1395384
+GCT,GCT,GigaCloud Technology Inc - Class A Ordinary Shares,NASDAQ,Technology,Software - Infrastructure,1209239040,765188
+CBRL,CBRL,"Cracker Barrel Old Country Store, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Restaurants,1195803136,1318896
+DRTS,DRTS,Alpha Tau Medical Ltd. - Ordinary Shares,NASDAQ,Healthcare,Biotechnology,1195011200,949914
+LMRI,LMRI,"Lumexa Imaging Holdings, Inc. - Common Stock",NASDAQ,Healthcare,Medical Devices,1194283520,888024
+AZTA,AZTA,"Azenta, Inc. - Common Stock",NASDAQ,Healthcare,Medical Instruments & Supplies,1191038080,1164948
+LZ,LZ,"LegalZoom.com, Inc. - Common Stock",NASDAQ,Industrials,Specialty Business Services,1187802496,2798970
+AMPL,AMPL,"Amplitude, Inc. - Class A Common Stock",NASDAQ,Technology,Software - Application,1172354176,2687794
+EYPT,EYPT,"EyePoint, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1172101248,1111522
+ENVX,ENVX,Enovix Corporation - Common Stock,NASDAQ,Industrials,Electrical Equipment & Parts,1169302528,6757508
+HTLD,HTLD,"Heartland Express, Inc. - Common Stock",NASDAQ,Industrials,Trucking,1154596480,622624
+LWLG,LWLG,"Lightwave Logic, Inc. - Common Stock",NASDAQ,Basic Materials,Specialty Chemicals,1134796416,7677908
+CEVA,CEVA,"CEVA, Inc. - Common Stock",NASDAQ,Technology,Semiconductors,1126075648,968808
+EVLV,EVLV,"Evolv Technologies Holdings, Inc. - Class A Common Stock",NASDAQ,Industrials,Security & Protection Services,1122397568,2954020
+BIOA,BIOA,"BioAge Labs, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,1115763712,515644
+AOSL,AOSL,Alpha and Omega Semiconductor Limited - Common Shares,NASDAQ,Technology,Semiconductors,1110686720,1078664
+AVO,AVO,"Mission Produce, Inc. - Common Stock",NASDAQ,Consumer Defensive,Food Distribution,1103835520,1451596
+NHP,NHP,"National Healthcare Properties, Inc. - Class A Common Stock",NASDAQ,Real Estate,REIT - Healthcare Facilities,1094599552,1127934
+GPRE,GPRE,"Green Plains, Inc. - Common Stock",NASDAQ,Basic Materials,Chemicals,1086168064,1507144
+CERT,CERT,"Certara, Inc. - Common Stock",NASDAQ,Healthcare,Health Information Services,1084285312,4202258
+CGEM,CGEM,"Cullinan Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1083505280,1169682
+ARRY,ARRY,"Array Technologies, Inc. - Common Stock",NASDAQ,Technology,Solar,1072169856,5729904
+ASST,ASST,"Strive, Inc. - Class A Common Stock",NASDAQ,Financial Services,Asset Management,1069355008,4667916
+CRON,CRON,Cronos Group Inc. - Common Share,NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,1068673408,1661046
+CCXI,CCXI,Churchill Capital Corp XI - Class A Ordinary Shares,NASDAQ,Financial Services,Shell Companies,1063870016,1239108
+BLDP,BLDP,"Ballard Power Systems, Inc. - Common Shares",NASDAQ,Industrials,Electrical Equipment & Parts,1061194944,9805072
+CFFN,CFFN,"Capitol Federal Financial, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,1051118464,838166
+NNE,NNE,Nano Nuclear Energy Inc. - common stock,NASDAQ,Industrials,Specialty Industrial Machinery,1044001216,2917202
+GDRX,GDRX,"GoodRx Holdings, Inc. - Class A Common Stock",NASDAQ,Healthcare,Health Information Services,1032959808,1578282
+LXRX,LXRX,"Lexicon Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,1030535552,3443904
+ADTN,ADTN,"ADTRAN Holdings, Inc. - Common Stock",NASDAQ,Technology,Communication Equipment,1029485824,2695842
+GO,GO,Grocery Outlet Holding Corp. - Common Stock,NASDAQ,Consumer Defensive,Grocery Stores,1027806592,3090848
+KDK,KDK,"Kodiak AI, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,1027561536,1253706
+HBNC,HBNC,"Horizon Bancorp, Inc. - Common Stock",NASDAQ,Financial Services,Banks - Regional,1015302784,529402
+ABTC,ABTC,American Bitcoin Corp. - Class A Common Stock,NASDAQ,Financial Services,Capital Markets,1008385216,15443798
+AVR,AVR,Anteris Technologies Global Corp. - Common Stock,NASDAQ,Healthcare,Medical Instruments & Supplies,996784128,1238276
+AVTX,AVTX,"Avalo Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,990335360,2226010
+KURA,KURA,"Kura Oncology, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,985395520,1786492
+CSIQ,CSIQ,Canadian Solar Inc. - Common Shares,NASDAQ,Technology,Solar,981447552,3119386
+DSGN,DSGN,"Design Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,976827136,1052000
+GILT,GILT,Gilat Satellite Networks Ltd. - Ordinary Shares,NASDAQ,Technology,Communication Equipment,972065792,951632
+GRPN,GRPN,"Groupon, Inc. - Common Stock",NASDAQ,Communication Services,Internet Content & Information,971630208,1969504
+ABUS,ABUS,Arbutus Biopharma Corporation - Common Stock,NASDAQ,Healthcare,Biotechnology,962008640,2094748
+CRSR,CRSR,"Corsair Gaming, Inc. - Common Stock",NASDAQ,Technology,Computer Hardware,951251584,2818622
+JANX,JANX,"Janux Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,947696832,1116626
+LYTS,LYTS,LSI Industries Inc. - Common Stock,NASDAQ,Technology,Electronic Components,939470400,541176
+BLZE,BLZE,"Backblaze, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,937430080,3660794
+CRCT,CRCT,"Cricut, Inc. - Class A common stock",NASDAQ,Technology,Computer Hardware,936147968,529022
+ACDC,ACDC,ProFrac Holding Corp. - Class A Common Stock,NASDAQ,Energy,Oil & Gas Equipment & Services,931741888,1446640
+INDI,INDI,"indie Semiconductor, Inc. - Class A Common Stock",NASDAQ,Technology,Semiconductors,914879616,6470796
+LPTH,LPTH,"LightPath Technologies, Inc. - Class A Common Stock",NASDAQ,Technology,Electronic Components,914213824,4017424
+ALOY,ALOY,REalloys Inc. - Common Stock,NASDAQ,Basic Materials,Other Industrial Metals & Mining,906108224,2526000
+ARKO,ARKO,ARKO Corp. - Common Stock,NASDAQ,Consumer Cyclical,Specialty Retail,901973184,935956
+GLIBK,GLIBK,Liberty Capital Corporation - Series C GCI Group Common Stock,NASDAQ,Communication Services,Telecom Services,895468032,960004
+ANNX,ANNX,"Annexon, Inc. - common stock",NASDAQ,Healthcare,Biotechnology,894580288,3083688
+GTM,GTM,ZoomInfo Technologies Inc. - Common Stock,NASDAQ,Technology,Software - Application,881206976,12764440
+EVER,EVER,"EverQuote, Inc. - Class A Common Stock",NASDAQ,Communication Services,Internet Content & Information,879379776,953294
+AGNT,AGNT,"AGNT, Inc. - Common Stock",NASDAQ,Real Estate,Real Estate Services,874203264,1338482
+MAMA,MAMA,"Mama's Creations, Inc. - Common Stock",NASDAQ,Consumer Defensive,Packaged Foods,872865856,564778
+GERN,GERN,Geron Corporation - Common Stock,NASDAQ,Healthcare,Biotechnology,872468544,14131434
+MITK,MITK,"Mitek Systems, Inc. - Common Stock",NASDAQ,Technology,Software - Application,867501504,1211826
+HIVE,HIVE,HIVE Digital Technologies Ltd - Common Shares,NASDAQ,Financial Services,Capital Markets,866475840,30179374
+AMPH,AMPH,"Amphastar Pharmaceuticals, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,865984896,653916
+INMD,INMD,InMode Ltd.  - Ordinary Shares,NASDAQ,Healthcare,Medical Devices,850715456,847984
+HPK,HPK,"HighPeak Energy, Inc. - Common Stock",NASDAQ,Energy,Oil & Gas E&P,846599296,795246
+METC,METC,"Ramaco Resources, Inc. - Class A Common Stock",NASDAQ,Basic Materials,Coking Coal,845777984,1521546
+BOT,BOT,"RoboStrategy, Inc. - Common Stock",NASDAQ,Financial Services,Asset Management,842628160,875959
+IMSR,IMSR,Terrestrial Energy Inc. - Common Stock,NASDAQ,Utilities,Utilities - Regulated Electric,834321728,3107812
+CTMX,CTMX,"CytomX Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,831625088,4338756
+ADAM,ADAM,"Adamas Trust, Inc. - Common Stock",NASDAQ,Real Estate,REIT - Mortgage,821330496,880600
+ESPR,ESPR,"Esperion Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,814310976,14292268
+NAVI,NAVI,Navient Corporation - Common Stock,NASDAQ,Financial Services,Credit Services,809248832,1200520
+FWRG,FWRG,"First Watch Restaurant Group, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Restaurants,806931520,1368528
+AURA,AURA,"Aura Biosciences, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,800597824,676776
+CYRX,CYRX,"CryoPort, Inc. - Common Stock",NASDAQ,Industrials,Integrated Freight & Logistics,780731776,850798
+ACRS,ACRS,"Aclaris Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,776530048,1607736
+HNRG,HNRG,Hallador Energy Company - Common Stock,NASDAQ,Utilities,Utilities - Independent Power Producers,765868864,946586
+BBNX,BBNX,"Beta Bionics, Inc. - Common Stock",NASDAQ,Healthcare,Medical Devices,746854016,920434
+BLMN,BLMN,"Bloomin' Brands, Inc. - Common Stock",NASDAQ,Consumer Cyclical,Restaurants,744844288,2556926
+CLYM,CLYM,"Climb Bio, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,738692992,1243902
+IMMX,IMMX,"Immix Biopharma, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,736104128,1544252
+KOPN,KOPN,Kopin Corporation - Common Stock,NASDAQ,Technology,Electronic Components,722675008,10201484
+CADL,CADL,"Candel Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,720246464,2145818
+ALLO,ALLO,"Allogene Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,717921472,8259686
+IRWD,IRWD,"Ironwood Pharmaceuticals, Inc. - Class A Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,712776064,2447358
+BVS,BVS,Bioventus Inc. - Class A Common Stock,NASDAQ,Healthcare,Medical Devices,709999488,626456
+ASPI,ASPI,ASP Isotopes Inc. - Common Stock,NASDAQ,Basic Materials,Chemicals,708836416,5159332
+FOXF,FOXF,Fox Factory Holding Corp. - Common Stock,NASDAQ,Consumer Cyclical,Auto Parts,692365568,581628
+NB,NB,NioCorp Developments Ltd. - Common Stock,NASDAQ,Basic Materials,Other Industrial Metals & Mining,690082560,3827182
+CRMD,CRMD,CorMedix Inc. - Common Stock,NASDAQ,Healthcare,Biotechnology,686454016,1407282
+BTQ,BTQ,BTQ Technologies Corp. - Common Stock,NASDAQ,Technology,Software - Infrastructure,682661120,4040506
+FDMT,FDMT,"4D Molecular Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,679591296,896902
+NMFC,NMFC,New Mountain Finance Corporation - Common Stock,NASDAQ,Financial Services,Asset Management,675334592,645138
+LAES,LAES,SEALSQ Corp - Ordinary Shares,NASDAQ,Technology,Semiconductors,675005184,16769410
+HTZ,HTZ,"Hertz Global Holdings, Inc - Common Stock",NASDAQ,Industrials,Rental & Leasing Services,669420736,15376780
+CGNT,CGNT,Cognyte Software Ltd. - Ordinary Shares,NASDAQ,Technology,Software - Infrastructure,662616064,764094
+IHRT,IHRT,"iHeartMedia, Inc. - Class A Common Stock",NASDAQ,Communication Services,Broadcasting,662047552,1473066
+ACHV,ACHV,"Achieve Life Sciences, Inc.  - Common Shares",NASDAQ,Healthcare,Biotechnology,657017984,1866524
+HELE,HELE,Helen of Troy Limited - Common Stock,NASDAQ,Consumer Defensive,Household & Personal Products,655438528,662820
+CCOI,CCOI,"Cogent Communications Holdings, Inc. - Common Stock",NASDAQ,Communication Services,Telecom Services,650508864,1410460
+CERS,CERS,Cerus Corporation - Common Stock,NASDAQ,Healthcare,Medical Devices,633165952,2916150
+NRDS,NRDS,"NerdWallet, Inc. - Class A Common Stock",NASDAQ,Communication Services,Internet Content & Information,623114496,952424
+FISN,FISN,"Deep Fission, Inc. - Common Stock",NASDAQ,Industrials,Specialty Industrial Machinery,621018176,883950
+GOOD,GOOD,Gladstone Commercial Corporation - Real Estate Investment Trust,NASDAQ,Real Estate,REIT - Diversified,616180160,528668
+ALT,ALT,"Altimmune, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,614538368,4711666
+GSM,GSM,Ferroglobe PLC - Ordinary Shares,NASDAQ,Basic Materials,Other Industrial Metals & Mining,611033856,1538452
+DNUT,DNUT,"Krispy Kreme, Inc. - Common Stock",NASDAQ,Consumer Defensive,Grocery Stores,605123968,2637594
+ILPT,ILPT,Industrial Logistics Properties Trust - Common Shares of Beneficial Interest,NASDAQ,Real Estate,REIT - Industrial,596655936,582044
+CTKB,CTKB,"Cytek Biosciences, Inc. - Common Stock",NASDAQ,Healthcare,Medical Devices,592764480,1522702
+MDXG,MDXG,"MiMedx Group, Inc - Common Stock",NASDAQ,Healthcare,Biotechnology,588335616,1564256
+EVGO,EVGO,EVgo Inc. - Common Stock,NASDAQ,Consumer Cyclical,Specialty Retail,586916992,4120292
+AIOT,AIOT,"PowerFleet, Inc. - Common Stock",NASDAQ,Technology,Software - Infrastructure,586370432,1744830
+BTBT,BTBT,"Bit Digital, Inc. - Ordinary Share",NASDAQ,Financial Services,Capital Markets,583110016,26614050
+AIIO,AIIO,Robo.ai Inc. - Class B Ordinary Shares,NASDAQ,Consumer Cyclical,Auto Manufacturers,581374208,16410320
+MYGN,MYGN,"Myriad Genetics, Inc. - Common Stock",NASDAQ,Healthcare,Diagnostics & Research,565744768,1778780
+CLPT,CLPT,ClearPoint Neuro Inc. - Common Stock,NASDAQ,Healthcare,Medical Devices,561404608,766034
+EDIT,EDIT,"Editas Medicine, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,560135744,2559630
+ADUR,ADUR,Aduro Clean Technologies Inc. - Common Stock,NASDAQ,Industrials,Pollution & Treatment Controls,555752896,512450
+ARVN,ARVN,"Arvinas, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,541332864,874198
+KYTX,KYTX,"Kyverna Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,540469440,1141460
+GEMI,GEMI,"Gemini Space Station, Inc. - Class A Common Stock",NASDAQ,Financial Services,Capital Markets,534810720,2153972
+FIP,FIP,FTAI Infrastructure Inc. - Common Stock,NASDAQ,Industrials,Conglomerates,524646176,1119894
+AQST,AQST,"Aquestive Therapeutics, Inc. - Common Stock",NASDAQ,Healthcare,Drug Manufacturers - Specialty & Generic,524452000,1894290
+ELMT,ELMT,The Elmet Group Co. - Common Stock,NASDAQ,Industrials,Aerospace & Defense,522549024,931351
+CABA,CABA,"Cabaletta Bio, Inc. - Common Stock",NASDAQ,Healthcare,Biotechnology,520144832,5035792
+MNRO,MNRO,"Monro, Inc.  - Common Stock",NASDAQ,Consumer Cyclical,Auto Parts,516734816,1184806
+GRRR,GRRR,Gorilla Technology Group Inc. - Ordinary shares,NASDAQ,Technology,Software - Infrastructure,513790848,1473022
+MRLN,MRLN,"Merlin, Inc. - Common Stock",NASDAQ,Industrials,Aerospace & Defense,509647008,2779260
+GDYN,GDYN,"Grid Dynamics Holdings, Inc. - Class A Common Stock",NASDAQ,Technology,Information Technology Services,509282688,2582458
