@@ -1,42 +1,40 @@
 Daily US Stock Watchlist
 
 Market Status
-Strong
+Neutral
 
 Top 5 Industries
 1. Unknown (Unknown) - Strength 85.6
 
 Top Action List
-SNDK - Review for pullback entry
-MU - Review for pullback entry
-STX - Review for pullback entry
-WDC - Review for pullback entry
+CLYM - Review for pullback entry
+KOD - Review for pullback entry
+ALMS - Review for pullback entry
+AMD - Review for pullback entry
 ICHR - Review for pullback entry
-CSCO - Watch only
-JAZZ - Monitor tight base
-M - Watch only
+AXSM - Watch only
+CGON - Watch only
+SWBI - Monitor tight base
 
 AI Commentary
 Market Summary
-The current market status is Strong, indicating a bullish environment favorable for potential swing trades.
+The market is currently in a neutral state, suggesting no strong directional bias.
 
 Industry Rotation Summary
-The top industries show strong leadership with the semiconductor sector leading, particularly highlighted by stocks like MU and SNDK.
+The top industries indicate strong performance with high Relative Strength scores, particularly focusing on candidates in the unknown sector.
 
 Best Opportunities
-SNDK: A - Ideal Pullback; Excellent R/R; Not Extended
-MU: A - Ideal Pullback; Excellent R/R; Not Extended
-STX: A - Ideal Pullback; Excellent R/R; Not Extended
-WDC: A - Ideal Pullback; Excellent R/R; Not Extended
-ICHR: A - Ideal Pullback; Excellent R/R; Not Extended
+CLYM: Ideal pullback with excellent risk/reward and not extended.
+KOD: Ideal pullback with excellent risk/reward and not extended.
+ALMS: Ideal pullback with excellent risk/reward and not extended.
+AMD: Ideal pullback with excellent risk/reward and not extended.
+ICHR: Ideal pullback with excellent risk/reward and not extended.
 
 Stocks To Wait
-CSCO - Watch for tight consolidation
-JAZZ - Monitor for tight base
-M - Watch for tight consolidation
+No wait list returned.
 
 Overall Market Character
-Strong Breakout Market
+Healthy Pullback Market
 
 Reminder
 AI assists prioritisation only and trading decisions remain with the user.
