@@ -36,14 +36,16 @@ DATA_FAILURE_REPORT = "data_failure_report.txt"
 UNIVERSE_TEMP_CSV = "universe_temp.csv"
 UNIVERSE_RAW_TEMP_CSV = "universe_raw_temp.csv"
 UNIVERSE_BACKUP_CSV = "universe_backup.csv"
+METADATA_CACHE_CSV = config.METADATA_CACHE_CSV
 YFINANCE_CACHE_DIR = ".yfinance_cache"
 UNIVERSE_COLUMNS = [
     "Ticker", "Symbol", "Security Name", "Exchange", "Sector", "Industry",
     "Market Cap", "Avg Volume",
 ]
 DISCOVERY_COLUMNS = [
-    "Category", "Ticker", "Sector", "Industry", "RS Score", "Price",
+    "Category", "Ticker", "Sector", "Industry", "RS Score", "RS Trend", "RS Trend Delta", "Price",
     "Action",
+    "Review Priority Score",
     "ATR20", "ATR20 %",
     "ADR %", "From 52W High %", "Distance From 50MA %",
     "Distance From 30WMA %", "Distance From Pivot %", "Volume Ratio",
@@ -54,7 +56,7 @@ DISCOVERY_COLUMNS = [
     "10 Day Range %", "20 Day Range %", "Tightness Score",
     "Tightness Label", "ADR20 %", "ADR60 %", "VCP Ratio", "VCP Label",
     "Pullback Quality", "Extension Status", "Risk/Reward Quality",
-    "Industry Rank", "Avg Volume", "TradingView",
+    "Industry Rank", "Industry Setup Count", "Avg Volume", "TradingView",
 ]
 TOP_INDUSTRY_COLUMNS = [
     "Industry", "Sector", "Industry Strength Score", "Candidate Count",
@@ -322,6 +324,127 @@ def vcp_label_rank(label: str) -> int:
     return ranks.get(label, 99)
 
 
+def bounded(value: float, low: float, high: float, default: float | None = None) -> float:
+    if pd.isna(value):
+        return low if default is None else default
+    return max(low, min(high, float(value)))
+
+
+def known_metadata_value(value: object) -> bool:
+    if pd.isna(value):
+        return False
+    text = str(value).strip()
+    return bool(text) and text.lower() not in {"unknown", "nan", "none", "n/a"}
+
+
+def known_industry_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty or "Industry" not in frame.columns:
+        return frame.iloc[0:0].copy()
+    return frame[frame["Industry"].apply(known_metadata_value)].copy()
+
+
+def review_priority_score(row: pd.Series | dict) -> float:
+    """Rank review order: stock quality/setup/volume first, then industry."""
+    rs = bounded(row.get("RS Score", 0), 0, 100)
+    volume_ratio = bounded(row.get("Volume Ratio", 0), 0, 3)
+    avg_volume = bounded(row.get("Avg Volume", 0), 0, 10_000_000)
+    support_atr = bounded(row.get("Nearest Support Distance ATR", 9), 0, 9, default=9)
+    industry_rank = bounded(row.get("Industry Rank", 999), 1, 999, default=999)
+    industry_setup_count = bounded(row.get("Industry Setup Count", 0), 0, 20, default=0)
+
+    score = 0.0
+    score += rs * 0.35
+    score += min(volume_ratio, 2.0) * 6.0
+    score += min(avg_volume / 1_000_000, 10) * 0.8
+
+    risk_quality = row.get("Risk/Reward Quality", "")
+    score += {
+        "Excellent R/R": 18,
+        "Good R/R": 13,
+        "Fair R/R": 7,
+        "Poor R/R": 1,
+        "Avoid": -8,
+    }.get(risk_quality, 0)
+
+    pullback = str(row.get("Pullback Quality", ""))
+    if pullback.startswith("A"):
+        score += 12
+    elif pullback.startswith("B"):
+        score += 8
+    elif pullback.startswith("C"):
+        score += 3
+    elif pullback.startswith("D"):
+        score -= 4
+
+    extension = row.get("Extension Status", "")
+    score += {
+        "Not Extended": 10,
+        "Moderately Extended": 5,
+        "Extended": -4,
+        "Overextended": -12,
+    }.get(extension, 0)
+
+    score += {
+        "Excellent VCP": 8,
+        "Good VCP": 5,
+        "Average VCP": 2,
+        "Poor VCP": 0,
+    }.get(row.get("VCP Label", ""), 0)
+
+    rs_trend = row.get("RS Trend", "")
+    score += {
+        "Emerging Leader": 8,
+        "Improving": 5,
+        "Stable Leader": 3,
+        "Stable": 0,
+        "Weakening": -4,
+        "Fading": -8,
+    }.get(rs_trend, 0)
+
+    if support_atr <= 0.75:
+        score += 8
+    elif support_atr <= 1.5:
+        score += 5
+    elif support_atr <= 2.5:
+        score += 1
+    else:
+        score -= 4
+
+    category = row.get("Category", "")
+    if category == "Breakout Candidates" and volume_ratio >= 1.2:
+        score += 8
+    elif category == "Volume Surge Candidates" and volume_ratio >= 1.5:
+        score += 6
+    elif category == "Pullback Candidates" and volume_ratio <= 1.2:
+        score += 4
+    elif category == "Tight Consolidation Candidates" and volume_ratio <= 1.0:
+        score += 3
+
+    if industry_setup_count >= 5:
+        score += 10
+    elif industry_setup_count >= 3:
+        score += 7
+    elif industry_setup_count >= 2:
+        score += 4
+
+    if industry_rank <= 5:
+        score += 5
+    elif industry_rank <= 15:
+        score += 3
+    elif industry_rank <= 30:
+        score += 1
+
+    return round(bounded(score, 0, 100), 1)
+
+
+def add_review_priority_column(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    updated = frame.copy()
+    updated["Review Priority Score"] = updated.apply(review_priority_score, axis=1)
+    return updated
+
+
 def yahoo_symbol(symbol: str) -> str:
     return symbol.replace(".", "-")
 
@@ -524,6 +647,91 @@ def get_company_profile(ticker: str) -> tuple[float, str, str]:
     except Exception:
         pass
     return market_cap, sector, industry
+
+
+def load_metadata_cache(path: str = METADATA_CACHE_CSV) -> dict[str, dict[str, str]]:
+    cache_path = Path(path)
+    if not cache_path.exists():
+        return {}
+    try:
+        frame = pd.read_csv(cache_path)
+    except Exception:
+        return {}
+    required = {"Ticker", "Sector", "Industry"}
+    if frame.empty or not required.issubset(frame.columns):
+        return {}
+    return {
+        str(row["Ticker"]).upper(): {
+            "Sector": str(row.get("Sector") or "Unknown"),
+            "Industry": str(row.get("Industry") or "Unknown"),
+        }
+        for _, row in frame.dropna(subset=["Ticker"]).iterrows()
+    }
+
+
+def save_metadata_cache(cache: dict[str, dict[str, str]], path: str = METADATA_CACHE_CSV) -> None:
+    if not cache:
+        return
+    rows = [
+        {
+            "Ticker": ticker,
+            "Sector": values.get("Sector", "Unknown"),
+            "Industry": values.get("Industry", "Unknown"),
+        }
+        for ticker, values in sorted(cache.items())
+    ]
+    pd.DataFrame(rows, columns=["Ticker", "Sector", "Industry"]).to_csv(path, index=False)
+
+
+def fetch_sector_industry(ticker: str) -> tuple[str, str]:
+    try:
+        info = yf.Ticker(ticker).get_info()
+    except Exception:
+        return "Unknown", "Unknown"
+    sector = info.get("sector") or "Unknown"
+    industry = info.get("industry") or "Unknown"
+    return str(sector), str(industry)
+
+
+def enrich_profiles_with_metadata(
+    profiles: dict[str, dict],
+    tickers: list[str],
+) -> dict[str, dict]:
+    """Best-effort metadata enrichment after deterministic stock filtering."""
+    if not tickers:
+        return profiles
+    updated = {ticker: dict(profile) for ticker, profile in profiles.items()}
+    cache = load_metadata_cache()
+    changed = False
+    missing = []
+
+    for ticker in tickers:
+        key = ticker.upper()
+        cached = cache.get(key)
+        if cached:
+            updated.setdefault(ticker, {})
+            updated[ticker]["Sector"] = cached.get("Sector", "Unknown")
+            updated[ticker]["Industry"] = cached.get("Industry", "Unknown")
+            continue
+
+        profile = updated.get(ticker, {})
+        sector = str(profile.get("Sector", "Unknown") or "Unknown")
+        industry = str(profile.get("Industry", "Unknown") or "Unknown")
+        if sector == "Unknown" or industry == "Unknown":
+            missing.append(ticker)
+
+    for ticker in missing[: config.MAX_METADATA_FETCH_PER_RUN]:
+        sector, industry = fetch_sector_industry(ticker)
+        updated.setdefault(ticker, {})
+        updated[ticker]["Sector"] = sector
+        updated[ticker]["Industry"] = industry
+        if sector != "Unknown" or industry != "Unknown":
+            cache[ticker.upper()] = {"Sector": sector, "Industry": industry}
+            changed = True
+
+    if changed:
+        save_metadata_cache(cache)
+    return updated
 
 
 def build_raw_universe_to_path(path: str = UNIVERSE_RAW_TEMP_CSV) -> tuple[pd.DataFrame, int]:
@@ -862,45 +1070,93 @@ def period_return(history: pd.DataFrame, trading_days: int) -> float:
     return pct(closes.iloc[-1] - closes.iloc[-trading_days], closes.iloc[-trading_days])
 
 
-def calculate_rs_scores(histories: dict[str, pd.DataFrame], tickers: list[str]) -> dict[str, int]:
+def period_return_as_of(history: pd.DataFrame, trading_days: int, end_offset: int = 0) -> float:
+    closes = history["Close"].dropna()
+    end_index = len(closes) - 1 - end_offset
+    start_index = end_index - trading_days
+    if start_index < 0 or end_index <= start_index:
+        return np.nan
+    return pct(closes.iloc[end_index] - closes.iloc[start_index], closes.iloc[start_index])
+
+
+def weighted_rs_return(history: pd.DataFrame, end_offset: int = 0) -> float:
+    three_month = period_return_as_of(history, 63, end_offset)
+    six_month = period_return_as_of(history, 126, end_offset)
+    twelve_month = period_return_as_of(history, 252, end_offset)
+    if pd.isna(three_month) or pd.isna(six_month) or pd.isna(twelve_month):
+        return np.nan
+    return three_month * 0.5 + six_month * 0.3 + twelve_month * 0.2
+
+
+def percentile_scores(frame: pd.DataFrame, raw_column: str) -> dict[str, int]:
+    valid = frame.dropna(subset=[raw_column]).sort_values(raw_column, ascending=False).reset_index(drop=True)
+    count = len(valid)
+    if count == 0:
+        return {}
+    scores = {}
+    for index, row in valid.iterrows():
+        percentile_rank = ((index + 1) / count) * 100
+        score = 100 - math.ceil(percentile_rank)
+        scores[row["Ticker"]] = max(1, min(99, score))
+    return scores
+
+
+def rs_trend_label(score: int | None, delta: float | None) -> str:
+    if score is None or pd.isna(score) or delta is None or pd.isna(delta):
+        return "Unknown"
+    if score >= 75 and delta >= 10:
+        return "Emerging Leader"
+    if delta >= 5:
+        return "Improving"
+    if score >= 85 and delta > -5:
+        return "Stable Leader"
+    if delta <= -10:
+        return "Fading"
+    if delta <= -5:
+        return "Weakening"
+    return "Stable"
+
+
+def calculate_rs_metrics(histories: dict[str, pd.DataFrame], tickers: list[str]) -> dict[str, dict[str, object]]:
     rows = []
     for ticker in tickers:
         history = histories.get(ticker)
         if history is None or history.empty:
             continue
 
-        three_month = period_return(history, 63)
-        six_month = period_return(history, 126)
-        twelve_month = period_return(history, 252)
-        if pd.isna(three_month) or pd.isna(six_month) or pd.isna(twelve_month):
+        current_raw = weighted_rs_return(history)
+        if pd.isna(current_raw):
             continue
-
-        weighted_return = (
-            three_month * 0.5
-            + six_month * 0.3
-            + twelve_month * 0.2
-        )
+        prior_raw = weighted_rs_return(history, end_offset=21)
         rows.append(
             {
                 "Ticker": ticker,
-                "RS Raw": weighted_return,
-                "3M Return %": three_month,
-                "6M Return %": six_month,
-                "12M Return %": twelve_month,
+                "Current RS Raw": current_raw,
+                "Prior RS Raw": prior_raw,
             }
         )
 
     if not rows:
         return {}
 
-    rs_frame = pd.DataFrame(rows).sort_values("RS Raw", ascending=False).reset_index(drop=True)
-    count = len(rs_frame)
-    scores = {}
-    for index, row in rs_frame.iterrows():
-        percentile_rank = ((index + 1) / count) * 100
-        score = 100 - math.ceil(percentile_rank)
-        scores[row["Ticker"]] = max(1, min(99, score))
-    return scores
+    rs_frame = pd.DataFrame(rows)
+    current_scores = percentile_scores(rs_frame, "Current RS Raw")
+    prior_scores = percentile_scores(rs_frame, "Prior RS Raw")
+    metrics = {}
+    for ticker, score in current_scores.items():
+        prior_score = prior_scores.get(ticker)
+        delta = np.nan if prior_score is None else score - prior_score
+        metrics[ticker] = {
+            "RS Score": score,
+            "RS Trend": rs_trend_label(score, delta),
+            "RS Trend Delta": np.nan if pd.isna(delta) else int(delta),
+        }
+    return metrics
+
+
+def calculate_rs_scores(histories: dict[str, pd.DataFrame], tickers: list[str]) -> dict[str, int]:
+    metrics = calculate_rs_metrics(histories, tickers)
+    return {ticker: int(values["RS Score"]) for ticker, values in metrics.items()}
 
 
 def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -1031,9 +1287,10 @@ def passes_filters(row: pd.Series) -> bool:
 def candidate_row(
     ticker: str,
     latest: pd.Series,
-    rs_score: int | None,
+    rs_metric: dict[str, object],
     profile: dict,
 ) -> dict:
+    rs_score = rs_metric.get("RS Score")
     volume_ratio = latest["Volume"] / latest["AVG_VOLUME50"]
     distance_50ma = pct(latest["Close"] - latest["MA50"], latest["MA50"])
     distance_30wma = pct(latest["Close"] - latest["MA150"], latest["MA150"])
@@ -1056,8 +1313,11 @@ def candidate_row(
         "Sector": profile.get("Sector", "Unknown"),
         "Industry": profile.get("Industry", "Unknown"),
         "RS Score": rs_score,
+        "RS Trend": rs_metric.get("RS Trend", "Unknown"),
+        "RS Trend Delta": rs_metric.get("RS Trend Delta", np.nan),
         "Price": round(latest["Close"], 2),
         "Action": "",
+        "Review Priority Score": np.nan,
         "ATR20": round(latest["ATR20"], 2),
         "ATR20 %": round(latest["ATR20_PCT"], 2),
         "ADR %": round(latest["ADR_PCT"], 2),
@@ -1084,6 +1344,7 @@ def candidate_row(
         "Extension Status": status,
         "Risk/Reward Quality": risk_reward_quality(nearest_support_atr, status),
         "Industry Rank": np.nan,
+        "Industry Setup Count": np.nan,
         "Avg Volume": int(latest["AVG_VOLUME50"]),
         "TradingView": tradingview_url(profile.get("Exchange", "NASDAQ"), ticker),
     }
@@ -1214,13 +1475,13 @@ def add_action_column(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def category_sort(df: pd.DataFrame, category: str) -> pd.DataFrame:
-    frame = df.copy()
+    frame = add_review_priority_column(df)
     if category == "Breakout Candidates":
         return (
             frame
             .sort_values(
-                ["RS Score", "Volume Ratio", "Avg Volume", "From 52W High %"],
-                ascending=[False, False, False, True],
+                ["Review Priority Score", "Volume Ratio", "RS Score", "Avg Volume", "From 52W High %"],
+                ascending=[False, False, False, False, True],
             )
             .head(config.CATEGORY_LIMIT)
             .reset_index(drop=True)
@@ -1230,8 +1491,8 @@ def category_sort(df: pd.DataFrame, category: str) -> pd.DataFrame:
         return (
             frame
             .sort_values(
-                ["_Quality Rank", "RS Score", "Distance From 50MA %", "Avg Volume"],
-                ascending=[True, False, True, False],
+                ["Review Priority Score", "_Quality Rank", "RS Score", "Distance From 50MA %", "Avg Volume"],
+                ascending=[False, True, False, True, False],
             )
             .drop(columns=["_Quality Rank"])
             .head(config.CATEGORY_LIMIT)
@@ -1258,11 +1519,11 @@ def category_sort(df: pd.DataFrame, category: str) -> pd.DataFrame:
             frame
             .sort_values(
                 [
-                    "_Risk Reward Rank", "_Extension Rank",
+                    "Review Priority Score", "_Risk Reward Rank", "_Extension Rank",
                     "Nearest Support Distance ATR", "_VCP Rank",
                     "_Tightness Rank", "RS Score", "VCP Ratio",
                 ],
-                ascending=[True, True, True, True, True, False, True],
+                ascending=[False, True, True, True, True, True, False, True],
             )
             .drop(columns=["_Risk Reward Rank", "_Extension Rank", "_VCP Rank", "_Tightness Rank"])
             .head(config.CATEGORY_LIMIT)
@@ -1273,8 +1534,8 @@ def category_sort(df: pd.DataFrame, category: str) -> pd.DataFrame:
         return (
             frame
             .sort_values(
-                ["RS Score", "_Industry Rank", "Distance From 50MA %", "Avg Volume"],
-                ascending=[False, True, True, False],
+                ["Review Priority Score", "RS Score", "_Industry Rank", "Distance From 50MA %", "Avg Volume"],
+                ascending=[False, False, True, True, False],
             )
             .drop(columns=["_Industry Rank"])
             .head(config.CATEGORY_LIMIT)
@@ -1284,8 +1545,8 @@ def category_sort(df: pd.DataFrame, category: str) -> pd.DataFrame:
     return (
         frame
         .sort_values(
-            ["RS Score", "Volume Ratio", "Avg Volume", "From 52W High %"],
-            ascending=[False, False, False, True],
+            ["Review Priority Score", "RS Score", "Volume Ratio", "Avg Volume", "From 52W High %"],
+            ascending=[False, False, False, False, True],
         )
         .head(config.CATEGORY_LIMIT)
         .reset_index(drop=True)
@@ -1297,7 +1558,11 @@ def build_top_industries(base_df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=TOP_INDUSTRY_COLUMNS)
 
     rows = []
-    for industry, group in base_df.groupby("Industry", dropna=False):
+    ranked_source = known_industry_frame(base_df)
+    if ranked_source.empty:
+        return pd.DataFrame(columns=TOP_INDUSTRY_COLUMNS)
+
+    for industry, group in ranked_source.groupby("Industry", dropna=False):
         candidate_count = len(group)
         avg_rs_score = round(group["RS Score"].mean(), 1)
         strength_score = round((avg_rs_score * 0.7) + (min(candidate_count, 20) * 1.5), 1)
@@ -1330,17 +1595,39 @@ def build_top_industries(base_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_industry_ranks(base_df: pd.DataFrame) -> pd.DataFrame:
+    ranked = base_df.copy()
+    ranked["Industry Rank"] = np.nan
+    ranked["Industry Setup Count"] = np.nan
+    ranked_source = known_industry_frame(base_df)
+    if ranked_source.empty:
+        return ranked
+
     industry_scores = (
-        base_df
+        ranked_source
         .groupby("Industry", dropna=False)
         .agg({"RS Score": "mean", "Ticker": "count"})
         .rename(columns={"RS Score": "Avg RS Score", "Ticker": "Candidates"})
         .sort_values(["Avg RS Score", "Candidates"], ascending=[False, False])
     )
     ranks = {industry: rank for rank, industry in enumerate(industry_scores.index, start=1)}
-    ranked = base_df.copy()
+    counts = industry_scores["Candidates"].to_dict()
     ranked["Industry Rank"] = ranked["Industry"].map(ranks)
+    ranked["Industry Setup Count"] = ranked["Industry"].map(counts)
     return ranked
+
+
+def apply_industry_context(frame: pd.DataFrame, context: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty or context.empty:
+        return frame
+    updated = frame.copy()
+    context_by_ticker = (
+        context[["Ticker", "Industry Rank", "Industry Setup Count"]]
+        .drop_duplicates("Ticker")
+        .set_index("Ticker")
+    )
+    updated["Industry Rank"] = updated["Ticker"].map(context_by_ticker["Industry Rank"])
+    updated["Industry Setup Count"] = updated["Ticker"].map(context_by_ticker["Industry Setup Count"])
+    return updated
 
 
 def screen_stocks(
@@ -1364,18 +1651,26 @@ def screen_stocks(
             stage2_tickers.append(ticker)
             latest_by_ticker[ticker] = latest
 
-    rs_scores = calculate_rs_scores(histories, stage2_tickers)
+    rs_metrics = calculate_rs_metrics(histories, stage2_tickers)
+    qualified_stage2_tickers = [
+        ticker
+        for ticker in stage2_tickers
+        if rs_metrics.get(ticker, {}).get("RS Score") is not None
+        and rs_metrics.get(ticker, {}).get("RS Score", 0) >= config.MIN_RS_SCORE
+    ]
+    profiles = enrich_profiles_with_metadata(profiles, qualified_stage2_tickers)
     base_rows = []
     stage2_count = len(stage2_tickers)
     for ticker in stage2_tickers:
-        rs_score = rs_scores.get(ticker)
+        rs_metric = rs_metrics.get(ticker)
+        rs_score = rs_metric.get("RS Score") if rs_metric else None
         if rs_score is None or rs_score < config.MIN_RS_SCORE:
             continue
         base_rows.append(
             candidate_row(
                 ticker,
                 latest_by_ticker[ticker],
-                rs_score,
+                rs_metric,
                 profiles.get(ticker, {}),
             )
         )
@@ -1384,10 +1679,12 @@ def screen_stocks(
         empty_categories = {name: pd.DataFrame(columns=DISCOVERY_COLUMNS) for name in CATEGORY_NAMES}
         return empty_categories, pd.DataFrame(columns=TOP_INDUSTRY_COLUMNS), stage2_count, download_stats
 
-    base_df = add_industry_ranks(pd.DataFrame(base_rows, columns=DISCOVERY_COLUMNS))
+    base_df = pd.DataFrame(base_rows, columns=DISCOVERY_COLUMNS)
     categories = {name: [] for name in CATEGORY_NAMES}
     for ticker in stage2_tickers:
-        if ticker not in latest_by_ticker or ticker not in rs_scores or rs_scores[ticker] < config.MIN_RS_SCORE:
+        rs_metric = rs_metrics.get(ticker)
+        rs_score = rs_metric.get("RS Score") if rs_metric else None
+        if ticker not in latest_by_ticker or rs_score is None or rs_score < config.MIN_RS_SCORE:
             continue
         latest = latest_by_ticker[ticker]
         row = base_df[base_df["Ticker"] == ticker].iloc[0].to_dict()
@@ -1402,12 +1699,27 @@ def screen_stocks(
         if is_volume_surge_candidate(latest):
             categories["Volume Surge Candidates"].append({**row, "Category": "Volume Surge Candidates"})
 
-    category_frames = {}
-    for name, rows in categories.items():
-        frame = pd.DataFrame(rows, columns=DISCOVERY_COLUMNS)
-        category_frames[name] = add_action_column(category_sort(frame, name)) if not frame.empty else frame
+    raw_category_frames = {
+        name: pd.DataFrame(rows, columns=DISCOVERY_COLUMNS)
+        for name, rows in categories.items()
+    }
+    setup_frames = [frame for frame in raw_category_frames.values() if not frame.empty]
+    setup_source = (
+        pd.concat(setup_frames, ignore_index=True).drop_duplicates("Ticker")
+        if setup_frames
+        else pd.DataFrame(columns=DISCOVERY_COLUMNS)
+    )
+    industry_context = add_industry_ranks(setup_source)
 
-    top_industries = build_top_industries(base_df)
+    category_frames = {}
+    for name, frame in raw_category_frames.items():
+        if frame.empty:
+            category_frames[name] = frame
+            continue
+        frame = apply_industry_context(frame, industry_context)
+        category_frames[name] = add_action_column(category_sort(frame, name))
+
+    top_industries = build_top_industries(industry_context)
     return category_frames, top_industries, stage2_count, download_stats
 
 
@@ -1453,15 +1765,15 @@ def sort_daily_focus(focus: pd.DataFrame) -> pd.DataFrame:
     if focus.empty:
         return focus
 
-    sorted_focus = focus.copy()
+    sorted_focus = add_review_priority_column(focus)
     sorted_focus["_Category Rank"] = sorted_focus["Category"].apply(category_priority_rank)
     sorted_focus["_Risk Reward Rank"] = sorted_focus["Risk/Reward Quality"].apply(risk_reward_quality_rank)
     sorted_focus["_Industry Rank Sort"] = sorted_focus["Industry Rank"].fillna(999)
     return (
         sorted_focus
         .sort_values(
-            ["_Category Rank", "_Risk Reward Rank", "RS Score", "_Industry Rank Sort"],
-            ascending=[True, True, False, True],
+            ["Review Priority Score", "_Risk Reward Rank", "RS Score", "_Industry Rank Sort", "_Category Rank"],
+            ascending=[False, True, False, True, True],
         )
         .drop(columns=["_Category Rank", "_Risk Reward Rank", "_Industry Rank Sort"])
         .head(DAILY_FOCUS_MAX)
@@ -1502,15 +1814,15 @@ def sort_top_action_list(frame: pd.DataFrame) -> pd.DataFrame:
         "Tight Consolidation Candidates": 2,
         "Extended Candidates": 3,
     }
-    sorted_frame = frame.copy()
+    sorted_frame = add_review_priority_column(frame)
     sorted_frame["_Category Rank"] = sorted_frame["Category"].map(category_rank).fillna(99)
     sorted_frame["_Risk Reward Rank"] = sorted_frame["Risk/Reward Quality"].apply(risk_reward_quality_rank)
     sorted_frame["_Industry Rank Sort"] = sorted_frame["Industry Rank"].fillna(999)
     return (
         sorted_frame
         .sort_values(
-            ["_Category Rank", "_Risk Reward Rank", "RS Score", "_Industry Rank Sort"],
-            ascending=[True, True, False, True],
+            ["Review Priority Score", "_Risk Reward Rank", "RS Score", "_Industry Rank Sort", "_Category Rank"],
+            ascending=[False, True, False, True, True],
         )
         .drop(columns=["_Category Rank", "_Risk Reward Rank", "_Industry Rank Sort"])
         .head(TOP_ACTION_MAX)
@@ -1519,21 +1831,12 @@ def sort_top_action_list(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_top_action_list(categories: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    frames = []
-    pullbacks = categories.get("Pullback Candidates", pd.DataFrame(columns=DISCOVERY_COLUMNS))
-    tight = categories.get("Tight Consolidation Candidates", pd.DataFrame(columns=DISCOVERY_COLUMNS))
-    if not pullbacks.empty:
-        frames.append(pullbacks.head(5))
-    if not tight.empty:
-        frames.append(tight.head(3))
-
+    frames = [
+        categories.get(name, pd.DataFrame(columns=DISCOVERY_COLUMNS)).head(FOCUS_LIMITS.get(name, TOP_ACTION_MAX))
+        for name in CATEGORY_PRIORITY
+    ]
+    frames = [frame for frame in frames if not frame.empty]
     combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=DISCOVERY_COLUMNS)
-    if len(combined) < TOP_ACTION_MAX:
-        extended = categories.get("Extended Candidates", pd.DataFrame(columns=DISCOVERY_COLUMNS))
-        if not extended.empty:
-            need = TOP_ACTION_MAX - len(combined)
-            frames.append(extended.head(need))
-            combined = pd.concat(frames, ignore_index=True)
     return sort_top_action_list(combined)
 
 
@@ -1915,7 +2218,10 @@ def build_mock_top_action_list() -> pd.DataFrame:
             "Action": "Review for pullback entry",
             "Focus Reason": "High RS + strong industry + near support",
             "RS Score": 98,
+            "RS Trend": "Stable Leader",
+            "RS Trend Delta": 2,
             "Industry Rank": 1,
+            "Industry Setup Count": 5,
             "Risk/Reward Quality": "Excellent R/R",
             "Pullback Quality": "A - Ideal Pullback",
             "Extension Status": "Not Extended",
@@ -1931,7 +2237,10 @@ def build_mock_top_action_list() -> pd.DataFrame:
             "Action": "Set pivot alert",
             "Focus Reason": "Strong industry + tightening range",
             "RS Score": 94,
+            "RS Trend": "Emerging Leader",
+            "RS Trend Delta": 12,
             "Industry Rank": 1,
+            "Industry Setup Count": 5,
             "Risk/Reward Quality": "Good R/R",
             "Pullback Quality": "B - Healthy Pullback",
             "Extension Status": "Moderately Extended",
@@ -1947,7 +2256,10 @@ def build_mock_top_action_list() -> pd.DataFrame:
             "Action": "Review for pullback entry",
             "Focus Reason": "Semiconductor equipment leader near support",
             "RS Score": 91,
+            "RS Trend": "Improving",
+            "RS Trend Delta": 6,
             "Industry Rank": 2,
+            "Industry Setup Count": 3,
             "Risk/Reward Quality": "Good R/R",
             "Pullback Quality": "A - Ideal Pullback",
             "Extension Status": "Not Extended",
@@ -1963,7 +2275,10 @@ def build_mock_top_action_list() -> pd.DataFrame:
             "Action": "Monitor tight base",
             "Focus Reason": "Software leadership with controlled base",
             "RS Score": 89,
+            "RS Trend": "Stable Leader",
+            "RS Trend Delta": 1,
             "Industry Rank": 4,
+            "Industry Setup Count": 2,
             "Risk/Reward Quality": "Fair R/R",
             "Pullback Quality": "B - Healthy Pullback",
             "Extension Status": "Moderately Extended",
@@ -1979,7 +2294,10 @@ def build_mock_top_action_list() -> pd.DataFrame:
             "Action": "Wait for pullback",
             "Focus Reason": "Biotech leader but extended from support",
             "RS Score": 86,
+            "RS Trend": "Weakening",
+            "RS Trend Delta": -6,
             "Industry Rank": 3,
+            "Industry Setup Count": 4,
             "Risk/Reward Quality": "Poor R/R",
             "Pullback Quality": "C - Extended Pullback",
             "Extension Status": "Extended",

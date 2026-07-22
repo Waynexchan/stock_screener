@@ -11,6 +11,7 @@ The screener does not generate buy signals, does not predict the market, and doe
 - Builds a liquid US common-stock universe from NASDAQ Trader listings.
 - Filters for Stage 2 trend structure using price, moving averages, volume, Relative Strength, ADR, and extension controls.
 - Calculates Relative Strength from weighted 3-month, 6-month, and 12-month performance.
+- Tracks RS Trend to identify emerging, improving, stable, weakening, and fading leadership.
 - Measures extension and pullback quality using ATR-based volatility context.
 - Separates candidates into breakout, pullback, tight consolidation, extended, and volume surge sections.
 - Ranks top industries by candidate breadth and average Relative Strength.
@@ -87,6 +88,8 @@ After a validated successful run, the script also saves last-known-good reports:
 
 If Yahoo Finance data quality fails validation, the current daily watchlist files are not overwritten. The script writes `data_failure_report.txt` and sends a warning email instead of an empty watchlist.
 
+Generated report and universe files are local runtime outputs and should not be committed to Git.
+
 ## Folder Structure
 
 ```text
@@ -96,11 +99,14 @@ stock_screener/
   run_screener.py         Main universe, screening, ranking, and report pipeline
   send_email.py           Gmail SMTP sender for the generated HTML report
   test_openai.py          Safe standalone OpenAI Responses API connection test
+  docs/                   Project logic and GitHub safety notes
+  examples/               Fake sample files only
   requirements.txt        Python dependencies
   .env.example            Safe environment variable template
   .gitignore              Secret and cache exclusions
   README.md               Setup and usage documentation
   PROJECT_GUIDE.md        Design philosophy and architecture reasoning
+  ROADMAP.md              Future development priorities
   CHANGELOG.md            Versioned project history
 ```
 
@@ -199,7 +205,7 @@ The screener first keeps liquid Stage 2-style stocks:
 
 - Price greater than 10
 - 50-day average volume greater than 500,000
-- Relative Strength Score at least 60
+- Relative Strength Score at least 75
 - Price greater than the 50-day moving average
 - 50-day moving average greater than the 150-day moving average
 - 150-day moving average greater than the 200-day moving average
@@ -261,7 +267,20 @@ AI commentary is optional and disabled by default.
 
 When enabled, `run_screener.py` builds the Top Action List first, then passes only that list, Top Industries, and Market Status to `ai_analysis.py`.
 
-The AI prompt is intentionally compact. For each Top Action List stock, it sends only ticker, category, action, focus reason, RS Score, industry rank, risk/reward quality, pullback quality, extension status, VCP label, volume ratio, ATR distance, distance from pivot, and support signal.
+The AI prompt is intentionally compact. For each Top Action List stock, it sends only ticker, category, action, focus reason, RS Score, RS Trend, RS Trend Delta, industry rank, risk/reward quality, pullback quality, extension status, VCP label, volume ratio, ATR distance, distance from pivot, and support signal.
+
+The Top Action List is sorted quality-first: individual Stage 2 quality, setup quality, volume context, support distance, and risk/reward are prioritised before industry rank is used as a secondary factor. The screener also adds credit when multiple stocks in the same known industry have valid setups through `Industry Setup Count`. Market status remains context rather than a replacement for stock-level quality. Unknown industry metadata can appear on individual stock rows, but it is excluded from Top Industries and cannot receive hot-industry ranking credit.
+
+The RS Score is a MarketSmith-style percentile approximation based on weighted 3-month, 6-month, and 12-month returns. It is designed to focus review on RS 75+ leadership stocks, but it is not the proprietary MarketSmith RS Rating formula.
+
+`RS Trend` compares the current RS percentile with the same calculation roughly 21 trading days earlier:
+
+- `Emerging Leader`: RS 75+ and rising sharply
+- `Improving`: RS rising meaningfully
+- `Stable Leader`: already high RS and holding leadership
+- `Stable`: little relative change
+- `Weakening`: relative strength deteriorating
+- `Fading`: relative strength deteriorating sharply
 
 When AI returns structured rankings, the Top Action List includes:
 
@@ -330,12 +349,27 @@ OPENAI_API_KEY not found.
 
 Every future modification must begin by reading:
 
-1. `README.md`
-2. `PROJECT_GUIDE.md`
+1. `PROJECT_GUIDE.md`
+2. `ROADMAP.md`
 3. `CHANGELOG.md`
+4. `README.md`
 
 Every successful code change must update:
 
 1. `CHANGELOG.md`
 2. `PROJECT_GUIDE.md` if design philosophy changes
 3. `README.md` if setup or usage changes
+4. `ROADMAP.md` if development direction changes
+
+## Git Safety
+
+Commit source code, documentation, requirements, and fake examples only.
+
+Do not commit:
+
+- `.env` or `*.env`
+- Generated daily reports
+- Universe CSV caches
+- Yahoo Finance cache files
+- Logs, local output, or data folders
+- Credentials, tokens, CVs, cover letters, PDFs, or private tracker files

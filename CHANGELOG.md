@@ -23,6 +23,7 @@ Build a professional long-term Stage 2 swing trading assistant that helps a trad
 - Yahoo Finance market data.
 - Stage 2 trend filtering.
 - Weighted Relative Strength scoring.
+- Relative Strength trend labels for emerging and fading leadership.
 - ATR-based pullback and extension context.
 - Industry Strength Score ranking.
 - Top Action List.
@@ -33,7 +34,7 @@ Build a professional long-term Stage 2 swing trading assistant that helps a trad
 
 ## Current Version
 
-Version: 0.3.3
+Version: 0.3.7
 
 ## Roadmap
 
@@ -44,6 +45,194 @@ Version: 0.3.3
 - Add optional exclusion lists.
 
 ## Changelog Entries
+
+### 2026-07-22 - Version 0.3.7
+
+Files Modified:
+
+- `run_screener.py`
+- `ai_analysis.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Add RS Trend so the screener can identify emerging leaders instead of relying only on point-in-time RS Score.
+
+Changes:
+
+- Added MarketSmith-style RS trend metrics by comparing current weighted RS percentile against the same percentile calculation roughly 21 trading days earlier.
+- Added `RS Trend` and `RS Trend Delta` columns to candidate rows and reports.
+- Added RS trend labels: `Emerging Leader`, `Improving`, `Stable Leader`, `Stable`, `Weakening`, `Fading`, and `Unknown`.
+- Added review-priority bonus for `Emerging Leader`, `Improving`, and `Stable Leader` stocks.
+- Added review-priority penalty for `Weakening` and `Fading` stocks.
+- Kept `calculate_rs_scores()` backward compatible by deriving the original ticker-to-score mapping from the new RS metrics.
+- Added `RS Trend` and `RS Trend Delta` to the compact AI Top Action List input only.
+- Added regression tests for RS trend labels and review-priority bonus.
+
+Impact:
+
+- The screener can now surface stocks moving into leadership, not only stocks that already have a high static RS Score.
+- Fading leaders are still allowed if they pass deterministic rules, but receive lower review priority.
+- AI cost increases only slightly because two compact fields are added for Top Action List tickers only.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Persist daily RS snapshots to improve trend accuracy beyond the current in-run 21-trading-day approximation.
+- Add report styling to visually flag `Emerging Leader` rows.
+
+### 2026-07-22 - Version 0.3.6
+
+Files Modified:
+
+- `config.py`
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Align the screener more closely with a MarketSmith-style leadership workflow: focus on RS 75+ stocks, then reward industries where multiple high-quality Stage 2 stocks have active setups.
+
+Changes:
+
+- Raised `config.MIN_RS_SCORE` from 60 to 75.
+- Added `Industry Setup Count` to candidate rows and reports.
+- Changed industry context so Industry Rank and Top Industries are calculated from stocks that have an actual setup candidate row, not merely every Stage 2 stock.
+- Added review-priority bonus when the same known industry has multiple setup candidates.
+- Kept industry rank as a secondary bonus after individual stock quality, setup quality, volume, extension, and risk/reward.
+- Added regression tests for RS 75 minimum and industry setup cluster bonus.
+- Updated documentation to clarify that the RS score is a MarketSmith-style percentile approximation, not the proprietary MarketSmith RS Rating formula.
+
+Impact:
+
+- The screener should produce a narrower, higher-quality candidate list.
+- Individual stocks with strong Stage 2 structure, volume, and setup quality remain the first priority.
+- Industry leadership now gets more credit when several stocks in the same known industry are also setting up.
+
+Breaking Changes:
+
+- The stricter RS threshold may reduce the number of candidates versus prior reports.
+
+Future Suggestions:
+
+- Add RS trend tracking so the screener can identify stocks moving into leadership, not only stocks already ranked highly.
+- Add maintained sector/industry metadata to improve industry cluster detection coverage.
+
+### 2026-07-22 - Version 0.3.5
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Fix the remaining Unknown industry ranking bug where missing metadata could appear as the strongest Top Industry and receive hot-industry priority credit.
+
+Changes:
+
+- Excluded `Unknown`, blank, `nan`, `none`, and `n/a` industry values from Top Industries.
+- Excluded unknown industries from industry-rank calculation so missing metadata cannot receive an Industry Rank.
+- Fixed review-priority numeric bounds so missing `Industry Rank` defaults to 999 instead of rank 1.
+- Fixed review-priority numeric bounds so missing support distance defaults conservatively instead of being treated as near support.
+- Added regression tests proving Unknown industries are excluded from Top Industries and cannot receive rank-based priority bonus.
+- Updated documentation to clarify that Unknown metadata is reportable on individual rows but cannot be treated as industry leadership.
+
+Impact:
+
+- Top Industries should now show only real known industries.
+- Top Action List priority still focuses on individual stock quality, setup quality, volume context, Stage 2 behavior, and risk/reward first.
+- Stocks with unknown metadata can still appear if they pass deterministic stock filters, but they no longer benefit from fake industry leadership.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Build or import a maintained ticker-to-industry seed file so fewer qualified stocks remain Unknown.
+- Add a metadata refresh report showing which Top Action List tickers still need sector/industry enrichment.
+
+### 2026-07-21 - Version 0.3.4
+
+Files Created:
+
+- `ROADMAP.md`
+- `docs/PROJECT_LOGIC.md`
+- `examples/sample_top_action_list.csv`
+
+Files Modified:
+
+- `.gitignore`
+- `ai_analysis.py`
+- `config.py`
+- `run_screener.py`
+- `test_data_quality.py`
+- `test_openai.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `CHANGELOG.md`
+
+Files Removed:
+
+- `test_gpt5.py`
+
+Git Tracking Changes:
+
+- Removed generated report and universe files from Git tracking while preserving local files.
+
+Reason:
+
+- Fix project hygiene, roadmap workflow, generated-file tracking, industry metadata degradation, quality-first review priority, AI model selection consistency, and AI conviction-score clarity.
+
+Changes:
+
+- Created `ROADMAP.md` using the required priority, status, benefit, complexity, dependency, and suggested-version format.
+- Added `docs/PROJECT_LOGIC.md` with GitHub privacy safety guidance.
+- Added a fake sample Top Action List under `examples/` so future commits can include representative data without private trading, job, credential, or tracker records.
+- Expanded `.gitignore` for runtime reports, universe caches, metadata cache, local data/output/cache/log folders, private documents, credentials, virtual environments, and Python cache files.
+- Removed tracked runtime outputs from Git index with `git rm --cached`; local files remain available.
+- Removed temporary `test_gpt5.py`.
+- Removed production AI model discovery based on `client.models.list()`; AI now uses `config.AI_MODEL` directly.
+- Simplified `test_openai.py` to direct-call the configured model instead of relying on model-list availability.
+- Added `sector_industry_cache.csv` support for best-effort sector and industry metadata enrichment after deterministic filtering.
+- Added `Review Priority Score` to prioritise individual stock quality, setup quality, volume context, support distance, and risk/reward before using industry rank as a secondary factor.
+- Expanded Top Action List selection to include all rule-engine candidate categories, including breakout and volume surge setups, then rank by review priority.
+- Clarified AI conviction-score rubric to encourage differentiated 1-10 scoring.
+- Added unit tests for quality-first priority and metadata cache enrichment.
+- Updated README and project guide for roadmap, Git safety, metadata enrichment, and quality-first review philosophy.
+
+Impact:
+
+- GitHub Desktop should no longer show daily reports and universe CSV files as source-code changes after committing the index removals.
+- Daily review now focuses first on high-quality individual Stage 2 setups with volume and risk/reward support, then industry leadership.
+- Industry ranking can improve as metadata cache fills without making metadata lookup a hard dependency for universe refresh.
+- Trading thresholds, Stage 2 filters, breakout/pullback/tight/extended/volume-surge detection rules, Yahoo validation behavior, email behavior, and Task Scheduler behavior are preserved.
+
+Breaking Changes:
+
+- Generated runtime files are no longer intended to be tracked in Git.
+
+Future Suggestions:
+
+- Add a maintained sector/industry seed file to reduce reliance on metadata lookups.
+- Add no-email and no-AI CLI flags for safer local dry runs.
+- Add report fixture tests for Top Action List ordering.
 
 ### 2026-07-12 - Version 0.3.3
 

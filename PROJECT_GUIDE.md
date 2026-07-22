@@ -14,7 +14,9 @@ Stage 2 is used because sustained advances usually occur after a stock has moved
 
 Trend is important because it reduces the number of structurally weak stocks under review. A trader still needs discretion, but the screener should start from stocks already showing evidence of institutional demand.
 
-Relative Strength matters because the best opportunities often come from stocks outperforming the broader universe before they become obvious. The project ranks Stage 2 candidates by weighted 3-month, 6-month, and 12-month performance to prioritise leadership.
+Relative Strength matters because the best opportunities often come from stocks outperforming the broader universe before they become obvious. The project uses a MarketSmith-style percentile ranking approximation based on weighted 3-month, 6-month, and 12-month performance to prioritise leadership. This is not the proprietary MarketSmith RS Rating formula, but it follows the same practical objective: focus review on stocks outperforming most of the market.
+
+RS Trend is used to find new leadership. The screener compares today's weighted RS percentile with the same calculation roughly 21 trading days earlier. Improving and Emerging Leader labels help identify stocks moving into leadership, while Weakening and Fading labels reduce review priority for names losing relative momentum. This remains deterministic and does not predict future price.
 
 ## Risk Management Philosophy
 
@@ -31,6 +33,12 @@ Industry leadership matters because strong stocks often cluster. One isolated le
 Institutional money rotates between industries. Ranking industries helps the trader focus on where capital appears to be flowing instead of treating every stock as an unrelated opportunity.
 
 Industry ranking is often more important than any single stock because the best individual setups usually come from the strongest groups. The screener therefore calculates Industry Strength Score from average RS Score and candidate breadth.
+
+The review workflow is quality-first. The rule engine first identifies individual stocks with Stage 2 structure, liquidity, Relative Strength of 75 or higher, constructive setup behavior, and acceptable risk/reward. Industry strength is then used to prioritise leadership groups, not to rescue weak individual charts. Market status provides context for aggressiveness, but it does not override stock quality or the deterministic setup rules.
+
+Industry rotation gets more credit when several stocks in the same known industry are also producing valid setup candidates. This is stronger evidence than a single isolated stock because leadership groups often move together when institutional money is rotating into them.
+
+Unknown industry metadata is not treated as an industry group. Stocks with missing metadata may still appear when their individual Stage 2 quality is strong, but `Unknown` cannot appear in Top Industries, cannot receive an Industry Rank, and cannot earn hot-industry priority credit. This avoids mistaking missing data for institutional rotation.
 
 ## AI Philosophy
 
@@ -89,7 +97,7 @@ The human trader always makes the final decision.
 
 `config.py` keeps deterministic screening thresholds, AI settings, email enablement, and debug flags centralised. Configuration should not be hardcoded elsewhere because this project is intended to remain maintainable as a long-term production assistant.
 
-The AI prompt is deliberately narrow. It receives only Market Status, Top Industries, and the Top Action List, with each stock reduced to the fields needed for prioritisation. This keeps cost controlled and protects the rule-based selection boundary.
+The AI prompt is deliberately narrow. It receives only Market Status, Top Industries, and the Top Action List, with each stock reduced to the fields needed for prioritisation, including RS Score and RS Trend. This keeps cost controlled and protects the rule-based selection boundary.
 
 AI ranking is a review aid, not a stock-selection system. `AI Conviction Score` describes how well a Top Action List ticker matches the defined Stage 2 swing trading system today. It is not a probability of profit, not a buy signal, and not a replacement for chart review. `AI Priority Rank` and `AI Reason` exist to reduce review time by helping the trader decide what to inspect first.
 
@@ -102,6 +110,8 @@ An empty report caused by missing Yahoo Finance data is not a valid market concl
 The universe cache is treated as a last-known-good asset. Refreshes are built into a temporary file and validated before replacement so a partial Yahoo failure cannot overwrite a usable cache. Successful reports are also saved as last-known-good outputs so a later data failure cannot replace a useful watchlist with an empty one.
 
 Universe construction deliberately separates listing discovery from liquidity validation. NASDAQ Trader listed-symbol files define the raw common-stock universe, while Yahoo Finance historical price data is used only to verify price and volume liquidity. Company-profile data such as market cap, sector, and industry is useful when reliable, but it must not be a single point of failure for rebuilding the tradable universe.
+
+Sector and industry metadata is enriched after deterministic filtering through a local cache and best-effort metadata lookup. This keeps universe refresh reliable while allowing industry ranking to improve over time. Missing metadata must not invalidate a quality stock, but only known metadata should be used when ranking industry rotation.
 
 Runtime is also part of reliability. Yahoo Finance calls are bounded by per-call timeouts, finite retry attempts, and a maximum full-run duration. If the screener cannot obtain enough data inside those limits, it should produce a clear data-failure result and exit normally. Lightweight `--data-test` and universe-only `--refresh-universe` modes exist so data-source issues can be diagnosed without repeatedly sending emails or running the full trading workflow.
 

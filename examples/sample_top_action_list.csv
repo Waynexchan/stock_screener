@@ -1,0 +1,3 @@
+Ticker,Category,Action,Focus Reason,RS Score,Industry Rank,Risk/Reward Quality,Pullback Quality,Extension Status,Volume Ratio,Nearest Support Distance ATR,Distance From Pivot %,Support Signal
+FAKE,Pullback Candidates,Review for pullback entry,High RS plus strong industry and nearby support,98,1,Excellent R/R,A - Ideal Pullback,Not Extended,0.65,0.55,-3.2,EMA20 reclaim
+MOCK,Tight Consolidation Candidates,Set pivot alert,Strong group with tightening range,94,2,Good R/R,B - Healthy Pullback,Moderately Extended,0.50,0.80,-1.5,Recent support

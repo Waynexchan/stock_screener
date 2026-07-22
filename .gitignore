@@ -1,8 +1,41 @@
 .env
 *.env
+credentials.json
+token.json
 credentials*
 *credentials*
+*token*.json
 *.key
 *.pem
 __pycache__/
+*.pyc
 .yfinance_cache/
+.venv/
+venv/
+
+# Runtime market data and generated reports
+daily_watchlist*.csv
+daily_watchlist*.md
+daily_watchlist*.html
+email_summary.txt
+universe*.csv
+sector_industry_cache.csv
+data_failure_report.txt
+output/
+data/
+cache/
+logs/
+
+# Private documents and local exports
+*.xlsx
+*.pdf
+*.docx
+cvs/
+cover_letters/
+
+# Job-search/private tracker data from adjacent workflows
+jobs/raw_jobs/
+jobs/applied_jobs/
+jobs/api_jobs.csv
+tracker/
+tracker/backups/

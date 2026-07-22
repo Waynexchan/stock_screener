@@ -19,24 +19,10 @@ import pandas as pd
 import config
 
 AI_SCORE_COLUMNS = ["AI Conviction Score", "AI Priority Rank", "AI Reason"]
-PREFERRED_AI_MODELS = ["gpt-5.6", "gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4.1-mini"]
-COMPATIBLE_AI_MODEL_FALLBACKS = [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "o4-mini",
-    "o3",
-    "o3-mini",
-    "o1",
-    "o1-mini",
-]
 LAST_AI_ANALYSIS_RESULT: "AIAnalysisResult | None" = None
 
 
 class OpenAINotInstalledError(RuntimeError):
-    pass
-
-
-class OpenAIModelSelectionError(RuntimeError):
     pass
 
 
@@ -59,19 +45,6 @@ class AIAnalysisResult:
     input_tokens: int | None = None
     output_tokens: int | None = None
     response_tokens: int | None = None
-    error_type: str = ""
-    error_code: str = ""
-    http_status: int | None = None
-
-
-@dataclass
-class AIModelSelectionResult:
-    configured_model: str
-    selected_model: str
-    fallback_used: bool
-    available_preferred_models: list[str]
-    available_compatible_models: list[str]
-    failed: bool = False
     error_type: str = ""
     error_code: str = ""
     http_status: int | None = None
@@ -110,6 +83,8 @@ def _compact_records(frame: pd.DataFrame, limit: int) -> list[dict[str, Any]]:
         "Category": "Category",
         "Action": "Action",
         "RS Score": "RS Score",
+        "RS Trend": "RS Trend",
+        "RS Trend Delta": "RS Trend Delta",
         "Industry Rank": "Industry Rank",
         "Risk/Reward Quality": "Risk/Reward Quality",
         "Pullback Quality": "Pullback Quality",
@@ -124,7 +99,7 @@ def _compact_records(frame: pd.DataFrame, limit: int) -> list[dict[str, Any]]:
     compact = frame.head(limit)[available].rename(columns=compact_columns).copy()
     compact["Focus Reason"] = compact.apply(_focus_reason, axis=1)
     ordered = [
-        "Ticker", "Category", "Action", "Focus Reason", "RS Score",
+        "Ticker", "Category", "Action", "Focus Reason", "RS Score", "RS Trend", "RS Trend Delta",
         "Industry Rank", "Risk/Reward Quality", "Pullback Quality",
         "Extension Status", "VCP Label", "Volume Ratio", "ATR Distance",
         "Distance From Pivot %", "Support Signal",
@@ -178,6 +153,12 @@ Important constraints:
 - The human trader makes the final decision.
 - The AI Conviction Score means how well this ticker matches the Stage 2 swing trading system today.
 - The AI Conviction Score does not mean probability of profit.
+- Use a 1-10 conviction scale with clear separation:
+  9-10 = strongest Stage 2 setup, leadership, support, and risk/reward alignment.
+  7-8 = strong but with one manageable imperfection.
+  5-6 = useful watchlist candidate but needs confirmation or better entry.
+  3-4 = technically valid but clearly secondary.
+  1-2 = wait; setup is too extended, weak, or low priority today.
 
 Market status:
 {market_status}
@@ -197,7 +178,7 @@ Return strict JSON only, with this schema:
     {{
       "ticker": "Ticker from the Top Action List only",
       "priority_rank": 1,
-      "conviction_score": 1,
+      "conviction_score": 8,
       "reason": "Short reason using only supplied fields",
       "status": "Best Opportunity"
     }}
@@ -332,98 +313,6 @@ def _safe_http_status(exc: Exception) -> int | None:
     return getattr(exc, "status_code", None)
 
 
-def _available_model_ids(client: Any) -> set[str]:
-    models = client.models.list()
-    return {
-        str(getattr(model, "id", ""))
-        for model in getattr(models, "data", []) or []
-        if getattr(model, "id", "")
-    }
-
-
-def select_available_ai_model(api_key: str | None = None, print_status: bool = True) -> AIModelSelectionResult:
-    """Select the strongest configured/available Responses API text model."""
-    api_key = api_key or load_openai_api_key()
-    configured_model = config.AI_MODEL
-    if not api_key:
-        result = AIModelSelectionResult(
-            configured_model=configured_model,
-            selected_model="",
-            fallback_used=False,
-            available_preferred_models=[],
-            available_compatible_models=[],
-            failed=True,
-            error_type="MissingAPIKey",
-        )
-        if print_status:
-            print(f"Configured Model: {result.configured_model}")
-            print("Selected Model: ")
-            print("Model Fallback Used: No")
-        return result
-
-    try:
-        from openai import OpenAI
-    except ImportError:
-        result = AIModelSelectionResult(
-            configured_model=configured_model,
-            selected_model="",
-            fallback_used=False,
-            available_preferred_models=[],
-            available_compatible_models=[],
-            failed=True,
-            error_type="OpenAINotInstalledError",
-        )
-        if print_status:
-            print(f"Configured Model: {result.configured_model}")
-            print("Selected Model: ")
-            print("Model Fallback Used: No")
-        return result
-
-    try:
-        client = OpenAI(api_key=api_key, timeout=12.0)
-        available_ids = _available_model_ids(client)
-        available_preferred = [model for model in PREFERRED_AI_MODELS if model in available_ids]
-        compatible_order = PREFERRED_AI_MODELS + COMPATIBLE_AI_MODEL_FALLBACKS
-        compatible_ids = [
-            model
-            for model in compatible_order
-            if model in available_ids
-        ]
-        selected = configured_model if configured_model in available_ids else ""
-        if not selected:
-            selected = next((model for model in compatible_order if model in available_ids), "")
-        result = AIModelSelectionResult(
-            configured_model=configured_model,
-            selected_model=selected,
-            fallback_used=bool(selected and selected != configured_model),
-            available_preferred_models=available_preferred,
-            available_compatible_models=compatible_ids,
-            failed=not bool(selected),
-        )
-        if print_status:
-            print(f"Configured Model: {result.configured_model}")
-            print(f"Selected Model: {result.selected_model}")
-            print(f"Model Fallback Used: {'Yes' if result.fallback_used else 'No'}")
-        return result
-    except Exception as exc:
-        result = AIModelSelectionResult(
-            configured_model=configured_model,
-            selected_model="",
-            fallback_used=False,
-            available_preferred_models=[],
-            available_compatible_models=[],
-            failed=True,
-            error_type=exc.__class__.__name__,
-            error_code=_safe_error_code(exc),
-            http_status=_safe_http_status(exc),
-        )
-        if print_status:
-            print(f"Configured Model: {result.configured_model}")
-            print("Selected Model: ")
-            print("Model Fallback Used: No")
-        return result
-
-
 def _responses_create(client: Any, model: str, prompt: str) -> Any:
     return client.responses.create(
         model=model,
@@ -447,12 +336,8 @@ def _call_openai(prompt: str, api_key: str) -> tuple[str, str, int | None, int |
         _debug("OpenAI Error Type: OpenAINotInstalledError")
         raise OpenAINotInstalledError()
 
-    selection = select_available_ai_model(api_key, print_status=False)
-    if selection.failed or not selection.selected_model:
-        raise OpenAIModelSelectionError(selection.error_type or "NoPreferredModelAvailable")
-
     client = OpenAI(api_key=api_key)
-    model = selection.selected_model
+    model = config.AI_MODEL
     started = time.perf_counter()
     _debug("OpenAI request started...")
     try:
