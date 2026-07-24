@@ -1,5 +1,68 @@
 # Professional Stage 2 Swing Trading Screener
 
+> A deterministic US stock screening and daily review assistant for Stage 2 swing traders.
+
+This repository is designed for a discretionary trader who wants a focused daily watchlist after market close. The rule engine finds and ranks stocks; optional AI commentary only summarises and prioritises the final Top Action List.
+
+This project is not financial advice, does not predict prices, and does not generate automatic buy or sell signals.
+
+## GitHub Quick Start
+
+```bash
+git clone <your-repo-url>
+cd stock_screener
+pip install -r requirements.txt
+copy .env.example .env
+python run_screener.py --self-test
+python run_screener.py
+```
+
+For safe local checks without running the full screener:
+
+```bash
+python run_screener.py --report-preview
+python run_screener.py --data-test
+python run_screener.py --ai-test
+python test_openai.py
+```
+
+## What This Project Does
+
+- Builds a liquid US common-stock universe.
+- Filters for Stage 2 trend structure.
+- Scores Relative Strength using a MarketSmith-style percentile approximation.
+- Tracks RS Trend to detect emerging leadership.
+- Ranks industries by strength and candidate breadth.
+- Separates clean first-review setups from noisy watchlist names.
+- Generates HTML, Markdown, CSV, and email reports.
+- Adds optional AI commentary without allowing AI to select stocks.
+
+## What This Project Does Not Do
+
+- It does not predict tomorrow's price.
+- It does not make trading decisions.
+- It does not analyse the full universe with AI.
+- It does not replace chart review, risk management, or trader discretion.
+- It does not commit generated watchlists, caches, secrets, or private local data.
+
+## GitHub Safety Notice
+
+Only commit source code, documentation, requirements, and fake examples. Do not commit generated reports, universe caches, API keys, Gmail credentials, logs, private tracker files, CVs, cover letters, PDFs, or personal data.
+
+## How To Use The Daily Report
+
+Use the report in this order:
+
+1. Read `Executive Summary` to judge whether the day has enough clean setups.
+2. Read `Daily Review Plan` for the exact review sequence.
+3. Open `Review Now` tickers first.
+4. Review `High Priority Watch` only after confirmed setups.
+5. Treat `Daily Focus List` as a tracking pool, not as a trading list.
+6. Skip `Skip Today` rows unless they return later with cleaner setup quality.
+7. Use AI commentary as a briefing aid only.
+
+If the Top Action List is empty, the correct workflow is usually to avoid forcing trades and wait for cleaner setups.
+
 ## Project Overview
 
 This project is a professional Stage 2 swing trading screener for reducing the US stock universe into a focused daily watchlist. It uses deterministic, rule-based screening to identify high-probability opportunities and optional AI commentary to summarise the final Top Action List.
@@ -12,10 +75,16 @@ The screener does not generate buy signals, does not predict the market, and doe
 - Filters for Stage 2 trend structure using price, moving averages, volume, Relative Strength, ADR, and extension controls.
 - Calculates Relative Strength from weighted 3-month, 6-month, and 12-month performance.
 - Tracks RS Trend to identify emerging, improving, stable, weakening, and fading leadership.
+- Rejects obvious price-data anomalies before candidate generation.
 - Measures extension and pullback quality using ATR-based volatility context.
 - Separates candidates into breakout, pullback, tight consolidation, extended, and volume surge sections.
 - Ranks top industries by candidate breadth and average Relative Strength.
 - Produces a compact Top Action List for the daily review.
+- Applies a configurable Top Action noise gate so the first list contains only immediate or high-priority review candidates.
+- Shows an HTML executive summary panel with setup-quality and warning counts.
+- Tracks local summary history so reports can compare daily stock, industry, and setup-quality trend changes.
+- Adds a Daily Review Plan so the report explains what to open first and what to track only.
+- Highlights review flags in HTML and Markdown reports for faster scanning.
 - Exports CSV, Markdown, HTML, and email summary reports.
 - Optionally adds AI commentary for summarising and prioritising the Top Action List only.
 
@@ -60,6 +129,7 @@ python run_screener.py --data-test
 python run_screener.py --refresh-universe
 python run_screener.py --ai-test
 python run_screener.py --self-test
+python run_screener.py --report-preview
 python test_openai.py
 ```
 
@@ -71,6 +141,8 @@ python test_openai.py
 
 `--self-test` runs lightweight health checks for configuration, environment loading, OpenAI key presence, Gmail variable presence, universe row count, SPY/QQQ data, OpenAI connection, AI analysis, and report-folder writability. It does not run the full screener or send email.
 
+`--report-preview` rebuilds a local HTML layout preview from `daily_watchlist_last_good.csv` and `summary_history.csv`. It does not download Yahoo Finance data, call OpenAI, send email, append history, or overwrite `daily_watchlist.html`; it writes `daily_watchlist_preview.html`.
+
 The script exports:
 
 - `universe.csv`
@@ -78,7 +150,9 @@ The script exports:
 - `daily_watchlist.csv`
 - `daily_watchlist.md`
 - `daily_watchlist.html`
+- `daily_watchlist_preview.html` when `--report-preview` is used
 - `email_summary.txt`
+- `summary_history.csv`
 
 After a validated successful run, the script also saves last-known-good reports:
 
@@ -110,7 +184,7 @@ stock_screener/
   CHANGELOG.md            Versioned project history
 ```
 
-Generated files such as reports, `universe.csv`, and `.yfinance_cache/` are runtime outputs.
+Generated files such as reports, preview reports, `summary_history.csv`, `universe.csv`, and `.yfinance_cache/` are runtime outputs.
 
 ## Environment Variables
 
@@ -133,6 +207,7 @@ Edit `config.py` to change deterministic screening thresholds such as:
 - Minimum average volume
 - ADR limits
 - Relative Strength score
+- Top Action noise-gate thresholds
 - Universe refresh age
 - Category limits
 
@@ -149,6 +224,17 @@ EMAIL_ENABLED = True
 ```
 
 `AI_MAX_TICKERS` is capped at 15 by the AI module even if a higher value is accidentally configured.
+
+Top Action noise-gate settings also live in `config.py`:
+
+```python
+MIN_REVIEW_NOW_SCORE = 55
+MIN_HIGH_PRIORITY_SCORE = 50
+MIN_HIGH_PRIORITY_RS_SCORE = 85
+MIN_ACTIONABLE_INDUSTRY_SETUP_COUNT = 2
+MIN_CONFIRMATION_VOLUME_RATIO = 0.30
+MAX_ACTIONABLE_SUPPORT_DISTANCE_ATR = 2.5
+```
 
 ## Universe
 
@@ -217,10 +303,14 @@ The screener first keeps liquid Stage 2-style stocks:
 
 ## Report Sections
 
-- `Top Action List`: the compact daily review list built after rule-based screening.
-- `Daily Focus List`: broader candidates for the day.
+- `Executive Summary`: HTML-only top panel showing Market Status, Top Action count, confirmed setups, emerging leaders, caution rows, and price warnings.
+- `Daily Change`: HTML and Markdown section comparing the current valid report with the previous valid report, including setup-count changes, new/removed Top Action tickers, and new/removed Top Industries.
+- `Summary Trend`: HTML mini trend table with bars, plus Markdown table, showing the latest valid reports for confirmed setups, emerging leaders, caution rows, price warnings, and opportunity-quality score.
+- `Daily Review Plan`: short workflow instructions generated from Review Tier, Top Action, Daily Focus, and Market Status. It tells the trader what to open first, what to track second, and when there are no clean first-review setups.
+- `Top Action List`: the compact daily review list built after rule-based screening and noise-gated to `Review Now` or `High Priority Watch` rows.
+- `Daily Focus List`: broader valid candidates for the day, including `Watch Later` rows that are worth tracking but should not dominate first-pass review.
 - `Breakout Candidates`: stocks breaking above the pivot or prior 50-day high with a strong bullish candle and volume ratio.
-- `Pullback Candidates`: stocks near the 10EMA, 20EMA, or 50MA with A or B Pullback Quality.
+- `Pullback Candidates`: stocks near the 10EMA, 20EMA, or 50MA with A or B Pullback Quality. Actions distinguish confirmed pullback reviews from quiet pullback watches.
 - `Tight Consolidation Candidates`: stocks near highs with tight range behavior, controlled distance from the 50MA, and VCP/tightness context.
 - `Extended Candidates`: C or D quality pullbacks near key moving averages, separated from normal pullbacks.
 - `Volume Surge Candidates`: stocks near highs with bullish price action and elevated volume.
@@ -267,9 +357,19 @@ AI commentary is optional and disabled by default.
 
 When enabled, `run_screener.py` builds the Top Action List first, then passes only that list, Top Industries, and Market Status to `ai_analysis.py`.
 
-The AI prompt is intentionally compact. For each Top Action List stock, it sends only ticker, category, action, focus reason, RS Score, RS Trend, RS Trend Delta, industry rank, risk/reward quality, pullback quality, extension status, VCP label, volume ratio, ATR distance, distance from pivot, and support signal.
+The AI prompt is intentionally compact. For each Top Action List stock, it sends only ticker, category, action, focus reason, Review Tier, Noise Filter Reason, RS Score, RS Trend, RS Trend Delta, industry rank, risk/reward quality, pullback quality, extension status, VCP label, volume ratio, ATR distance, distance from pivot, and support signal.
 
 The Top Action List is sorted quality-first: individual Stage 2 quality, setup quality, volume context, support distance, and risk/reward are prioritised before industry rank is used as a secondary factor. The screener also adds credit when multiple stocks in the same known industry have valid setups through `Industry Setup Count`. Market status remains context rather than a replacement for stock-level quality. Unknown industry metadata can appear on individual stock rows, but it is excluded from Top Industries and cannot receive hot-industry ranking credit.
+
+Top Action uses a deterministic noise gate after candidates are generated. A row must qualify as `Review Now` or `High Priority Watch` to appear in the first list, and those tiers are reserved for clean first-review setups. Weak risk/reward, weak pullback quality, extension, weakening RS, price-data warnings, poor VCP, loose action, poor support distance, weak confirmation volume, wait-only actions, and isolated industry context are recorded in `Noise Filter Reason`. Valid but lower-quality candidates remain in Daily Focus and category sections for secondary review.
+
+`Review Priority Score` is deliberately hard to max out. Poor VCP, loose price action, weak confirmation, extension risk, poor risk/reward, fading RS trend, and price-data warnings reduce priority even when a stock is technically valid.
+
+HTML reports start with an executive summary panel showing the count of Top Action tickers, confirmed setups, emerging leaders, caution rows, and price warnings. The report then shows `Daily Review Plan`, which converts the filtered list into a practical review sequence. Valid runs append a local `summary_history.csv` snapshot so the next report can compare daily changes in setup quality, Top Action tickers, and Top Industries. HTML and Markdown reports show the daily change summary and a recent summary trend view.
+
+The `Summary Trend` view uses recent valid reports to show whether opportunity quality is improving, deteriorating, or mixed. Its quality score is report context only: confirmed setups and emerging leaders add weight, while caution rows and price warnings subtract weight. It does not change filter output, select stocks, or predict market direction. CSV exports remain plain data without presentation-only badges or summary cards.
+
+HTML reports also show review badges and row highlights for `Confirmed`, `Emerging Leader`, `Improving RS`, `Poor VCP`, `Loose`, extension risk, and price-data warnings. Markdown reports include the same information in a `Review Flags` column.
 
 The RS Score is a MarketSmith-style percentile approximation based on weighted 3-month, 6-month, and 12-month returns. It is designed to focus review on RS 75+ leadership stocks, but it is not the proprietary MarketSmith RS Rating formula.
 
@@ -287,8 +387,13 @@ When AI returns structured rankings, the Top Action List includes:
 - `AI Conviction Score`
 - `AI Priority Rank`
 - `AI Reason`
+- `AI Bull Case`
+- `AI Concern`
+- `AI Confirmation`
 
 The AI Conviction Score means how well the ticker matches the Stage 2 swing trading system today. It does not mean probability of profit.
+
+AI commentary is required to include both positive evidence and concerns. High conviction should not be assigned to loose, Poor VCP, weak-confirmation, or price-warning setups unless the supplied rule-engine evidence is exceptional.
 
 The console prints safe AI status without exposing secrets:
 
@@ -340,10 +445,14 @@ OPENAI_API_KEY not found.
 1. Run `python run_screener.py` or let Task Scheduler run it.
 2. Review Market Status.
 3. Check Top Industries for leadership and rotation.
-4. Review the Top Action List.
-5. Use TradingView links for chart inspection.
-6. Read AI Commentary as a summary aid only.
-7. Make the final trading decision manually.
+4. Read `Daily Review Plan`.
+5. Open `Review Now` tickers first.
+6. Review `High Priority Watch` only after confirmed setups.
+7. Use `Daily Focus List` as a tracking pool, not as the first decision list.
+8. Skip rows marked `Skip Today` unless they reappear with cleaner setup quality later.
+9. Use TradingView links for chart inspection.
+10. Read AI Commentary as a summary aid only.
+11. Make the final trading decision manually.
 
 ## Project Documentation Rule
 

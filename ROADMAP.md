@@ -183,7 +183,7 @@ Priority: High
 Status: In Progress
 
 Description:
-Prioritise stocks by individual Stage 2 quality, setup quality, volume confirmation, RS 75+ leadership, and risk/reward before using industry strength and market context. Industry context now gives extra credit when multiple stocks in the same known industry have active setups.
+Prioritise stocks by individual Stage 2 quality, setup quality, volume confirmation, RS 75+ leadership, and risk/reward before using industry strength and market context. Industry context now gives extra credit when multiple stocks in the same known industry have active setups. Review scoring has been rebalanced to avoid easy 100-point saturation and penalise poor VCP, loose action, weak confirmation, and price-data warnings.
 
 Estimated Complexity:
 Medium.
@@ -220,14 +220,14 @@ Market breadth and index trend data.
 Suggested Version:
 2.1.
 
-☐ Cleaner HTML Reports
+☑ Cleaner HTML Reports
 
 Priority: Medium
 
-Status: Planned
+Status: Completed
 
 Description:
-Improve report layout for faster scanning and clearer priority sections.
+Improve report layout for faster scanning and clearer priority sections. HTML reports now include an executive summary panel, review badges, row highlighting, and sticky table headers; Markdown reports include a `Review Flags` column.
 
 Estimated Complexity:
 Medium.
@@ -237,6 +237,90 @@ Reduces daily review time.
 
 Dependencies:
 Stable report columns and ranking logic.
+
+Suggested Version:
+2.1.
+
+☑ Report Summary History
+
+Priority: Medium
+
+Status: Completed
+
+Description:
+Persist local summary snapshots after valid reports so the next report can compare setup-quality counts, new and removed Top Action tickers, and new and removed Top Industries. HTML reports now include a recent mini trend table/bar view for opportunity-quality context.
+
+Estimated Complexity:
+Low.
+
+Estimated Benefit:
+Helps identify changing leadership and rotation between daily reports without adding prediction logic.
+
+Dependencies:
+Valid Top Action List and Top Industries report output.
+
+Suggested Version:
+2.1.
+
+☑ No-Network Report Preview
+
+Priority: Medium
+
+Status: Completed
+
+Description:
+Add `--report-preview` so HTML report layout can be rebuilt from last-known-good report data and local summary history without downloading market data, calling AI, sending email, overwriting production reports, or appending history.
+
+Estimated Complexity:
+Low.
+
+Estimated Benefit:
+Speeds report-layout development and reduces provider/API/email risk during UI improvements.
+
+Dependencies:
+Last-known-good CSV report and optional summary history.
+
+Suggested Version:
+2.1.
+
+☑ Top Action Noise Gate
+
+Priority: High
+
+Status: Completed
+
+Description:
+Add `Review Tier` and `Noise Filter Reason` so the Top Action List only shows clean immediate or high-priority review candidates, while valid but noisy setups remain available in Daily Focus and category sections. Poor VCP, loose action, wait-only actions, weak pullback quality, thin confirmation volume, far support distance, and isolated industry context should explain why a stock is downgraded from first-pass review.
+
+Estimated Complexity:
+Medium.
+
+Estimated Benefit:
+Reduces daily chart-review noise and keeps the first list focused on stocks most likely to deserve manual inspection.
+
+Dependencies:
+Review Priority Score, RS Trend, support distance, extension status, VCP/tightness labels, volume ratio, risk/reward quality, and industry setup count.
+
+Suggested Version:
+2.1.
+
+☑ Daily Review Plan
+
+Priority: High
+
+Status: Completed
+
+Description:
+Add a short report section that converts Top Action and Daily Focus tiers into a practical daily review sequence: open `Review Now` first, review `High Priority Watch` second, treat Daily Focus as tracking only, and avoid forcing trades when no clean first-review setups exist.
+
+Estimated Complexity:
+Low.
+
+Estimated Benefit:
+Reduces decision fatigue and makes the generated list easier to use as a daily operating tool.
+
+Dependencies:
+Review Tier, Top Action List, Daily Focus List, and Market Status.
 
 Suggested Version:
 2.1.

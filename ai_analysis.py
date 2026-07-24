@@ -18,7 +18,14 @@ import pandas as pd
 
 import config
 
-AI_SCORE_COLUMNS = ["AI Conviction Score", "AI Priority Rank", "AI Reason"]
+AI_SCORE_COLUMNS = [
+    "AI Conviction Score",
+    "AI Priority Rank",
+    "AI Reason",
+    "AI Bull Case",
+    "AI Concern",
+    "AI Confirmation",
+]
 LAST_AI_ANALYSIS_RESULT: "AIAnalysisResult | None" = None
 
 
@@ -82,27 +89,33 @@ def _compact_records(frame: pd.DataFrame, limit: int) -> list[dict[str, Any]]:
         "Ticker": "Ticker",
         "Category": "Category",
         "Action": "Action",
+        "Review Tier": "Review Tier",
+        "Noise Filter Reason": "Noise Filter Reason",
         "RS Score": "RS Score",
         "RS Trend": "RS Trend",
         "RS Trend Delta": "RS Trend Delta",
         "Industry Rank": "Industry Rank",
+        "Industry Setup Count": "Industry Setup Count",
         "Risk/Reward Quality": "Risk/Reward Quality",
         "Pullback Quality": "Pullback Quality",
         "Extension Status": "Extension Status",
         "VCP Label": "VCP Label",
+        "Tightness Label": "Tightness Label",
         "Volume Ratio": "Volume Ratio",
         "Nearest Support Distance ATR": "ATR Distance",
         "Distance From Pivot %": "Distance From Pivot %",
         "Support Signal": "Support Signal",
+        "Price Data Warning": "Price Data Warning",
     }
     available = [column for column in compact_columns if column in frame.columns]
     compact = frame.head(limit)[available].rename(columns=compact_columns).copy()
     compact["Focus Reason"] = compact.apply(_focus_reason, axis=1)
     ordered = [
         "Ticker", "Category", "Action", "Focus Reason", "RS Score", "RS Trend", "RS Trend Delta",
-        "Industry Rank", "Risk/Reward Quality", "Pullback Quality",
-        "Extension Status", "VCP Label", "Volume Ratio", "ATR Distance",
-        "Distance From Pivot %", "Support Signal",
+        "Review Tier", "Noise Filter Reason", "Industry Rank", "Industry Setup Count",
+        "Risk/Reward Quality", "Pullback Quality", "Extension Status", "VCP Label",
+        "Tightness Label", "Volume Ratio", "ATR Distance", "Distance From Pivot %",
+        "Support Signal", "Price Data Warning",
     ]
     return compact[[column for column in ordered if column in compact.columns]].fillna("").to_dict(orient="records")
 
@@ -154,11 +167,15 @@ Important constraints:
 - The AI Conviction Score means how well this ticker matches the Stage 2 swing trading system today.
 - The AI Conviction Score does not mean probability of profit.
 - Use a 1-10 conviction scale with clear separation:
-  9-10 = strongest Stage 2 setup, leadership, support, and risk/reward alignment.
+  9-10 = strongest Stage 2 setup, leadership, tightness/VCP, support, confirmation, and risk/reward alignment.
   7-8 = strong but with one manageable imperfection.
-  5-6 = useful watchlist candidate but needs confirmation or better entry.
+  5-6 = useful watchlist candidate but needs confirmation, tighter action, or better entry.
   3-4 = technically valid but clearly secondary.
   1-2 = wait; setup is too extended, weak, or low priority today.
+- Be strict. Do not assign 8-10 when VCP is Poor, tightness is Loose, price data has a warning, or confirmation is weak unless other evidence is exceptional.
+- Use Review Tier and Noise Filter Reason as deterministic rule-engine context when explaining priority.
+- Each ranking reason must include both the main positive and the main concern.
+- Use RS Trend and Industry Setup Count when prioritising emerging leaders and real group sponsorship.
 
 Market status:
 {market_status}
@@ -180,6 +197,9 @@ Return strict JSON only, with this schema:
       "priority_rank": 1,
       "conviction_score": 8,
       "reason": "Short reason using only supplied fields",
+      "bull_case": "Best supplied positive evidence",
+      "concern": "Most important supplied weakness or risk",
+      "confirmation": "What the user should wait for or verify on the chart",
       "status": "Best Opportunity"
     }}
   ],
@@ -215,6 +235,9 @@ def _ai_response_schema() -> dict[str, Any]:
                         "priority_rank": {"type": "integer"},
                         "conviction_score": {"type": "number"},
                         "reason": {"type": "string"},
+                        "bull_case": {"type": "string"},
+                        "concern": {"type": "string"},
+                        "confirmation": {"type": "string"},
                         "status": {
                             "type": "string",
                             "enum": ["Best Opportunity", "Watch", "Wait"],
@@ -225,6 +248,9 @@ def _ai_response_schema() -> dict[str, Any]:
                         "priority_rank",
                         "conviction_score",
                         "reason",
+                        "bull_case",
+                        "concern",
+                        "confirmation",
                         "status",
                     ],
                     "additionalProperties": False,
@@ -430,6 +456,9 @@ def _apply_ai_rankings(top_action_list: pd.DataFrame, rankings: list[dict[str, A
         updated.at[index, "AI Conviction Score"] = _normalise_score(item.get("conviction_score"))
         updated.at[index, "AI Priority Rank"] = _normalise_rank(item.get("priority_rank"))
         updated.at[index, "AI Reason"] = str(item.get("reason", ""))[:240]
+        updated.at[index, "AI Bull Case"] = str(item.get("bull_case", ""))[:180]
+        updated.at[index, "AI Concern"] = str(item.get("concern", ""))[:180]
+        updated.at[index, "AI Confirmation"] = str(item.get("confirmation", ""))[:180]
     return updated
 
 
@@ -441,7 +470,11 @@ def _commentary_from_payload(payload: dict[str, Any]) -> str:
         if not isinstance(item, dict) or item.get("status") != "Best Opportunity":
             continue
         best.append(
-            f"{item.get('ticker', '')}: {item.get('reason', '')}".strip(": ")
+            (
+                f"{item.get('ticker', '')}: {item.get('reason', '')} "
+                f"Concern: {item.get('concern', '')} "
+                f"Confirm: {item.get('confirmation', '')}"
+            ).strip()
         )
     best_text = "\n".join(best) if best else "No best-opportunity ranking returned."
     return "\n".join(

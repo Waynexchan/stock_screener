@@ -26,6 +26,8 @@ Fixed extension percentages were removed from the core pullback quality model be
 
 Extension is measured using volatility because a stock two ATRs above support is very different from one six ATRs above support, even when the percentage move looks similar. This supports better risk/reward review.
 
+Price-data sanity is required before interpreting technical signals. A stock with a latest close that is inconsistent with recent medians or an extreme one-day move may reflect a data adjustment problem rather than a tradable setup. The screener rejects obvious anomalies before candidate generation so bad data cannot become a high-priority watchlist item.
+
 ## Industry Ranking Philosophy
 
 Industry leadership matters because strong stocks often cluster. One isolated leader can work, but multiple strong candidates in the same group can indicate broader institutional sponsorship.
@@ -35,6 +37,14 @@ Institutional money rotates between industries. Ranking industries helps the tra
 Industry ranking is often more important than any single stock because the best individual setups usually come from the strongest groups. The screener therefore calculates Industry Strength Score from average RS Score and candidate breadth.
 
 The review workflow is quality-first. The rule engine first identifies individual stocks with Stage 2 structure, liquidity, Relative Strength of 75 or higher, constructive setup behavior, and acceptable risk/reward. Industry strength is then used to prioritise leadership groups, not to rescue weak individual charts. Market status provides context for aggressiveness, but it does not override stock quality or the deterministic setup rules.
+
+Review priority must separate high-quality setups from merely valid setups. Scores should not easily saturate at 100. Tightness, VCP quality, confirmation signals, and volume context are used to distinguish immediate review candidates from quiet watchlist names.
+
+The Top Action List is intentionally stricter than the broader candidate lists. It is the daily human-review shortlist, so valid but noisy setups should remain visible in Daily Focus or their category section instead of occupying the first list. `Review Tier` and `Noise Filter Reason` make this explicit: the rule engine still finds the setup, but the report tells the trader whether it deserves immediate chart review or should wait. Poor VCP, loose action, wait-only actions, weak pullback quality, thin confirmation volume, far support distance, and isolated industry context are treated as reasons to keep a stock out of the first-review list even when the underlying Stage 2 trend remains valid.
+
+Reports should be optimised for scanning. The HTML report starts with an executive summary panel so the trader can immediately see the count of Top Action candidates, confirmed setups, emerging leaders, caution rows, and price warnings. A Daily Review Plan then translates the deterministic tiers into an operating sequence: open `Review Now` first, review `High Priority Watch` second, use Daily Focus as a tracking pool, and avoid forcing trades when no clean first-review setups exist. Valid reports also append a local summary-history snapshot so the next report can compare daily changes in Top Action tickers, Top Industries, and setup-quality counts. A recent summary trend table and mini bar view helps the trader judge whether the current list is arriving in an improving, deteriorating, or mixed opportunity environment. This improves review reliability without changing deterministic selection rules or pretending to predict market direction. Visual flags for confirmed setups, emerging leadership, weak VCP/tightness, extension risk, and price-data warnings then help the trader decide which charts to open first.
+
+Report layout development should be testable without market data. `--report-preview` rebuilds a local HTML preview from last-known-good report data and summary history so visual/report changes can be inspected without Yahoo Finance downloads, OpenAI calls, email sending, or history mutation.
 
 Industry rotation gets more credit when several stocks in the same known industry are also producing valid setup candidates. This is stronger evidence than a single isolated stock because leadership groups often move together when institutional money is rotating into them.
 
@@ -89,7 +99,8 @@ The human trader always makes the final decision.
 8. Dedupe and build the Top Action List.
 9. Generate optional AI commentary from the Top Action List.
 10. Export CSV, Markdown, HTML, and email summary reports.
-11. Call `send_email.py`.
+11. Append local summary history after successful valid report export.
+12. Call `send_email.py`.
 
 `ai_analysis.py` is intentionally separate so AI remains an optional report-layer assistant.
 
@@ -100,6 +111,8 @@ The human trader always makes the final decision.
 The AI prompt is deliberately narrow. It receives only Market Status, Top Industries, and the Top Action List, with each stock reduced to the fields needed for prioritisation, including RS Score and RS Trend. This keeps cost controlled and protects the rule-based selection boundary.
 
 AI ranking is a review aid, not a stock-selection system. `AI Conviction Score` describes how well a Top Action List ticker matches the defined Stage 2 swing trading system today. It is not a probability of profit, not a buy signal, and not a replacement for chart review. `AI Priority Rank` and `AI Reason` exist to reduce review time by helping the trader decide what to inspect first.
+
+AI commentary must state both the bull case and the concern. A generic positive summary is not useful for discretionary review. The AI output therefore asks for the main positive, the main weakness, and the confirmation the trader should verify manually.
 
 AI testing is separated from the full Yahoo Finance workflow because OpenAI connectivity and JSON-ranking behavior should be diagnosable without downloading thousands of tickers, exporting reports, or sending email. `test_openai.py` verifies only the Responses API connection, while `--ai-test` verifies the real AI analysis module using fixed mock Top Action List rows. This keeps debugging fast, lowers provider cost, prevents accidental report churn, and preserves the rule that AI never participates in market-wide screening.
 

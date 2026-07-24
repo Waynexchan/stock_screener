@@ -15,7 +15,7 @@ Build a professional long-term Stage 2 swing trading assistant that helps a trad
 7. Rank industries.
 8. Build the Top Action List and Daily Focus List.
 9. Add optional AI commentary on the Top Action List only.
-10. Export reports and email the HTML watchlist.
+10. Export reports, append local summary history, and email the HTML watchlist.
 
 ## Current Features
 
@@ -24,6 +24,9 @@ Build a professional long-term Stage 2 swing trading assistant that helps a trad
 - Stage 2 trend filtering.
 - Weighted Relative Strength scoring.
 - Relative Strength trend labels for emerging and fading leadership.
+- Price sanity screening and differentiated review-priority scoring.
+- Top Action noise gate with review tiers and noise reasons.
+- HTML executive summary panel, report summary history and trend view, no-network report preview, review badges, and Markdown review flags.
 - ATR-based pullback and extension context.
 - Industry Strength Score ranking.
 - Top Action List.
@@ -34,7 +37,7 @@ Build a professional long-term Stage 2 swing trading assistant that helps a trad
 
 ## Current Version
 
-Version: 0.3.7
+Version: 0.3.17
 
 ## Roadmap
 
@@ -45,6 +48,385 @@ Version: 0.3.7
 - Add optional exclusion lists.
 
 ## Changelog Entries
+
+### 2026-07-24 - Version 0.3.17
+
+Files Modified:
+
+- `README.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Make the GitHub README clearer as a public-facing repository landing page.
+
+Changes:
+
+- Added a GitHub quick-start section.
+- Added concise "What This Project Does" and "What This Project Does Not Do" sections.
+- Added a prominent GitHub safety notice for generated files, secrets, credentials, and private local data.
+- Added a daily report usage section explaining how to read Executive Summary, Daily Review Plan, Top Action, High Priority Watch, Daily Focus, and Skip Today rows.
+
+Impact:
+
+- New developers and GitHub viewers can understand the project, run it safely, and avoid committing private runtime files.
+- Daily report usage is easier to understand directly from the README.
+- No screening logic, scoring logic, Yahoo Finance behavior, AI behavior, email behavior, or Task Scheduler behavior changed.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Add sanitized screenshots or fake example report snippets under `examples/` for GitHub readers.
+
+### 2026-07-24 - Version 0.3.16
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Make the daily report easier to use as a first-pass trading review list without requiring the trader to reinterpret every report column.
+
+Changes:
+
+- Added a `Daily Review Plan` section to HTML reports.
+- Added the same daily review plan to Markdown reports and email summaries.
+- The plan identifies which tickers to open first, which names are secondary tracking only, and when no clean first-review setups are present.
+- Added market-context wording so caution markets explicitly reduce urgency without changing stock selection.
+- Added regression tests for review-plan rendering and empty Top Action behavior.
+
+Impact:
+
+- The report now tells the trader how to use the list before the detailed tables.
+- Top Action remains the first-pass decision list, while Daily Focus remains the broader tracking pool.
+- Screening logic, scoring logic, Yahoo Finance behavior, AI behavior, email sending, and Task Scheduler behavior are unchanged.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Add a compact `Clean Setup Score` or column-level score breakdown so each row shows why it passed or missed the first-review gate.
+
+### 2026-07-24 - Version 0.3.15
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Tighten the first-review list after valid reports showed `Review Now` and `High Priority Watch` rows with poor VCP, loose action, wait-only actions, or weak pullback quality.
+
+Changes:
+
+- Changed `Review Tier` logic so Top Action rows must be clean enough for first-pass chart review.
+- Added `weak pullback quality` as a deterministic noise reason for C/D pullback quality rows.
+- Excluded poor VCP, loose action, far support distance, thin confirmation volume, isolated industry setup, and wait-only actions from Top Action eligibility.
+- Kept these lower-quality but still valid candidates in Daily Focus and category sections for secondary review.
+- Added regression tests proving noisy confirmed setups, watch-only rows, and weak pullback-quality rows no longer enter the Top Action List.
+
+Impact:
+
+- The Top Action List should be shorter, cleaner, and more reliable for daily review.
+- The broader screener still preserves valid Stage 2 candidates outside the first-priority list.
+- Screening thresholds, Yahoo Finance behavior, AI behavior, email behavior, and Task Scheduler behavior are unchanged.
+
+Breaking Changes:
+
+- Top Action may be materially smaller on caution days because valid-but-noisy candidates are now filtered down to Daily Focus or category sections.
+
+Future Suggestions:
+
+- Add an optional `Clean Setup Score` column to explain exactly how much score was lost to VCP, tightness, support distance, volume, and industry confirmation.
+
+### 2026-07-23 - Version 0.3.14
+
+Files Modified:
+
+- `config.py`
+- `run_screener.py`
+- `ai_analysis.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Reduce first-pass review noise so the trader can focus on a shorter, more actionable daily Top Action List.
+
+Changes:
+
+- Added configurable Top Action noise-gate thresholds in `config.py`.
+- Added `Review Tier` with values such as `Review Now`, `High Priority Watch`, `Watch Later`, and `Skip Today`.
+- Added `Noise Filter Reason` to explain why a valid candidate is not suitable for first-pass review.
+- Changed Top Action List construction so only `Review Now` and `High Priority Watch` rows appear in the first list.
+- Preserved broader valid candidates in Daily Focus and category sections for secondary review.
+- Added Review Tier badges and summary counts to HTML reports.
+- Added Review Tier and Noise Filter Reason to compact AI Top Action input so AI explanations inherit the deterministic gate context.
+- Added regression tests for review tiers, Top Action noise filtering, and compact AI context.
+
+Impact:
+
+- The first list should contain fewer noisy candidates and more closely match the user's daily workflow: open the report, review only the strongest setups first, then decide manually.
+- Existing deterministic setup detection remains intact; lower-priority valid candidates are still visible outside the Top Action List.
+- Yahoo Finance behavior, market data validation, email behavior, Task Scheduler behavior, and AI stock-selection boundaries are unchanged.
+
+Breaking Changes:
+
+- The Top Action List can now contain fewer rows than before when candidates are valid but not actionable enough for immediate review.
+
+Future Suggestions:
+
+- Add optional preview fixtures under `examples/` so report-layout and noise-gate tests can run even before a machine has generated a last-known-good report.
+
+### 2026-07-23 - Version 0.3.13
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Add a no-network report preview mode so HTML layout and summary-history presentation can be tested without running the full screener.
+
+Changes:
+
+- Added `python run_screener.py --report-preview`.
+- Added `daily_watchlist_preview.html` output generated from `daily_watchlist_last_good.csv` and optional `summary_history.csv`.
+- Rebuilds Top Action List, Daily Focus List, Top Industries, Executive Summary, Daily Change, and Summary Trend from local files only.
+- Explicitly disables Yahoo Finance downloads, OpenAI calls, email sending, production report overwrite, and summary-history appending in preview mode.
+- Added regression test proving preview generation uses local files and does not append history.
+
+Impact:
+
+- HTML report changes can now be reviewed quickly and safely without provider/network/API/email side effects.
+- Production `python run_screener.py` behavior is unchanged.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Add optional preview fixtures under `examples/` so layout tests can run even before a machine has generated a last-known-good report.
+
+### 2026-07-23 - Version 0.3.12
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Add a recent summary trend view so report-to-report history can show whether opportunity quality is improving, deteriorating, or mixed.
+
+Changes:
+
+- Added recent summary-history loading for the latest valid report snapshots.
+- Added deterministic `Opportunity Quality Score` using confirmed setups and emerging leaders as positive context, and caution rows plus price warnings as negative context.
+- Added trend assessment labels: improving opportunity quality, deteriorating opportunity quality, mixed/stable opportunity quality, or collecting history.
+- Added HTML `Summary Trend` mini table with visual bars for the latest valid reports.
+- Added Markdown `Summary Trend` table for non-HTML review.
+- Added regression tests for trend calculation, HTML trend rendering, and Markdown trend rendering.
+
+Impact:
+
+- Reports now make the current filtered list more useful by showing whether setup quality is expanding or weakening across recent valid sessions.
+- The trend view is context only and does not change stock selection, scoring, screening thresholds, AI behavior, Yahoo Finance behavior, email sending, or Task Scheduler behavior.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Add a future no-network report-preview mode so HTML layout changes can be inspected from stored history and last-good reports without downloading market data.
+
+### 2026-07-23 - Version 0.3.11
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `.gitignore`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Persist report summary history so valid reports can compare daily setup-quality, stock, and industry changes.
+
+Changes:
+
+- Added local `summary_history.csv` snapshots after successful valid report exports.
+- Added report-to-report comparison for Top Action count, confirmed setups, emerging leaders, caution rows, and price warnings.
+- Added new/removed Top Action ticker comparison versus the previous valid report.
+- Added new/removed Top Industry comparison versus the previous valid report.
+- Added `Daily Change` sections to HTML and Markdown reports.
+- Added `summary_history.csv` to `.gitignore` because it is a local runtime output.
+- Added regression tests for history delta calculation, append/load behavior, and HTML daily-change rendering.
+
+Impact:
+
+- The trader can now see whether leadership and setup quality are improving, deteriorating, or rotating between valid reports.
+- Data-failure runs do not append history because the feature is attached only to the successful report export path.
+- No screening thresholds, scoring logic, industry ranking logic, Yahoo Finance behavior, AI behavior, email sending, or Task Scheduler behavior changed.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Add a compact chart of summary-history trends once enough valid report snapshots have accumulated.
+
+### 2026-07-23 - Version 0.3.10
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Add a compact HTML report summary so the trader can judge daily setup quality immediately when opening the watchlist.
+
+Changes:
+
+- Added a top-of-report `Executive Summary` panel to `daily_watchlist.html`.
+- Added counts for Top Action tickers, confirmed setups, emerging leaders, caution rows, and price warnings.
+- Kept the summary panel presentation-only; it reads existing Top Action List review flags and does not affect screening, scoring, ranking, AI, Yahoo Finance, email, or Task Scheduler behavior.
+- Added regression tests for summary-count calculation and HTML panel rendering.
+
+Impact:
+
+- The HTML report now gives a faster first-read view of whether the day has clean actionable setups, emerging leadership, or cautionary data/setup flags.
+- CSV and Markdown exports remain structurally unchanged.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Persist summary counts over time so the trader can review whether market opportunity quality is improving or deteriorating across sessions.
+
+### 2026-07-23 - Version 0.3.9
+
+Files Modified:
+
+- `run_screener.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Improve report scan speed by visually highlighting confirmed pullbacks, emerging leaders, weak VCP/tightness, extension risk, and price-data warnings.
+
+Changes:
+
+- Added presentation-only `Review Flags` to Markdown and HTML tables.
+- Added HTML badge rendering for `Confirmed`, `Emerging Leader`, `Improving RS`, `Poor VCP`, `Loose`, extension risk, and price warnings.
+- Added row highlighting for priority, caution, and risk contexts.
+- Added sticky HTML table headers for easier scanning of wide reports.
+- Kept CSV exports unchanged so downstream data workflows remain stable.
+- Added regression tests for review flags, HTML badge rendering, and Markdown flag output.
+
+Impact:
+
+- Daily reports should be faster to scan visually.
+- The trader can more quickly separate immediate review candidates from watch-only or cautionary names.
+- No screening thresholds, Yahoo Finance behavior, AI scope, email behavior, or Task Scheduler behavior changed.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Add a compact executive-summary panel at the top of the HTML report showing counts for confirmed setups, emerging leaders, caution flags, and price warnings.
+
+### 2026-07-23 - Version 0.3.8
+
+Files Modified:
+
+- `run_screener.py`
+- `ai_analysis.py`
+- `test_data_quality.py`
+- `PROJECT_GUIDE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Reason:
+
+- Improve report quality after review showed priority-score saturation, weak separation between confirmed and quiet pullbacks, low-quality VCP/tightness setups ranking too highly, and AI commentary that was too generic.
+
+Changes:
+
+- Added price sanity warnings for missing/insufficient/invalid price history, extreme latest-close changes, and latest close inconsistent with recent medians.
+- Excluded obvious price-data anomalies from screening before candidate generation.
+- Added `Price Data Warning` to candidate rows for explicit report traceability.
+- Rebalanced `Review Priority Score` to avoid easy 100-point saturation.
+- Increased penalties for `Poor VCP`, `Loose` tightness, extended status, weak/fading RS trend, and poor risk/reward.
+- Kept individual stock quality first, but made tightness, VCP quality, and confirmation more important inside setup quality.
+- Split pullback actions into `Confirmed pullback entry review`, `Monitor quiet pullback`, and `Wait for cleaner entry`.
+- Added explicit actions for breakout and volume-surge candidates.
+- Expanded AI structured output with `bull_case`, `concern`, and `confirmation`.
+- Updated AI prompt to require both positives and concerns, and to avoid high conviction scores for poor VCP, loose, weak-confirmation, or price-warning setups.
+- Added regression tests for score saturation, VCP/tightness penalties, pullback action labels, price sanity warnings, and AI schema requirements.
+
+Impact:
+
+- Top Action List ordering should now be more selective and less likely to show many identical 100.0 scores.
+- Loose/Poor VCP pullbacks can still appear when they pass deterministic rules, but should rank below cleaner setups.
+- Reports and AI commentary should better distinguish immediate review candidates from quiet watchlist names.
+
+Breaking Changes:
+
+- None.
+
+Future Suggestions:
+
+- Add report styling for `Confirmed pullback entry review`, `Emerging Leader`, and price-data warnings.
+- Persist rejected price-data warnings to a safe local diagnostic file for data-quality audits.
 
 ### 2026-07-22 - Version 0.3.7
 

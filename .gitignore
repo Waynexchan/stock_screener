@@ -18,6 +18,7 @@ daily_watchlist*.csv
 daily_watchlist*.md
 daily_watchlist*.html
 email_summary.txt
+summary_history.csv
 universe*.csv
 sector_industry_cache.csv
 data_failure_report.txt

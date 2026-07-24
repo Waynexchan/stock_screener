@@ -28,11 +28,13 @@ from ai_analysis import AIAnalysisResult, analyse_top_action_list
 OUTPUT_CSV = "daily_watchlist.csv"
 OUTPUT_MD = "daily_watchlist.md"
 OUTPUT_HTML = "daily_watchlist.html"
+PREVIEW_HTML = "daily_watchlist_preview.html"
 EMAIL_SUMMARY = "email_summary.txt"
 LAST_GOOD_CSV = "daily_watchlist_last_good.csv"
 LAST_GOOD_MD = "daily_watchlist_last_good.md"
 LAST_GOOD_HTML = "daily_watchlist_last_good.html"
 DATA_FAILURE_REPORT = "data_failure_report.txt"
+SUMMARY_HISTORY_CSV = "summary_history.csv"
 UNIVERSE_TEMP_CSV = "universe_temp.csv"
 UNIVERSE_RAW_TEMP_CSV = "universe_raw_temp.csv"
 UNIVERSE_BACKUP_CSV = "universe_backup.csv"
@@ -45,7 +47,10 @@ UNIVERSE_COLUMNS = [
 DISCOVERY_COLUMNS = [
     "Category", "Ticker", "Sector", "Industry", "RS Score", "RS Trend", "RS Trend Delta", "Price",
     "Action",
+    "Review Tier",
+    "Noise Filter Reason",
     "Review Priority Score",
+    "Price Data Warning",
     "ATR20", "ATR20 %",
     "ADR %", "From 52W High %", "Distance From 50MA %",
     "Distance From 30WMA %", "Distance From Pivot %", "Volume Ratio",
@@ -61,6 +66,11 @@ DISCOVERY_COLUMNS = [
 TOP_INDUSTRY_COLUMNS = [
     "Industry", "Sector", "Industry Strength Score", "Candidate Count",
     "Avg RS Score", "Best RS Score", "Top 3 Leaders",
+]
+SUMMARY_HISTORY_COLUMNS = [
+    "generated_at", "market_status", "top_action_count", "confirmed_setups",
+    "emerging_leaders", "caution_rows", "price_warnings",
+    "top_action_tickers", "top_industries",
 ]
 CATEGORY_NAMES = [
     "Breakout Candidates",
@@ -343,6 +353,14 @@ def known_industry_frame(frame: pd.DataFrame) -> pd.DataFrame:
     return frame[frame["Industry"].apply(known_metadata_value)].copy()
 
 
+def confirmation_signal(row: pd.Series | dict) -> bool:
+    support_signal = str(row.get("Support Signal", ""))
+    volume_ratio = bounded(row.get("Volume Ratio", 0), 0, 5, default=0)
+    close_position = bounded(row.get("Close Position %", np.nan), 0, 100, default=np.nan)
+    has_reclaim = "reclaim" in support_signal.lower() or "close above prior high" in support_signal.lower()
+    return has_reclaim and (volume_ratio >= 0.55 or (not pd.isna(close_position) and close_position >= 75))
+
+
 def review_priority_score(row: pd.Series | dict) -> float:
     """Rank review order: stock quality/setup/volume first, then industry."""
     rs = bounded(row.get("RS Score", 0), 0, 100)
@@ -353,52 +371,58 @@ def review_priority_score(row: pd.Series | dict) -> float:
     industry_setup_count = bounded(row.get("Industry Setup Count", 0), 0, 20, default=0)
 
     score = 0.0
-    score += rs * 0.35
-    score += min(volume_ratio, 2.0) * 6.0
-    score += min(avg_volume / 1_000_000, 10) * 0.8
+    score += bounded(((rs - config.MIN_RS_SCORE) / (99 - config.MIN_RS_SCORE)) * 22, 0, 22)
+    score += min(avg_volume / 1_000_000, 8) * 0.6
 
     risk_quality = row.get("Risk/Reward Quality", "")
     score += {
-        "Excellent R/R": 18,
-        "Good R/R": 13,
-        "Fair R/R": 7,
-        "Poor R/R": 1,
-        "Avoid": -8,
+        "Excellent R/R": 14,
+        "Good R/R": 10,
+        "Fair R/R": 5,
+        "Poor R/R": -5,
+        "Avoid": -12,
     }.get(risk_quality, 0)
 
     pullback = str(row.get("Pullback Quality", ""))
     if pullback.startswith("A"):
-        score += 12
-    elif pullback.startswith("B"):
         score += 8
+    elif pullback.startswith("B"):
+        score += 5
     elif pullback.startswith("C"):
-        score += 3
+        score -= 2
     elif pullback.startswith("D"):
-        score -= 4
+        score -= 6
 
     extension = row.get("Extension Status", "")
     score += {
-        "Not Extended": 10,
-        "Moderately Extended": 5,
-        "Extended": -4,
-        "Overextended": -12,
+        "Not Extended": 8,
+        "Moderately Extended": 3,
+        "Extended": -8,
+        "Overextended": -16,
     }.get(extension, 0)
 
     score += {
-        "Excellent VCP": 8,
-        "Good VCP": 5,
+        "Excellent VCP": 10,
+        "Good VCP": 7,
         "Average VCP": 2,
-        "Poor VCP": 0,
+        "Poor VCP": -8,
     }.get(row.get("VCP Label", ""), 0)
+
+    score += {
+        "Very Tight": 6,
+        "Tight": 4,
+        "Normal": 1,
+        "Loose": -5,
+    }.get(row.get("Tightness Label", ""), 0)
 
     rs_trend = row.get("RS Trend", "")
     score += {
-        "Emerging Leader": 8,
-        "Improving": 5,
+        "Emerging Leader": 7,
+        "Improving": 4,
         "Stable Leader": 3,
         "Stable": 0,
         "Weakening": -4,
-        "Fading": -8,
+        "Fading": -9,
     }.get(rs_trend, 0)
 
     if support_atr <= 0.75:
@@ -411,28 +435,42 @@ def review_priority_score(row: pd.Series | dict) -> float:
         score -= 4
 
     category = row.get("Category", "")
-    if category == "Breakout Candidates" and volume_ratio >= 1.2:
-        score += 8
-    elif category == "Volume Surge Candidates" and volume_ratio >= 1.5:
-        score += 6
-    elif category == "Pullback Candidates" and volume_ratio <= 1.2:
-        score += 4
-    elif category == "Tight Consolidation Candidates" and volume_ratio <= 1.0:
-        score += 3
+    confirmed = confirmation_signal(row)
+    if category == "Breakout Candidates":
+        if volume_ratio >= 1.5:
+            score += 9
+        elif volume_ratio >= 1.2:
+            score += 5
+        else:
+            score -= 4
+    elif category == "Volume Surge Candidates":
+        score += 8 if volume_ratio >= 1.5 else 2
+    elif category == "Pullback Candidates":
+        if confirmed:
+            score += 7
+        elif 0.35 <= volume_ratio <= 0.85:
+            score += 4
+        elif volume_ratio < 0.25:
+            score -= 3
+    elif category == "Tight Consolidation Candidates":
+        score += 5 if volume_ratio <= 0.85 else 1
 
     if industry_setup_count >= 5:
-        score += 10
+        score += 8
     elif industry_setup_count >= 3:
-        score += 7
+        score += 5
     elif industry_setup_count >= 2:
-        score += 4
+        score += 3
 
     if industry_rank <= 5:
-        score += 5
+        score += 4
     elif industry_rank <= 15:
-        score += 3
+        score += 2
     elif industry_rank <= 30:
         score += 1
+
+    if row.get("Price Data Warning"):
+        score -= 20
 
     return round(bounded(score, 0, 100), 1)
 
@@ -442,6 +480,103 @@ def add_review_priority_column(frame: pd.DataFrame) -> pd.DataFrame:
         return frame
     updated = frame.copy()
     updated["Review Priority Score"] = updated.apply(review_priority_score, axis=1)
+    return updated
+
+
+def setup_noise_reasons(row: pd.Series | dict) -> list[str]:
+    reasons = []
+    risk_reward = str(row.get("Risk/Reward Quality", ""))
+    extension = str(row.get("Extension Status", ""))
+    vcp = str(row.get("VCP Label", ""))
+    tightness = str(row.get("Tightness Label", ""))
+    pullback_quality = str(row.get("Pullback Quality", ""))
+    rs_trend = str(row.get("RS Trend", ""))
+    action = str(row.get("Action", ""))
+    volume_ratio = bounded(row.get("Volume Ratio", 0), 0, 5, default=0)
+    support_atr = bounded(row.get("Nearest Support Distance ATR", 9), 0, 9, default=9)
+    industry_setup_count = bounded(row.get("Industry Setup Count", 0), 0, 20, default=0)
+
+    if row.get("Price Data Warning"):
+        reasons.append("price warning")
+    if risk_reward not in {"Excellent R/R", "Good R/R"}:
+        reasons.append("weak R/R")
+    if extension in {"Extended", "Overextended"}:
+        reasons.append("extended")
+    if pullback_quality.startswith(("C", "D")):
+        reasons.append("weak pullback quality")
+    if vcp == "Poor VCP":
+        reasons.append("poor VCP")
+    if tightness == "Loose":
+        reasons.append("loose action")
+    if rs_trend in {"Weakening", "Fading"}:
+        reasons.append("weakening RS")
+    if support_atr > config.MAX_ACTIONABLE_SUPPORT_DISTANCE_ATR:
+        reasons.append("far from support")
+    if volume_ratio < config.MIN_CONFIRMATION_VOLUME_RATIO:
+        reasons.append("thin confirmation volume")
+    if industry_setup_count < config.MIN_ACTIONABLE_INDUSTRY_SETUP_COUNT:
+        reasons.append("isolated industry setup")
+    if action in {"Watch only", "Wait for pullback", "Wait for cleaner entry"}:
+        reasons.append("wait-only action")
+    return reasons
+
+
+def review_tier(row: pd.Series | dict) -> str:
+    reasons = setup_noise_reasons(row)
+    confirmed = confirmation_signal(row)
+    score = bounded(row.get("Review Priority Score", review_priority_score(row)), 0, 100, default=0)
+    rs = bounded(row.get("RS Score", 0), 0, 100, default=0)
+    rs_trend = str(row.get("RS Trend", ""))
+    risk_reward = str(row.get("Risk/Reward Quality", ""))
+    extension = str(row.get("Extension Status", ""))
+    vcp = str(row.get("VCP Label", ""))
+    tightness = str(row.get("Tightness Label", ""))
+    industry_setup_count = bounded(row.get("Industry Setup Count", 0), 0, 20, default=0)
+    skip_noise = {"price warning", "weak R/R", "extended", "weakening RS", "weak pullback quality"}
+    top_action_noise = {
+        "poor VCP",
+        "loose action",
+        "far from support",
+        "thin confirmation volume",
+        "isolated industry setup",
+        "wait-only action",
+    }
+
+    if skip_noise.intersection(reasons):
+        return "Skip Today"
+    if top_action_noise.intersection(reasons):
+        return "Watch Later"
+    if (
+        confirmed
+        and score >= config.MIN_REVIEW_NOW_SCORE
+        and risk_reward == "Excellent R/R"
+        and extension == "Not Extended"
+        and not reasons
+    ):
+        return "Review Now"
+    if (
+        score >= config.MIN_HIGH_PRIORITY_SCORE
+        and rs >= config.MIN_HIGH_PRIORITY_RS_SCORE
+        and risk_reward in {"Excellent R/R", "Good R/R"}
+        and extension in {"Not Extended", "Moderately Extended"}
+        and rs_trend in {"Emerging Leader", "Improving", "Stable Leader"}
+        and industry_setup_count >= config.MIN_ACTIONABLE_INDUSTRY_SETUP_COUNT
+        and not (vcp == "Poor VCP" and tightness == "Loose")
+        and not reasons
+    ):
+        return "High Priority Watch"
+    return "Watch Later"
+
+
+def add_review_guidance_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    updated = add_review_priority_column(frame)
+    updated["Review Tier"] = updated.apply(review_tier, axis=1)
+    updated["Noise Filter Reason"] = updated.apply(
+        lambda row: ", ".join(setup_noise_reasons(row)),
+        axis=1,
+    )
     return updated
 
 
@@ -520,6 +655,31 @@ def has_usable_price_history(frame: pd.DataFrame, min_rows: int = 1) -> bool:
         return False
     close = frame["Close"].dropna()
     return len(close) >= min_rows
+
+
+def price_data_warning(history: pd.DataFrame) -> str:
+    if history.empty or "Close" not in history.columns:
+        return "Missing price history"
+    closes = history["Close"].dropna()
+    if len(closes) < 60:
+        return "Insufficient price history"
+    latest_close = closes.iloc[-1]
+    median_20 = closes.tail(20).median()
+    median_60 = closes.tail(60).median()
+    if latest_close <= 0 or median_20 <= 0 or median_60 <= 0:
+        return "Invalid close price"
+
+    ratio_20 = latest_close / median_20
+    ratio_60 = latest_close / median_60
+    if ratio_20 > 2.5 or ratio_20 < 0.4:
+        return "Latest close inconsistent with 20-day median"
+    if ratio_60 > 3.0 or ratio_60 < 0.33:
+        return "Latest close inconsistent with 60-day median"
+
+    daily_change = closes.pct_change().iloc[-1]
+    if not pd.isna(daily_change) and abs(daily_change) > 0.75:
+        return "Extreme one-day close change"
+    return ""
 
 
 def download_history_batch(tickers: list[str], period: str) -> pd.DataFrame:
@@ -1317,7 +1477,10 @@ def candidate_row(
         "RS Trend Delta": rs_metric.get("RS Trend Delta", np.nan),
         "Price": round(latest["Close"], 2),
         "Action": "",
+        "Review Tier": "",
+        "Noise Filter Reason": "",
         "Review Priority Score": np.nan,
+        "Price Data Warning": latest.get("PRICE_DATA_WARNING", ""),
         "ATR20": round(latest["ATR20"], 2),
         "ATR20 %": round(latest["ATR20_PCT"], 2),
         "ADR %": round(latest["ADR_PCT"], 2),
@@ -1447,12 +1610,23 @@ def action_for_row(row: pd.Series | dict) -> str:
     vcp = row.get("VCP Label", "")
     tightness = row.get("Tightness Label", "")
 
+    confirmed = confirmation_signal(row)
     if category == "Pullback Candidates":
-        if risk_reward == "Excellent R/R" and extension == "Not Extended":
-            return "Review for pullback entry"
-        if risk_reward == "Good R/R":
-            return "Watch for confirmation"
+        if risk_reward == "Excellent R/R" and extension == "Not Extended" and confirmed:
+            return "Confirmed pullback entry review"
+        if risk_reward in {"Excellent R/R", "Good R/R"}:
+            return "Monitor quiet pullback"
+        if risk_reward == "Fair R/R":
+            return "Wait for cleaner entry"
         return "Watch only"
+    if category == "Breakout Candidates":
+        if confirmed:
+            return "Review breakout confirmation"
+        return "Set breakout alert"
+    if category == "Volume Surge Candidates":
+        if risk_reward in {"Excellent R/R", "Good R/R"} and confirmed:
+            return "Review volume confirmation"
+        return "Watch volume surge"
     if category == "Tight Consolidation Candidates":
         if vcp in {"Excellent VCP", "Good VCP"}:
             return "Set pivot alert"
@@ -1471,7 +1645,7 @@ def add_action_column(frame: pd.DataFrame) -> pd.DataFrame:
         return frame
     updated = frame.copy()
     updated["Action"] = updated.apply(action_for_row, axis=1)
-    return updated
+    return add_review_guidance_columns(updated)
 
 
 def category_sort(df: pd.DataFrame, category: str) -> pd.DataFrame:
@@ -1642,8 +1816,12 @@ def screen_stocks(
     for ticker, history in histories.items():
         if len(history) < 220:
             continue
+        warning = price_data_warning(history)
+        if warning:
+            continue
         try:
-            latest = add_indicators(history).iloc[-1]
+            latest = add_indicators(history).iloc[-1].copy()
+            latest["PRICE_DATA_WARNING"] = warning
         except Exception as exc:
             print(f"Skipping {ticker}: {exc}")
             continue
@@ -1723,20 +1901,568 @@ def screen_stocks(
     return category_frames, top_industries, stage2_count, download_stats
 
 
+def review_flags(row: pd.Series | dict) -> list[str]:
+    flags = []
+    action = str(row.get("Action", ""))
+    rs_trend = str(row.get("RS Trend", ""))
+    vcp = str(row.get("VCP Label", ""))
+    tightness = str(row.get("Tightness Label", ""))
+    warning = str(row.get("Price Data Warning", "") or "")
+    extension = str(row.get("Extension Status", ""))
+
+    if action == "Confirmed pullback entry review":
+        flags.append("Confirmed")
+    tier = str(row.get("Review Tier", ""))
+    if tier in {"Review Now", "High Priority Watch", "Watch Later", "Skip Today"}:
+        flags.append(tier)
+    if rs_trend == "Emerging Leader":
+        flags.append("Emerging Leader")
+    elif rs_trend == "Improving":
+        flags.append("Improving RS")
+    if vcp == "Poor VCP":
+        flags.append("Poor VCP")
+    if tightness == "Loose":
+        flags.append("Loose")
+    if extension in {"Extended", "Overextended"}:
+        flags.append(extension)
+    if warning:
+        flags.append("Price Warning")
+    return flags
+
+
+def add_review_flags_column(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    table = frame.copy()
+    table["Review Flags"] = table.apply(lambda row: ", ".join(review_flags(row)), axis=1)
+    return table
+
+
 def markdown_table(df: pd.DataFrame) -> str:
-    table = df.copy()
+    table = add_review_flags_column(df)
     if "TradingView" in table.columns:
         table["TradingView"] = table["TradingView"].apply(lambda url: f"[Chart]({url})")
     return table.to_markdown(index=False)
 
 
+def html_badges(flags: list[str]) -> str:
+    class_map = {
+        "Confirmed": "flag-confirmed",
+        "Review Now": "flag-confirmed",
+        "High Priority Watch": "flag-emerging",
+        "Watch Later": "flag-neutral",
+        "Skip Today": "flag-risk",
+        "Emerging Leader": "flag-emerging",
+        "Improving RS": "flag-improving",
+        "Poor VCP": "flag-caution",
+        "Loose": "flag-caution",
+        "Extended": "flag-risk",
+        "Overextended": "flag-risk",
+        "Price Warning": "flag-risk",
+    }
+    return " ".join(
+        f'<span class="badge {class_map.get(flag, "flag-neutral")}">{escape(flag)}</span>'
+        for flag in flags
+    )
+
+
+def row_class(row: pd.Series | dict) -> str:
+    flags = set(review_flags(row))
+    if "Price Warning" in flags or "Overextended" in flags:
+        return "row-risk"
+    if "Skip Today" in flags:
+        return "row-risk"
+    if "Confirmed" in flags or "Emerging Leader" in flags:
+        return "row-priority"
+    if "Poor VCP" in flags or "Loose" in flags or "Watch Later" in flags:
+        return "row-caution"
+    return ""
+
+
 def html_table(df: pd.DataFrame) -> str:
-    table = df.copy()
-    if "TradingView" in table.columns:
-        table["TradingView"] = table["TradingView"].apply(
-            lambda url: f'<a href="{url}" target="_blank">Chart</a>'
+    table = add_review_flags_column(df)
+    columns = list(table.columns)
+    header = "".join(f"<th>{escape(str(column))}</th>" for column in columns)
+    rows = []
+    for _, row in table.iterrows():
+        css_class = row_class(row)
+        cells = []
+        for column in columns:
+            value = row.get(column, "")
+            if pd.isna(value):
+                value = ""
+            if column == "TradingView" and value:
+                cell = f'<a href="{escape(str(value))}" target="_blank">Chart</a>'
+            elif column == "Review Flags":
+                cell = html_badges(review_flags(row))
+            else:
+                cell = escape(str(value))
+            cells.append(f"<td>{cell}</td>")
+        class_attr = f' class="{css_class}"' if css_class else ""
+        rows.append(f"<tr{class_attr}>{''.join(cells)}</tr>")
+    return f"<table><thead><tr>{header}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
+
+
+def report_summary_counts(top_action_list: pd.DataFrame) -> dict[str, int]:
+    if top_action_list.empty:
+        return {
+            "top_action_count": 0,
+            "review_now": 0,
+            "high_priority_watch": 0,
+            "confirmed_setups": 0,
+            "emerging_leaders": 0,
+            "caution_rows": 0,
+            "price_warnings": 0,
+        }
+
+    counts = {
+        "top_action_count": len(top_action_list),
+        "review_now": 0,
+        "high_priority_watch": 0,
+        "confirmed_setups": 0,
+        "emerging_leaders": 0,
+        "caution_rows": 0,
+        "price_warnings": 0,
+    }
+    for _, row in top_action_list.iterrows():
+        flags = set(review_flags(row))
+        tier = str(row.get("Review Tier", ""))
+        if tier == "Review Now":
+            counts["review_now"] += 1
+        if tier == "High Priority Watch":
+            counts["high_priority_watch"] += 1
+        if "Confirmed" in flags:
+            counts["confirmed_setups"] += 1
+        if "Emerging Leader" in flags:
+            counts["emerging_leaders"] += 1
+        if flags.intersection({"Poor VCP", "Loose", "Extended", "Overextended"}):
+            counts["caution_rows"] += 1
+        if "Price Warning" in flags:
+            counts["price_warnings"] += 1
+    return counts
+
+
+def history_list_value(values: list[str]) -> str:
+    cleaned = []
+    for value in values:
+        text = str(value).strip()
+        if text and text.lower() not in {"nan", "none"} and text not in cleaned:
+            cleaned.append(text)
+    return "; ".join(cleaned)
+
+
+def parse_history_list(value: object) -> list[str]:
+    if value is None or pd.isna(value):
+        return []
+    return [item.strip() for item in str(value).split(";") if item.strip()]
+
+
+def build_report_history_snapshot(
+    top_action_list: pd.DataFrame,
+    top_industries: pd.DataFrame,
+    market_status: str,
+    generated_at: datetime | None = None,
+) -> dict[str, object]:
+    counts = report_summary_counts(top_action_list)
+    tickers = [] if top_action_list.empty else top_action_list["Ticker"].astype(str).tolist()
+    industries = [] if top_industries.empty else top_industries.head(5)["Industry"].astype(str).tolist()
+    snapshot = {
+        "generated_at": (generated_at or datetime.now()).strftime("%Y-%m-%d %H:%M:%S"),
+        "market_status": market_status,
+        "top_action_tickers": history_list_value(tickers),
+        "top_industries": history_list_value(industries),
+    }
+    snapshot.update(counts)
+    return {column: snapshot.get(column, "") for column in SUMMARY_HISTORY_COLUMNS}
+
+
+def load_last_report_history(path: str = SUMMARY_HISTORY_CSV) -> dict[str, object] | None:
+    history_path = Path(path)
+    if not history_path.exists():
+        return None
+    try:
+        history = pd.read_csv(history_path)
+    except (OSError, pd.errors.EmptyDataError, pd.errors.ParserError):
+        return None
+    if history.empty:
+        return None
+    return history.iloc[-1].to_dict()
+
+
+def load_previous_report_history(path: str = SUMMARY_HISTORY_CSV) -> dict[str, object] | None:
+    rows = load_recent_report_history(path, 2)
+    if len(rows) < 2:
+        return None
+    return rows[-2]
+
+
+def load_recent_report_history(path: str = SUMMARY_HISTORY_CSV, limit: int = 10) -> list[dict[str, object]]:
+    history_path = Path(path)
+    if not history_path.exists():
+        return []
+    try:
+        history = pd.read_csv(history_path)
+    except (OSError, pd.errors.EmptyDataError, pd.errors.ParserError):
+        return []
+    if history.empty:
+        return []
+    return history.tail(max(limit, 1)).to_dict("records")
+
+
+def append_report_history(snapshot: dict[str, object], path: str = SUMMARY_HISTORY_CSV) -> None:
+    history_path = Path(path)
+    frame = pd.DataFrame([{column: snapshot.get(column, "") for column in SUMMARY_HISTORY_COLUMNS}])
+    frame.to_csv(history_path, mode="a", header=not history_path.exists(), index=False)
+
+
+def report_history_delta(
+    current: dict[str, object],
+    previous: dict[str, object] | None,
+) -> dict[str, object]:
+    if not previous:
+        return {"has_previous": False}
+
+    current_tickers = set(parse_history_list(current.get("top_action_tickers")))
+    previous_tickers = set(parse_history_list(previous.get("top_action_tickers")))
+    current_industries = set(parse_history_list(current.get("top_industries")))
+    previous_industries = set(parse_history_list(previous.get("top_industries")))
+
+    numeric_fields = [
+        "top_action_count", "confirmed_setups", "emerging_leaders",
+        "caution_rows", "price_warnings",
+    ]
+    count_deltas = {}
+    for field in numeric_fields:
+        current_value = int(float(current.get(field, 0) or 0))
+        previous_value = int(float(previous.get(field, 0) or 0))
+        count_deltas[field] = current_value - previous_value
+
+    return {
+        "has_previous": True,
+        "previous_generated_at": str(previous.get("generated_at", "")),
+        "new_top_action_tickers": sorted(current_tickers - previous_tickers),
+        "removed_top_action_tickers": sorted(previous_tickers - current_tickers),
+        "new_top_industries": sorted(current_industries - previous_industries),
+        "removed_top_industries": sorted(previous_industries - current_industries),
+        "count_deltas": count_deltas,
+    }
+
+
+def signed_delta(value: int) -> str:
+    if value > 0:
+        return f"+{value}"
+    return str(value)
+
+
+def history_int(row: dict[str, object], field: str) -> int:
+    return int(float(row.get(field, 0) or 0))
+
+
+def report_quality_score(row: dict[str, object]) -> int:
+    return (
+        history_int(row, "confirmed_setups") * 2
+        + history_int(row, "emerging_leaders")
+        - history_int(row, "caution_rows")
+        - history_int(row, "price_warnings") * 2
+    )
+
+
+def report_history_trend_from_rows(rows: list[dict[str, object]]) -> dict[str, object]:
+    trend_rows = []
+    for row in rows:
+        trend_rows.append({
+            "generated_at": str(row.get("generated_at", "")),
+            "market_status": str(row.get("market_status", "")),
+            "top_action_count": history_int(row, "top_action_count"),
+            "confirmed_setups": history_int(row, "confirmed_setups"),
+            "emerging_leaders": history_int(row, "emerging_leaders"),
+            "caution_rows": history_int(row, "caution_rows"),
+            "price_warnings": history_int(row, "price_warnings"),
+            "quality_score": report_quality_score(row),
+        })
+
+    if len(trend_rows) < 3:
+        assessment = "Collecting history"
+    else:
+        latest = trend_rows[-1]
+        previous = trend_rows[-2]
+        earlier_scores = [row["quality_score"] for row in trend_rows[:-1]]
+        prior_average = sum(earlier_scores) / len(earlier_scores)
+        if latest["quality_score"] >= prior_average + 2 and latest["quality_score"] >= previous["quality_score"]:
+            assessment = "Improving opportunity quality"
+        elif latest["quality_score"] <= prior_average - 2 and latest["quality_score"] <= previous["quality_score"]:
+            assessment = "Deteriorating opportunity quality"
+        else:
+            assessment = "Mixed or stable opportunity quality"
+
+    return {
+        "rows": trend_rows,
+        "assessment": assessment,
+        "has_history": len(trend_rows) > 1,
+    }
+
+
+def report_history_trend(
+    current: dict[str, object],
+    path: str = SUMMARY_HISTORY_CSV,
+    limit: int = 10,
+) -> dict[str, object]:
+    previous_rows = load_recent_report_history(path, max(limit - 1, 1))
+    rows = previous_rows + [current]
+    return report_history_trend_from_rows(rows[-max(limit, 1):])
+
+
+def markdown_list_value(items: list[str]) -> str:
+    return ", ".join(items) if items else "None"
+
+
+def markdown_history_section(history_delta: dict[str, object] | None) -> str:
+    if not history_delta or not history_delta.get("has_previous"):
+        return "No previous valid report history yet."
+
+    count_deltas = history_delta.get("count_deltas", {})
+    lines = [
+        f"Previous valid report: {history_delta.get('previous_generated_at', '')}",
+        "",
+        f"- Top Action Count: {signed_delta(int(count_deltas.get('top_action_count', 0)))}",
+        f"- Confirmed Setups: {signed_delta(int(count_deltas.get('confirmed_setups', 0)))}",
+        f"- Emerging Leaders: {signed_delta(int(count_deltas.get('emerging_leaders', 0)))}",
+        f"- Caution Rows: {signed_delta(int(count_deltas.get('caution_rows', 0)))}",
+        f"- Price Warnings: {signed_delta(int(count_deltas.get('price_warnings', 0)))}",
+        "",
+        f"New Top Action Tickers: {markdown_list_value(history_delta.get('new_top_action_tickers', []))}",
+        f"Removed Top Action Tickers: {markdown_list_value(history_delta.get('removed_top_action_tickers', []))}",
+        f"New Top Industries: {markdown_list_value(history_delta.get('new_top_industries', []))}",
+        f"Removed Top Industries: {markdown_list_value(history_delta.get('removed_top_industries', []))}",
+    ]
+    return "\n".join(lines)
+
+
+def markdown_trend_section(history_trend: dict[str, object] | None) -> str:
+    if not history_trend or not history_trend.get("rows"):
+        return "No summary trend history yet."
+
+    rows = history_trend.get("rows", [])
+    lines = [
+        f"Assessment: {history_trend.get('assessment', 'Collecting history')}",
+        "",
+        "| Date | Market | Top Action | Confirmed | Emerging | Caution | Price Warnings | Quality Score |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['generated_at']} | {row['market_status']} | {row['top_action_count']} | "
+            f"{row['confirmed_setups']} | {row['emerging_leaders']} | {row['caution_rows']} | "
+            f"{row['price_warnings']} | {row['quality_score']} |"
         )
-    return table.to_html(index=False, escape=False)
+    return "\n".join(lines)
+
+
+def html_chip_list(items: list[str]) -> str:
+    if not items:
+        return "<span class=\"history-empty\">None</span>"
+    return " ".join(f"<span class=\"history-chip\">{escape(item)}</span>" for item in items)
+
+
+def html_history_panel(history_delta: dict[str, object] | None) -> str:
+    if not history_delta or not history_delta.get("has_previous"):
+        return (
+            "<section class=\"history-panel\" aria-label=\"Daily change\">"
+            "<h2>Daily Change</h2>"
+            "<p>No previous valid report history yet.</p>"
+            "</section>"
+        )
+
+    count_deltas = history_delta.get("count_deltas", {})
+    cards = [
+        ("Top Action", count_deltas.get("top_action_count", 0)),
+        ("Confirmed", count_deltas.get("confirmed_setups", 0)),
+        ("Emerging", count_deltas.get("emerging_leaders", 0)),
+        ("Caution", count_deltas.get("caution_rows", 0)),
+        ("Price Warnings", count_deltas.get("price_warnings", 0)),
+    ]
+    card_html = "".join(
+        "<div class=\"history-delta-card\">"
+        f"<span>{escape(label)}</span><strong>{escape(signed_delta(int(value)))}</strong>"
+        "</div>"
+        for label, value in cards
+    )
+    return (
+        "<section class=\"history-panel\" aria-label=\"Daily change\">"
+        "<h2>Daily Change</h2>"
+        f"<p>Compared with previous valid report: {escape(str(history_delta.get('previous_generated_at', '')))}</p>"
+        f"<div class=\"history-delta-grid\">{card_html}</div>"
+        "<div class=\"history-lists\">"
+        "<div><h3>New Top Action Tickers</h3>"
+        f"{html_chip_list(history_delta.get('new_top_action_tickers', []))}</div>"
+        "<div><h3>Removed Top Action Tickers</h3>"
+        f"{html_chip_list(history_delta.get('removed_top_action_tickers', []))}</div>"
+        "<div><h3>New Top Industries</h3>"
+        f"{html_chip_list(history_delta.get('new_top_industries', []))}</div>"
+        "<div><h3>Removed Top Industries</h3>"
+        f"{html_chip_list(history_delta.get('removed_top_industries', []))}</div>"
+        "</div>"
+        "</section>"
+    )
+
+
+def html_trend_panel(history_trend: dict[str, object] | None) -> str:
+    if not history_trend or not history_trend.get("rows"):
+        return (
+            "<section class=\"trend-panel\" aria-label=\"Summary trend\">"
+            "<h2>Summary Trend</h2>"
+            "<p>No summary trend history yet.</p>"
+            "</section>"
+        )
+
+    rows = history_trend.get("rows", [])
+    max_abs_score = max([abs(int(row["quality_score"])) for row in rows] + [1])
+    table_rows = []
+    for row in rows:
+        score = int(row["quality_score"])
+        width = max(int((abs(score) / max_abs_score) * 100), 4)
+        bar_class = "trend-positive" if score >= 0 else "trend-negative"
+        table_rows.append(
+            "<tr>"
+            f"<td>{escape(str(row['generated_at']))}</td>"
+            f"<td>{escape(str(row['market_status']))}</td>"
+            f"<td>{row['top_action_count']}</td>"
+            f"<td>{row['confirmed_setups']}</td>"
+            f"<td>{row['emerging_leaders']}</td>"
+            f"<td>{row['caution_rows']}</td>"
+            f"<td>{row['price_warnings']}</td>"
+            "<td>"
+            f"<span class=\"trend-bar {bar_class}\" style=\"width: {width}%\"></span>"
+            f"<strong>{score}</strong>"
+            "</td>"
+            "</tr>"
+        )
+    return (
+        "<section class=\"trend-panel\" aria-label=\"Summary trend\">"
+        "<h2>Summary Trend</h2>"
+        f"<p>{escape(str(history_trend.get('assessment', 'Collecting history')))}</p>"
+        "<table class=\"trend-table\"><thead><tr>"
+        "<th>Date</th><th>Market</th><th>Top Action</th><th>Confirmed</th>"
+        "<th>Emerging</th><th>Caution</th><th>Price Warnings</th><th>Quality Score</th>"
+        "</tr></thead><tbody>"
+        f"{''.join(table_rows)}"
+        "</tbody></table>"
+        "</section>"
+    )
+
+
+def html_summary_panel(top_action_list: pd.DataFrame, market_status: str) -> str:
+    counts = report_summary_counts(top_action_list)
+    cards = [
+        ("Market Status", market_status, "summary-neutral", "Current index context"),
+        ("Top Action", counts["top_action_count"], "summary-priority", "Tickers for first review"),
+        ("Review Now", counts["review_now"], "summary-priority", "Open these charts first"),
+        ("High Priority", counts["high_priority_watch"], "summary-emerging", "Worth review after confirmed setups"),
+        ("Confirmed Setups", counts["confirmed_setups"], "summary-priority", "Entry-review candidates"),
+        ("Emerging Leaders", counts["emerging_leaders"], "summary-emerging", "RS trend acceleration"),
+        ("Caution Rows", counts["caution_rows"], "summary-caution", "Loose, poor VCP, or extension"),
+        ("Price Warnings", counts["price_warnings"], "summary-risk", "Possible data-quality issues"),
+    ]
+    card_html = []
+    for label, value, css_class, detail in cards:
+        card_html.append(
+            "<div class=\"summary-card {css_class}\">"
+            "<span class=\"summary-label\">{label}</span>"
+            "<strong>{value}</strong>"
+            "<small>{detail}</small>"
+            "</div>".format(
+                css_class=escape(css_class),
+                label=escape(str(label)),
+                value=escape(str(value)),
+                detail=escape(str(detail)),
+            )
+        )
+    return (
+        "<section class=\"summary-panel\" aria-label=\"Executive summary\">"
+        "<h2>Executive Summary</h2>"
+        "<div class=\"summary-grid\">"
+        f"{''.join(card_html)}"
+        "</div>"
+        "</section>"
+    )
+
+
+def review_tickers_by_tier(frame: pd.DataFrame, tier: str, limit: int = 8) -> list[str]:
+    if frame.empty or "Review Tier" not in frame.columns or "Ticker" not in frame.columns:
+        return []
+    tickers = frame[frame["Review Tier"] == tier]["Ticker"].dropna().astype(str).head(limit).tolist()
+    return tickers
+
+
+def daily_review_plan(top_action_list: pd.DataFrame, daily_focus: pd.DataFrame, market_status: str) -> dict[str, object]:
+    guided_focus = add_review_guidance_columns(daily_focus) if not daily_focus.empty else daily_focus
+    review_now = review_tickers_by_tier(top_action_list, "Review Now")
+    high_priority = review_tickers_by_tier(top_action_list, "High Priority Watch")
+    watch_later = review_tickers_by_tier(guided_focus, "Watch Later", limit=6)
+    skip_today = review_tickers_by_tier(guided_focus, "Skip Today", limit=6)
+
+    if review_now:
+        first_step = f"Open first: {', '.join(review_now)}."
+    elif high_priority:
+        first_step = f"No confirmed clean entries. Start with high-priority watches: {', '.join(high_priority)}."
+    else:
+        first_step = "No clean first-review setups. Do not force trades from a noisy list."
+
+    if high_priority:
+        second_step = f"Review after confirmed setups: {', '.join(high_priority)}."
+    elif watch_later:
+        second_step = f"Secondary tracking only: {', '.join(watch_later)}."
+    elif skip_today:
+        second_step = "Daily Focus is mostly noise today; keep it as reference only."
+    else:
+        second_step = "No secondary tracking names need attention."
+
+    market_note = {
+        "Strong": "Market is supportive, but entries still require chart confirmation.",
+        "Neutral": "Market is mixed; prioritise clean setups and avoid marginal names.",
+        "Caution": "Market is defensive; reduce urgency and require cleaner confirmation.",
+        "Unknown": "Market context is unavailable; treat the report as lower confidence.",
+    }.get(str(market_status), "Use market status as context, not as a stock-selection override.")
+
+    return {
+        "first_step": first_step,
+        "second_step": second_step,
+        "market_note": market_note,
+        "watch_later": watch_later,
+        "skip_today": skip_today,
+    }
+
+
+def markdown_daily_review_plan(top_action_list: pd.DataFrame, daily_focus: pd.DataFrame, market_status: str) -> str:
+    plan = daily_review_plan(top_action_list, daily_focus, market_status)
+    lines = [
+        plan["first_step"],
+        plan["second_step"],
+        str(plan["market_note"]),
+        "Use Daily Focus as a tracking pool only; Top Action is the first-pass decision list.",
+    ]
+    if plan["skip_today"]:
+        lines.append(f"Skip today unless conditions improve: {', '.join(plan['skip_today'])}.")
+    return "\n".join(f"- {line}" for line in lines)
+
+
+def html_daily_review_plan(top_action_list: pd.DataFrame, daily_focus: pd.DataFrame, market_status: str) -> str:
+    plan = daily_review_plan(top_action_list, daily_focus, market_status)
+    items = [
+        plan["first_step"],
+        plan["second_step"],
+        str(plan["market_note"]),
+        "Use Daily Focus as a tracking pool only; Top Action is the first-pass decision list.",
+    ]
+    if plan["skip_today"]:
+        items.append(f"Skip today unless conditions improve: {', '.join(plan['skip_today'])}.")
+    item_html = "".join(f"<li>{escape(str(item))}</li>" for item in items)
+    return (
+        "<section class=\"review-plan\" aria-label=\"Daily review plan\">"
+        "<h2>Daily Review Plan</h2>"
+        f"<ul>{item_html}</ul>"
+        "</section>"
+    )
 
 
 def combined_watchlist(categories: dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -1765,7 +2491,7 @@ def sort_daily_focus(focus: pd.DataFrame) -> pd.DataFrame:
     if focus.empty:
         return focus
 
-    sorted_focus = add_review_priority_column(focus)
+    sorted_focus = add_review_guidance_columns(focus)
     sorted_focus["_Category Rank"] = sorted_focus["Category"].apply(category_priority_rank)
     sorted_focus["_Risk Reward Rank"] = sorted_focus["Risk/Reward Quality"].apply(risk_reward_quality_rank)
     sorted_focus["_Industry Rank Sort"] = sorted_focus["Industry Rank"].fillna(999)
@@ -1814,7 +2540,7 @@ def sort_top_action_list(frame: pd.DataFrame) -> pd.DataFrame:
         "Tight Consolidation Candidates": 2,
         "Extended Candidates": 3,
     }
-    sorted_frame = add_review_priority_column(frame)
+    sorted_frame = add_review_guidance_columns(frame)
     sorted_frame["_Category Rank"] = sorted_frame["Category"].map(category_rank).fillna(99)
     sorted_frame["_Risk Reward Rank"] = sorted_frame["Risk/Reward Quality"].apply(risk_reward_quality_rank)
     sorted_frame["_Industry Rank Sort"] = sorted_frame["Industry Rank"].fillna(999)
@@ -1830,6 +2556,16 @@ def sort_top_action_list(frame: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def top_action_eligible(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    guided = add_review_guidance_columns(frame)
+    eligible = guided[guided["Review Tier"].isin(["Review Now", "High Priority Watch"])].copy()
+    if eligible.empty:
+        return guided.iloc[0:0].copy()
+    return eligible
+
+
 def build_top_action_list(categories: dict[str, pd.DataFrame]) -> pd.DataFrame:
     frames = [
         categories.get(name, pd.DataFrame(columns=DISCOVERY_COLUMNS)).head(FOCUS_LIMITS.get(name, TOP_ACTION_MAX))
@@ -1837,7 +2573,7 @@ def build_top_action_list(categories: dict[str, pd.DataFrame]) -> pd.DataFrame:
     ]
     frames = [frame for frame in frames if not frame.empty]
     combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=DISCOVERY_COLUMNS)
-    return sort_top_action_list(combined)
+    return sort_top_action_list(top_action_eligible(combined))
 
 
 def write_email_summary(
@@ -1865,6 +2601,8 @@ def write_email_summary(
                 f"Strength {row['Industry Strength Score']}"
             )
 
+    lines.extend(["", "Daily Review Plan", markdown_daily_review_plan(top_action_list, daily_focus, market_status)])
+
     lines.extend(["", "Top Action List"])
     if top_action_list.empty:
         lines.append("No action tickers.")
@@ -1886,12 +2624,26 @@ def write_markdown(
     market_status: str,
     ai_commentary: str,
     path: str,
+    history_delta: dict[str, object] | None = None,
+    history_trend: dict[str, object] | None = None,
 ) -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [
         "# Daily Watchlist",
         "",
         f"Generated: {now}",
+        "",
+        "## Daily Change",
+        "",
+        markdown_history_section(history_delta),
+        "",
+        "## Summary Trend",
+        "",
+        markdown_trend_section(history_trend),
+        "",
+        "## Daily Review Plan",
+        "",
+        markdown_daily_review_plan(top_action_list, daily_focus, market_status),
         "",
         "## Top Action List",
         "",
@@ -1946,9 +2698,15 @@ def write_html(
     market_status: str,
     ai_commentary: str,
     path: str,
+    history_delta: dict[str, object] | None = None,
+    history_trend: dict[str, object] | None = None,
 ) -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     sections = []
+    summary_panel = html_summary_panel(top_action_list, market_status)
+    history_panel = html_history_panel(history_delta)
+    trend_panel = html_trend_panel(history_trend)
+    review_plan = html_daily_review_plan(top_action_list, daily_focus, market_status)
     action_table = "<p>No action tickers.</p>" if top_action_list.empty else html_table(top_action_list)
     sections.append(f"<h2>Top Action List</h2>{action_table}")
     sections.append(f"<h2>AI Commentary</h2><pre>{escape(ai_commentary)}</pre>")
@@ -1977,17 +2735,65 @@ def write_html(
   <meta charset="utf-8">
   <title>Daily Watchlist</title>
   <style>
-    body {{ font-family: Arial, sans-serif; margin: 32px; color: #222; }}
-    table {{ border-collapse: collapse; width: 100%; margin-bottom: 28px; }}
-    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: right; }}
+    body {{ font-family: Arial, sans-serif; margin: 32px; color: #222; background: #fbfbfa; }}
+    table {{ border-collapse: collapse; width: 100%; margin-bottom: 28px; background: #fff; }}
+    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: right; vertical-align: top; }}
     th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:nth-child(3), td:nth-child(3) {{ text-align: left; }}
-    th {{ background: #f3f5f7; }}
+    th {{ background: #f3f5f7; position: sticky; top: 0; z-index: 1; }}
+    tr.row-priority td {{ background: #eef7f1; }}
+    tr.row-caution td {{ background: #fff8e8; }}
+    tr.row-risk td {{ background: #fff0f0; }}
+    .badge {{ display: inline-block; border-radius: 4px; padding: 2px 6px; margin: 1px 2px; font-size: 12px; font-weight: 700; white-space: nowrap; }}
+    .flag-confirmed {{ background: #d9f0e1; color: #13592d; }}
+    .flag-emerging {{ background: #dceafe; color: #1d4f91; }}
+    .flag-improving {{ background: #e8e5ff; color: #45308d; }}
+    .flag-caution {{ background: #ffefc2; color: #714800; }}
+    .flag-risk {{ background: #ffd8d8; color: #8f1d1d; }}
+    .flag-neutral {{ background: #e9ecef; color: #333; }}
+    .summary-panel {{ margin: 18px 0 30px; }}
+    .summary-panel h2 {{ margin-bottom: 12px; }}
+    .summary-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; }}
+    .summary-card {{ background: #fff; border: 1px solid #d8dde3; border-left: 4px solid #75808a; border-radius: 6px; padding: 12px; min-height: 96px; }}
+    .summary-card span {{ display: block; color: #59636e; font-size: 12px; font-weight: 700; text-transform: uppercase; }}
+    .summary-card strong {{ display: block; margin: 6px 0 4px; font-size: 26px; line-height: 1; }}
+    .summary-card small {{ color: #5f6872; line-height: 1.35; }}
+    .summary-priority {{ border-left-color: #2f7d46; }}
+    .summary-emerging {{ border-left-color: #2f5f9f; }}
+    .summary-caution {{ border-left-color: #b7791f; }}
+    .summary-risk {{ border-left-color: #c53030; }}
+    .history-panel {{ background: #fff; border: 1px solid #d8dde3; border-radius: 6px; padding: 16px; margin: 0 0 30px; }}
+    .history-panel h2 {{ margin: 0 0 8px; }}
+    .history-panel p {{ color: #5f6872; margin: 0 0 12px; }}
+    .history-delta-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }}
+    .history-delta-card {{ border: 1px solid #e1e5ea; border-radius: 6px; padding: 10px; }}
+    .history-delta-card span {{ display: block; color: #59636e; font-size: 12px; font-weight: 700; text-transform: uppercase; }}
+    .history-delta-card strong {{ display: block; margin-top: 4px; font-size: 22px; }}
+    .history-lists {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }}
+    .history-lists h3 {{ margin: 0 0 8px; font-size: 14px; }}
+    .history-chip {{ display: inline-block; background: #eef2f6; border-radius: 4px; padding: 3px 7px; margin: 2px; font-size: 12px; font-weight: 700; }}
+    .history-empty {{ color: #6b7280; font-size: 13px; }}
+    .trend-panel {{ background: #fff; border: 1px solid #d8dde3; border-radius: 6px; padding: 16px; margin: 0 0 30px; }}
+    .trend-panel h2 {{ margin: 0 0 8px; }}
+    .trend-panel p {{ color: #5f6872; margin: 0 0 12px; }}
+    .trend-table th, .trend-table td {{ text-align: right; }}
+    .trend-table th:first-child, .trend-table td:first-child, .trend-table th:nth-child(2), .trend-table td:nth-child(2) {{ text-align: left; }}
+    .trend-bar {{ display: inline-block; height: 10px; min-width: 8px; border-radius: 3px; margin-right: 8px; vertical-align: middle; }}
+    .trend-positive {{ background: #2f7d46; }}
+    .trend-negative {{ background: #c53030; }}
+    .review-plan {{ background: #fff; border: 1px solid #d8dde3; border-left: 4px solid #2f7d46; border-radius: 6px; padding: 16px; margin: 0 0 30px; }}
+    .review-plan h2 {{ margin: 0 0 10px; }}
+    .review-plan ul {{ margin: 0; padding-left: 20px; }}
+    .review-plan li {{ margin: 6px 0; line-height: 1.4; }}
     pre {{ white-space: pre-wrap; background: #f7f7f7; border: 1px solid #ddd; padding: 16px; }}
   </style>
 </head>
 <body>
   <h1>Daily Watchlist</h1>
   <p>Generated: {now}</p>
+  {summary_panel}
+  {history_panel}
+  {trend_panel}
+  {review_plan}
   {''.join(sections)}
 </body>
 </html>
@@ -2080,13 +2886,145 @@ def export_results(
     ai_result = analyse_top_action_list(top_action_list, top_industries, market_status)
     top_action_list = ai_result.top_action_list
     ai_commentary = ai_result.commentary
+    history_snapshot = build_report_history_snapshot(top_action_list, top_industries, market_status)
+    history_delta = report_history_delta(history_snapshot, load_last_report_history())
+    history_trend = report_history_trend(history_snapshot)
     watchlist = combined_watchlist(categories)
     watchlist.to_csv(OUTPUT_CSV, index=False)
-    write_markdown(top_action_list, daily_focus, categories, top_industries, market_df, market_status, ai_commentary, OUTPUT_MD)
-    write_html(top_action_list, daily_focus, categories, top_industries, market_df, market_status, ai_commentary, OUTPUT_HTML)
+    write_markdown(
+        top_action_list, daily_focus, categories, top_industries, market_df,
+        market_status, ai_commentary, OUTPUT_MD, history_delta, history_trend,
+    )
+    write_html(
+        top_action_list, daily_focus, categories, top_industries, market_df,
+        market_status, ai_commentary, OUTPUT_HTML, history_delta, history_trend,
+    )
     write_email_summary(top_action_list, daily_focus, top_industries, market_status, ai_commentary, EMAIL_SUMMARY)
     save_last_good_reports()
+    append_report_history(history_snapshot)
     return watchlist, top_action_list, daily_focus, categories, ai_result
+
+
+def prepare_preview_watchlist(frame: pd.DataFrame) -> pd.DataFrame:
+    table = frame.copy()
+    defaults = {
+        "Category": "",
+        "Ticker": "",
+        "Sector": "Unknown",
+        "Industry": "Unknown",
+        "RS Trend": "Unknown",
+        "Action": "",
+        "Review Tier": "",
+        "Noise Filter Reason": "",
+        "Price Data Warning": "",
+        "Risk/Reward Quality": "",
+        "Pullback Quality": "",
+        "Extension Status": "",
+        "VCP Label": "",
+        "Tightness Label": "",
+        "Support Signal": "",
+        "TradingView": "",
+    }
+    for column in DISCOVERY_COLUMNS:
+        if column not in table.columns:
+            table[column] = defaults.get(column, np.nan)
+
+    numeric_columns = [
+        "RS Score", "RS Trend Delta", "Price", "Review Priority Score", "ATR20",
+        "ATR20 %", "ADR %", "From 52W High %", "Distance From 50MA %",
+        "Distance From 30WMA %", "Distance From Pivot %", "Volume Ratio",
+        "Distance From EMA10 ATR", "Distance From EMA20 ATR",
+        "Distance From MA50 ATR", "Distance From 30WMA ATR",
+        "Nearest Support Distance ATR", "10 Day Range %", "20 Day Range %",
+        "Tightness Score", "ADR20 %", "ADR60 %", "VCP Ratio",
+        "Industry Rank", "Industry Setup Count", "Avg Volume",
+    ]
+    for column in numeric_columns:
+        if column in table.columns:
+            table[column] = pd.to_numeric(table[column], errors="coerce")
+    return table
+
+
+def build_categories_from_watchlist(watchlist: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    categories = {}
+    for name in CATEGORY_PRIORITY:
+        frame = watchlist[watchlist["Category"] == name].copy()
+        categories[name] = add_action_column(frame) if not frame.empty else pd.DataFrame(columns=DISCOVERY_COLUMNS)
+    return categories
+
+
+def preview_market_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        [{"Symbol": "Preview", "10EMA": "No network", "20EMA": "No network", "50MA": "No network"}],
+        columns=MARKET_COLUMNS,
+    )
+
+
+def run_report_preview_command(
+    source_csv: str = LAST_GOOD_CSV,
+    history_path: str = SUMMARY_HISTORY_CSV,
+    output_html: str = PREVIEW_HTML,
+) -> int:
+    source_path = Path(source_csv)
+    if not source_path.exists():
+        print("Report Preview")
+        print(f"Source: Missing {source_csv}")
+        print("No preview generated.")
+        return 1
+
+    try:
+        watchlist = prepare_preview_watchlist(pd.read_csv(source_path))
+    except (OSError, pd.errors.EmptyDataError, pd.errors.ParserError):
+        print("Report Preview")
+        print(f"Source: Could not read {source_csv}")
+        print("No preview generated.")
+        return 1
+
+    if watchlist.empty or "Category" not in watchlist.columns:
+        print("Report Preview")
+        print(f"Source: Invalid or empty {source_csv}")
+        print("No preview generated.")
+        return 1
+
+    categories = build_categories_from_watchlist(watchlist)
+    top_action_list = build_top_action_list(categories)
+    daily_focus = build_daily_focus_list(categories)
+    top_industries = build_top_industries(watchlist)
+
+    latest_history = load_last_report_history(history_path)
+    previous_history = load_previous_report_history(history_path)
+    market_status = str(latest_history.get("market_status", "Preview")) if latest_history else "Preview"
+    if latest_history:
+        history_delta = report_history_delta(latest_history, previous_history)
+        history_trend = report_history_trend_from_rows(load_recent_report_history(history_path, 10))
+    else:
+        snapshot = build_report_history_snapshot(top_action_list, top_industries, market_status)
+        history_delta = {"has_previous": False}
+        history_trend = report_history_trend_from_rows([snapshot])
+
+    write_html(
+        top_action_list,
+        daily_focus,
+        categories,
+        top_industries,
+        preview_market_frame(),
+        market_status,
+        "Report preview mode: AI was not run.",
+        output_html,
+        history_delta,
+        history_trend,
+    )
+
+    print("Report Preview")
+    print(f"Source: {source_csv}")
+    print(f"History: {'Loaded' if latest_history else 'Missing'}")
+    print("Network: Disabled")
+    print("AI: Disabled")
+    print("Email: Disabled")
+    print(f"Top Action Rows: {len(top_action_list)}")
+    print(f"Daily Focus Rows: {len(daily_focus)}")
+    print(f"Output: {output_html}")
+    return 0
 
 
 def send_watchlist_email() -> None:
@@ -2411,7 +3349,10 @@ def run_ai_test_command(print_output: bool = True) -> tuple[int, AIAnalysisResul
         print("\nStocks To Wait")
         print(section_text(commentary, "Stocks To Wait"))
         print("\nAI Ranking Table:")
-        columns = ["Ticker", "AI Priority Rank", "AI Conviction Score", "AI Reason"]
+        columns = [
+            "Ticker", "AI Priority Rank", "AI Conviction Score",
+            "AI Reason", "AI Concern", "AI Confirmation",
+        ]
         print(ranked[columns].to_string(index=False))
 
     return (0 if success else 1), result
@@ -2492,6 +3433,8 @@ def main(argv: list[str] | None = None) -> int:
         return code
     if "--self-test" in args:
         return run_self_test_command()
+    if "--report-preview" in args:
+        return run_report_preview_command()
 
     timer = RunTimer(config.MAX_SCREENER_RUNTIME_SECONDS)
     market_result = get_market_condition(timer=timer)
