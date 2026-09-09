@@ -17,6 +17,7 @@ venv/
 daily_watchlist*.csv
 daily_watchlist*.md
 daily_watchlist*.html
+daily_watchlist*_email.txt
 email_summary.txt
 summary_history.csv
 universe*.csv
@@ -26,6 +27,10 @@ output/
 data/
 cache/
 logs/
+*.db
+*.sqlite
+*.sqlite3
+*.tmp
 
 # Private documents and local exports
 *.xlsx
