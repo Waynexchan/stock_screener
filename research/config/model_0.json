@@ -1,0 +1,35 @@
+{
+  "experiment_id": "MODEL_0_BASELINE",
+  "random_seed": 20260910,
+  "universe_definition": "Point-in-time membership file when supplied; otherwise explicitly survivorship-biased observed symbols",
+  "feature_configuration": {
+    "min_price": 10.0,
+    "min_average_volume_50d": 500000.0,
+    "minimum_history_sessions": 220,
+    "stage2_definition": "Close > MA50 > MA150 > MA200 and MA200 > MA200 20 sessions earlier",
+    "signal_rule": "First false-to-true transition of valid-data + tradability + Stage 2 eligibility",
+    "structural_stop_lookback_sessions": 20,
+    "excluded_alpha_filters": [
+      "Recent RS",
+      "Industry Qualification",
+      "Sister-Stock Confirmation",
+      "VCP Quality",
+      "Pullback Quality",
+      "Complex Setup Scoring",
+      "Candidate Final Score",
+      "AI Commentary"
+    ]
+  },
+  "execution_assumptions": {
+    "standard_r_dollars": 587.0,
+    "entry_slippage_bps": 5.0,
+    "exit_slippage_bps": 5.0,
+    "commission_per_share": 0.0,
+    "target_r": null,
+    "maximum_holding_sessions": 40,
+    "stop_lookback_sessions": 20,
+    "maximum_positions": 4,
+    "same_bar_policy": "STOP_FIRST",
+    "favorable_gap_fill": "LEVEL"
+  }
+}

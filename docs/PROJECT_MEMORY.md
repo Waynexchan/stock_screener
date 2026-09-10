@@ -41,6 +41,20 @@ AI commentary is optional. It receives the validated Top Action List and may ass
 
 Compatibility functions (`size_trade_candidate`, `decide_candidate`) and older review/ranking helpers remain. Production exports currently overwrite preliminary guidance with the canonical pipeline and validate the result, but this extra surface is a maintenance risk and should not be allowed to become an alternate decision path.
 
+The research layer is separate from production:
+
+```text
+research data + point-in-time membership
+  -> research/engine causal FEATURES at T
+  -> MODEL_0 EOD signal
+  -> next available session execution
+  -> conservative simulated exit and initial-risk R
+  -> position-capacity simulation
+  -> metrics / fixed ablation / isolated report
+```
+
+Future OUTCOMES are created after features and are never inputs to feature generation. Research outputs are restricted to `research/output/`; the research verifier hashes production source, reports, portfolio data, and forward snapshots before and after execution.
+
 ## Canonical commands
 
 ```powershell
@@ -52,6 +66,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_dry_run.ps1
 
 # Verified production run; may use network, AI, and email according to configuration
 powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_production.ps1
+
+# Research checks, gated MODEL_0 report, and production-isolation hashes
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1
 
 # Inspect latest logs
 Get-Content .\logs\verify_project.log -Tail 100
@@ -70,6 +87,11 @@ Get-Content .\logs\production.log -Tail 100
 - `sample_daily_run.py`: deterministic offline sample report.
 - `tests/` and `test_data_quality.py`: behavior, regression, integration, data-quality, and production-integrity coverage.
 - `research/filter_registry.json`: evidence/status registry for strategy features and core controls.
+- `research/engine/`: point-in-time features, separated outcomes, execution, R accounting, portfolio capacity, metrics, ablation, reporting, and reproducibility manifests.
+- `research/config/model_0.json`: versioned minimal baseline assumptions; it is independent of production configuration.
+- `research/experiments/recent_rs.json`: predeclared Recent RS buckets and horizons; prepared but not run.
+- `docs/RESEARCH_ARCHITECTURE.md` and `docs/DATA_READINESS.md`: dependency/reuse audit and verified data limitations.
+- `scripts/verify_research.ps1`: focused research verification and production-file hash-isolation gate.
 - `BACKTEST_REQUIREMENTS.md`: requirements for a future point-in-time replay engine; it is not an implemented backtest.
 
 ## Runtime and historical artifacts
@@ -93,9 +115,10 @@ Do not mark these permanently fixed merely because current tests pass. Preserve 
 
 ## Known limitations
 
-- Historical data is insufficient to honestly claim positive expectancy.
-- No complete point-in-time research/backtest engine is implemented.
+- Historical data is insufficient to honestly claim positive expectancy; MODEL_0 currently has zero valid empirical signals/trades because execution is data-gated.
+- The point-in-time engine exists, but the repository has no durable multi-year OHLCV archive to run through it.
 - Survivorship-bias-controlled universe membership, historical industry/market-cap metadata, delistings, and corporate actions are not yet established.
+- Benchmark history is not durably archived. Any current-symbol engineering run must be labelled `SURVIVORSHIP-BIASED RESEARCH` and cannot validate a filter.
 - The configured USD 500m market-cap threshold is not enforced because reliable complete metadata is unavailable.
 - Exceptional exchange closures are not fully represented by the current calendar.
 - Compatibility decision/review surfaces remain and increase regression risk.
@@ -117,7 +140,8 @@ Do not mark these permanently fixed merely because current tests pass. Preserve 
 - No missing critical value may be replaced with a plausible value.
 - Report outputs must agree with the canonical decision record before publication/history/snapshot preservation.
 - The production wrapper must verify before running.
-- The present task establishes governance only; it does not redesign the strategy or add filters.
+- MODEL_0 is a deliberately minimal research reference, not a production recommendation. Its alpha exclusions include Recent RS, industry, sister confirmation, VCP, pullback quality, complex scores, Final Score, and AI commentary.
+- Research Phase 1 changes no production logic, thresholds, sizing, watchlist, email, or schedule behavior.
 
 ## Do not casually change
 
@@ -125,19 +149,20 @@ Canonical decision ownership, the USD 587 risk unit, FULL/HALF semantics, maximu
 
 ## Next-step roadmap
 
-1. Build an evidence-based, point-in-time research and ablation framework without altering production.
-2. Establish reproducible baselines and data-quality manifests.
-3. Test existing filters one at a time and in correlated groups.
-4. Review evidence before classifying or simplifying any production feature.
+1. Acquire provenance-auditable adjusted price and benchmark history plus point-in-time universe membership including delistings.
+2. Re-run MODEL_0 through the data-readiness gate and review sample coverage and biases.
+3. Run the predeclared Recent RS ablation across fixed buckets and 5/10/20/40-session horizons.
+4. Test remaining filters one at a time and in correlated groups, then review evidence before classifying or simplifying production features.
 
 Do not begin these steps without an explicit task.
 
 ## Last verified
 
-- Date: 2026-09-09 (Europe/London).
-- Git source baseline: `aaa7a7ddffa09e7d5f99836ded784c34e9676e97` on `main`.
+- Date: 2026-09-10 (Europe/London).
+- Research-task source baseline: `ff44477d4918852ed81becc84890ce9add8b634c` on `main`.
 - Worktree note: verification also covered substantial preserved, pre-existing uncommitted source/tests/docs; the base commit alone does not describe the tested source state.
 - Command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
-- Result after framework edits: PASS — 170 pytest tests, 118 legacy unittest tests, industry integration tests, report invariants, offline sample dry run, and generated HTML/CSV/email semantic validation.
+- Post-research full-project result: PASS — 198 pytest tests, 118 legacy unittest tests, industry integration tests, report invariants, offline sample dry run, and generated HTML/CSV/email semantic validation.
+- Focused research result: PASS — Ruff, mypy, 28 tests, a gated MODEL_0 report, and unchanged production-file hashes. Data status is `NOT_READY`; no baseline performance is claimed.
 
 The framework checkpoint hash is recorded in the task handoff because a commit cannot contain its own hash.
