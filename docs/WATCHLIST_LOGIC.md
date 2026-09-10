@@ -44,7 +44,9 @@ because complete reliable values are unavailable.
 Price freshness is evaluated against the latest completed regular US trading
 session, including weekends and regular full-day US holidays. `PRICE_STALE_HOURS`
 is retained only as a fallback when session evaluation cannot be completed.
-Exceptional exchange closures are not represented by the current calendar.
+A daily bar later than that completed-session date is treated as incomplete or
+future-dated and cannot be actionable. Exceptional exchange closures are not
+represented by the current calendar.
 
 Before a valid production run is preserved, the row-level validator verifies
 state/risk/share/actionability semantics and confirms that CSV, HTML, and email

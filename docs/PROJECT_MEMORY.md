@@ -110,6 +110,11 @@ The project has previously identified or guarded against:
 - portfolio/equity data being treated as zero risk when unavailable;
 - generated reports diverging from the canonical record;
 - historical snapshots being mutable or created before semantic validation.
+- unfinished or future-dated daily bars being treated as current;
+- current-run market labels being mistaken for persisted prior-regime state;
+- missing or blank position status being interpreted as zero open positions;
+- portfolio stop-new-risk permission being omitted from canonical decisions;
+- candidates independently reusing the same portfolio position/heat capacity.
 
 Do not mark these permanently fixed merely because current tests pass. Preserve the tests and validate the relevant path after changes.
 
@@ -164,5 +169,9 @@ Do not begin these steps without an explicit task.
 - Command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
 - Post-research full-project result: PASS — 198 pytest tests, 118 legacy unittest tests, industry integration tests, report invariants, offline sample dry run, and generated HTML/CSV/email semantic validation.
 - Focused research result: PASS — Ruff, mypy, 28 tests, a gated MODEL_0 report, and unchanged production-file hashes. Data status is `NOT_READY`; no baseline performance is claimed.
+- Production-risk boundary fix result: PASS — 204 pytest tests, 118 legacy
+  unittest tests, industry/report invariants, offline sample dry run, and generated
+  HTML semantic validation. Six regression tests cover the five corrected P1
+  findings, including separate shared position-count and heat-capacity cases.
 
 The framework checkpoint hash is recorded in the task handoff because a commit cannot contain its own hash.

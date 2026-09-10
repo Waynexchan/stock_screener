@@ -4,11 +4,18 @@ Fast handoff as of 2026-09-10. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
-- Branch: `main`, tracking `origin/main`.
+- Active fix branch: `fix/production-risk-boundaries`, based on and tracking
+  `origin/main` at `c84c976ef73c89d140bf089205e30d959d22d456`.
 - Remote confirmed: `https://github.com/Waynexchan/stock_screener.git`; it was not changed.
 - Research-task starting commit: `ff44477d4918852ed81becc84890ce9add8b634c`.
-- Worktree: substantially dirty before this framework task. Existing modified/untracked source, tests, scripts, docs, and runtime outputs are preserved and are not owned by this checkpoint.
-- Production status: post-framework verification passed; no production trading logic or output behavior was intentionally changed by the agent-framework task.
+- Worktree: the production-risk fixes are isolated in a separate worktree. The
+  pre-existing dirty `main` checkout remains preserved and was not modified by
+  this fix.
+- Production status: five fail-closed risk-boundary defects are corrected:
+  unfinished/future-dated daily bars cannot be `CURRENT`; a current market label
+  is not reused as the previous regime; missing/blank position status is invalid;
+  portfolio stop-new-risk permission is a canonical hard gate; and accepted
+  candidates share projected position and heat capacity in Final Score order.
 - Canonical production command: `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_production.ps1`.
 - Canonical verification command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
 - Safe dry run: `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_dry_run.ps1`.
@@ -31,6 +38,11 @@ Pre-edit full-project baseline on 2026-09-10: PASS.
 Post-research full verification on 2026-09-10: PASS — 198 pytest tests, 118 legacy unittest tests, industry/report invariants, offline sample Daily Watchlist dry run, and generated HTML/CSV/email semantic validation all passed.
 
 Focused research verification on 2026-09-10: PASS — Ruff, mypy, 28 research tests, gated MODEL_0 execution, and production-file hash isolation all passed. The gated run returned `BLOCKED_DATA_NOT_READY`, not performance evidence.
+
+Post-P1-fix full verification on 2026-09-10: PASS — Python syntax, Ruff format
+and lint, mypy, 204 pytest tests, 118 legacy unittest tests, industry/report
+invariants, offline sample Daily Watchlist dry run, and generated HTML semantic
+validation all passed.
 
 ## High-priority known issues
 

@@ -12,7 +12,7 @@ import sys
 import time
 import shutil
 import logging
-from dataclasses import asdict, dataclass, field, is_dataclass
+from dataclasses import asdict, dataclass, field, is_dataclass, replace
 from html import escape
 from datetime import date, datetime, time as datetime_time, timezone
 from pathlib import Path
@@ -38,6 +38,7 @@ from pandas.tseries.offsets import CustomBusinessDay
 import config
 import ai_analysis
 from decision_system import (
+    TradeSizingDecision,
     calculate_reward_risk,
     canonical_candidate_decision,
     construct_trade_plan,
@@ -1008,12 +1009,18 @@ def price_freshness_status(
             market_timestamp = timestamp
         latest_date = market_timestamp.date()
         expected = expected_latest_us_session(now)
-        status = "CURRENT" if latest_date >= expected else "STALE"
-        warning = (
-            ""
-            if status == "CURRENT"
-            else f"latest bar {latest_date.isoformat()} precedes expected US session {expected.isoformat()}"
-        )
+        if latest_date == expected:
+            status = "CURRENT"
+            warning = ""
+        elif latest_date < expected:
+            status = "STALE"
+            warning = f"latest bar {latest_date.isoformat()} precedes expected US session {expected.isoformat()}"
+        else:
+            status = "INCOMPLETE"
+            warning = (
+                f"latest bar {latest_date.isoformat()} is after latest completed US session "
+                f"{expected.isoformat()} and may be incomplete or future-dated"
+            )
         return PriceFreshness(
             status,
             timestamp.isoformat(),
@@ -4157,8 +4164,15 @@ def build_decision_context(
     market_df: pd.DataFrame,
     market_status: str,
     index_metrics: dict[str, float | bool | None] | None = None,
+    *,
+    previous_regime: str | None = None,
 ) -> dict[str, object]:
-    """Build one transparent market/portfolio permission context for every output."""
+    """Build one transparent market/portfolio permission context for every output.
+
+    ``market_status`` is the current run's display label and is never treated as
+    historical state. Hysteresis is applied only when a caller supplies an
+    explicitly persisted ``previous_regime``.
+    """
 
     def above(symbol: str, average: str) -> bool | None:
         rows = market_df[market_df.get("Symbol", pd.Series(dtype=str)).eq(symbol)]
@@ -4231,7 +4245,7 @@ def build_decision_context(
         "volatility_contribution": volatility_contribution,
     }
     metrics.update(index_metrics or {})
-    regime = market_regime_from_metrics(metrics, previous_regime=market_status)
+    regime = market_regime_from_metrics(metrics, previous_regime=previous_regime)
     drawdown = load_drawdown_state(config.EQUITY_FILE)
     effective_heat_limit = min(regime.maximum_heat_r, drawdown.heat_limit_r)
     portfolio_status = load_portfolio_status(
@@ -4475,18 +4489,11 @@ def apply_canonical_decision_pipeline(
     portfolio_status = decision_context["portfolio_status"]
     portfolio = portfolio_status["portfolio"]
     drawdown = decision_context["drawdown"]
-    rows = []
-    for record in candidates.to_dict("records"):
-        if not str(record.get("Price Freshness Status", "")).strip():
-            record["Price Freshness Status"] = "MISSING"
-        record["Entry Timing"] = entry_timing_for_candidate(record)
-        decision = canonical_candidate_decision(
-            record,
-            str(decision_context["market_regime"].regime),
-            drawdown,
-            portfolio,
-            portfolio_status["open_position_count"],
-        )
+    portfolio_permission = portfolio_status.get("portfolio_new_risk_allowed")
+
+    def apply_decision_fields(
+        record: dict[str, object], decision: TradeSizingDecision
+    ) -> dict[str, object]:
         record["Final Decision"] = decision.state
         record["Maximum Risk R"] = decision.maximum_risk_r
         record["Maximum Risk Dollars"] = decision.maximum_risk_dollars
@@ -4514,9 +4521,96 @@ def apply_canonical_decision_pipeline(
             record["Action"] = "Watch only"
         elif decision.state == "NO TRADE":
             record["Action"] = "NO TRADE — hard gate"
-        rows.append(record)
-    final = enforce_production_concentration(pd.DataFrame(rows))
+        return record
+
+    rows: list[dict[str, object]] = []
+    for record in candidates.to_dict("records"):
+        if not str(record.get("Price Freshness Status", "")).strip():
+            record["Price Freshness Status"] = "MISSING"
+        record["Entry Timing"] = entry_timing_for_candidate(record)
+        decision = canonical_candidate_decision(
+            record,
+            str(decision_context["market_regime"].regime),
+            drawdown,
+            portfolio,
+            portfolio_status["open_position_count"],
+            portfolio_new_risk_allowed=portfolio_permission,
+        )
+        rows.append(apply_decision_fields(record, decision))
+
+    concentrated = enforce_production_concentration(pd.DataFrame(rows)).reset_index(
+        drop=True
+    )
+    projected_portfolio = portfolio
+    base_open_count = portfolio_status["open_position_count"]
+    accepted_count = 0
+    final_records = {
+        index: record for index, record in enumerate(concentrated.to_dict("records"))
+    }
+    priority = sorted(
+        final_records.items(),
+        key=lambda item: (
+            -float(pd.to_numeric(item[1].get("Final Score"), errors="coerce"))
+            if pd.notna(pd.to_numeric(item[1].get("Final Score"), errors="coerce"))
+            else float("inf"),
+            item[0],
+        ),
+    )
+    for index, record in priority:
+        if record.get("Final Decision") not in {"FULL", "HALF"}:
+            continue
+        decision = canonical_candidate_decision(
+            record,
+            str(decision_context["market_regime"].regime),
+            drawdown,
+            projected_portfolio,
+            None if base_open_count is None else base_open_count + accepted_count,
+            accepted_count,
+            portfolio_new_risk_allowed=portfolio_permission,
+        )
+        revised = apply_decision_fields(record, decision)
+        final_records[index] = revised
+        if not decision.actionable or projected_portfolio is None:
+            continue
+        reserved_r = float(decision.maximum_risk_r)
+        industry = str(revised.get("Industry", ""))
+        sector = str(revised.get("Sector", ""))
+        theme = str(revised.get("Theme", f"Industry: {industry}"))
+        industry_heat = dict(projected_portfolio.industry_heat)
+        sector_heat = dict(projected_portfolio.sector_heat)
+        theme_heat = dict(projected_portfolio.theme_heat)
+        industry_heat[industry] = industry_heat.get(industry, 0.0) + reserved_r
+        sector_heat[sector] = sector_heat.get(sector, 0.0) + reserved_r
+        theme_heat[theme] = theme_heat.get(theme, 0.0) + reserved_r
+        projected_portfolio = replace(
+            projected_portfolio,
+            portfolio_heat_r=projected_portfolio.portfolio_heat_r + reserved_r,
+            remaining_heat_r=max(
+                0.0, projected_portfolio.remaining_heat_r - reserved_r
+            ),
+            industry_heat=industry_heat,
+            sector_heat=sector_heat,
+            theme_heat=theme_heat,
+        )
+        accepted_count += 1
+    final = pd.DataFrame([final_records[index] for index in range(len(final_records))])
     errors = validate_canonical_decision_invariants(final)
+    actionable = final[final["Final Decision"].isin(["FULL", "HALF"])]
+    if portfolio_permission is False and not actionable.empty:
+        errors.append("portfolio stop-new-risk flag has actionable rows")
+    if base_open_count is None and not actionable.empty:
+        errors.append("unknown open-position count has actionable rows")
+    elif (
+        base_open_count is not None
+        and base_open_count + len(actionable) > config.MAX_OPEN_POSITIONS
+    ):
+        errors.append("candidate allocation exceeds maximum open positions")
+    if portfolio is not None and not actionable.empty:
+        allocated_r = float(
+            pd.to_numeric(actionable["Maximum Risk R"], errors="coerce").sum()
+        )
+        if allocated_r > portfolio.remaining_heat_r + 1e-9:
+            errors.append("candidate allocation exceeds remaining portfolio heat")
     if errors:
         raise RuntimeError("Decision invariant failure: " + "; ".join(errors))
     return final

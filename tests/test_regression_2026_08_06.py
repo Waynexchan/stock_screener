@@ -59,6 +59,31 @@ def test_portfolio_missing_is_not_zero_and_empty_file_is_real_zero(tmp_path: Pat
     assert status["portfolio"].portfolio_heat_r == 0
 
 
+def test_portfolio_file_without_status_column_is_invalid_not_zero(tmp_path: Path):
+    positions = tmp_path / "positions.csv"
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares\n"
+        "IMVT,2026-08-01,40,38,39,100\n",
+        encoding="utf-8",
+    )
+    status = load_portfolio_status(str(positions), "Strong")
+    assert status["data_status"] == "Invalid: required status column is missing"
+    assert status["portfolio"] is None
+    assert status["open_position_count"] is None
+    assert not status["portfolio_new_risk_allowed"]
+
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares,status\n"
+        "IMVT,2026-08-01,40,38,39,100,\n",
+        encoding="utf-8",
+    )
+    blank = load_portfolio_status(str(positions), "Strong")
+    assert blank["data_status"] == "Invalid: position status is missing"
+    assert blank["portfolio"] is None
+    assert blank["open_position_count"] is None
+    assert not blank["portfolio_new_risk_allowed"]
+
+
 def test_minimal_position_input_is_enriched_from_current_snapshot(tmp_path: Path):
     positions = tmp_path / "positions.csv"
     positions.write_text(

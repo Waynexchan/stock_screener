@@ -527,6 +527,7 @@ def canonical_candidate_decision(
     portfolio: PortfolioRisk | None,
     open_position_count: int | None,
     new_positions_today: int = 0,
+    portfolio_new_risk_allowed: bool | None = None,
 ) -> TradeSizingDecision:
     """Authoritative FULL/HALF/WATCH/NO TRADE decision and sizing pipeline."""
     hard: list[str] = []
@@ -586,6 +587,8 @@ def canonical_candidate_decision(
         hard.append(f"{market_regime} market does not permit new risk")
     if not drawdown.new_risk_allowed:
         hard.append("drawdown stop-new-risk threshold reached")
+    if portfolio_new_risk_allowed is False:
+        hard.append("portfolio status prohibits new risk")
     if (
         drawdown.mode == "DEFENSIVE"
         and new_positions_today >= config.DEFENSIVE_MAX_NEW_HALF_POSITIONS
@@ -760,12 +763,22 @@ def load_portfolio_status(
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
         }
-    open_rows = frame[
-        frame.get("status", pd.Series("", index=frame.index))
-        .astype(str)
-        .str.lower()
-        .eq("open")
-    ]
+    if "status" not in frame.columns:
+        return {
+            "data_status": "Invalid: required status column is missing",
+            "portfolio": None,
+            "open_position_count": None,
+            "portfolio_new_risk_allowed": False,
+        }
+    normalised_status = frame["status"].fillna("").astype(str).str.strip().str.lower()
+    if normalised_status.eq("").any():
+        return {
+            "data_status": "Invalid: position status is missing",
+            "portfolio": None,
+            "open_position_count": None,
+            "portfolio_new_risk_allowed": False,
+        }
+    open_rows = frame[normalised_status.eq("open")]
     if open_rows.empty:
         portfolio = calculate_portfolio_risk([], market_regime, maximum_heat_override_r)
         return {

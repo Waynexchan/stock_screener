@@ -79,6 +79,7 @@ def portfolio(
 def context(
     current_portfolio: PortfolioRisk | None = None,
     open_positions: int | None = 0,
+    new_risk_allowed: bool = True,
 ) -> dict[str, object]:
     return {
         "market_regime": SimpleNamespace(regime="Strong"),
@@ -86,6 +87,7 @@ def context(
         "portfolio_status": {
             "portfolio": current_portfolio or portfolio(),
             "open_position_count": open_positions,
+            "portfolio_new_risk_allowed": new_risk_allowed,
         },
     }
 
@@ -241,10 +243,100 @@ def test_price_freshness_stale_weekday_and_partial_bar():
     assert missing_column.status == "MISSING"
 
 
+def test_price_freshness_rejects_current_session_daily_bar_before_close():
+    during_session = datetime(2026, 9, 2, 14, tzinfo=timezone.utc)
+    freshness = run_screener.price_freshness_status(
+        history("2026-09-02"), during_session
+    )
+    assert freshness.status == "INCOMPLETE"
+    assert freshness.expected_session == "2026-09-01"
+    assert "latest completed US session" in freshness.warning
+
+
 def test_missing_production_freshness_status_blocks_actionability():
     result = decision(candidate(**{"Price Freshness Status": ""}))
     assert result["Final Decision"] == "NO TRADE"
     assert result["Maximum Shares"] == 0
+
+
+def test_current_market_label_is_not_used_as_previous_regime(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_regime(metrics, previous_regime=None):
+        captured["previous_regime"] = previous_regime
+        return SimpleNamespace(
+            regime="Constructive",
+            maximum_heat_r=2.0,
+            new_risk_allowed=True,
+            data_complete=True,
+            confidence="High",
+        )
+
+    monkeypatch.setattr(run_screener, "market_regime_from_metrics", fake_regime)
+    monkeypatch.setattr(
+        run_screener,
+        "LAST_ELIGIBLE_UNIVERSE",
+        pd.DataFrame(columns=["Recent RS Score"]),
+    )
+    run_screener.build_decision_context(
+        pd.DataFrame(), pd.DataFrame(), "Strong", index_metrics={}
+    )
+    assert captured["previous_regime"] is None
+
+
+def test_explicit_portfolio_stop_new_risk_flag_blocks_canonical_candidate():
+    result = decision(candidate(), context(new_risk_allowed=False))
+    assert result["Final Decision"] == "NO TRADE"
+    assert result["Maximum Shares"] == 0
+    assert "portfolio status prohibits new risk" in result["Decision Reasons"]
+
+
+def test_candidates_consume_shared_open_position_capacity_in_priority_order():
+    rows = pd.DataFrame(
+        [
+            candidate(
+                "SECOND",
+                **{
+                    "Final Score": 80.0,
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                },
+            ),
+            candidate("FIRST", **{"Final Score": 90.0}),
+        ]
+    )
+    final = run_screener.apply_canonical_decision_pipeline(
+        rows, context(open_positions=config.MAX_OPEN_POSITIONS - 1)
+    ).set_index("Ticker")
+    assert final.loc["FIRST", "Final Decision"] == "FULL"
+    assert final.loc["SECOND", "Final Decision"] == "NO TRADE"
+    assert (
+        "maximum open-position count reached" in final.loc["SECOND", "Decision Reasons"]
+    )
+
+
+def test_candidates_consume_shared_portfolio_heat_in_priority_order():
+    rows = pd.DataFrame(
+        [
+            candidate("FIRST", **{"Final Score": 90.0}),
+            candidate(
+                "SECOND",
+                **{
+                    "Final Score": 80.0,
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                },
+            ),
+        ]
+    )
+    final = run_screener.apply_canonical_decision_pipeline(
+        rows, context(portfolio(remaining=1.0))
+    ).set_index("Ticker")
+    assert final.loc["FIRST", "Final Decision"] == "FULL"
+    assert final.loc["SECOND", "Final Decision"] == "NO TRADE"
+    assert "portfolio heat exhausted" in final.loc["SECOND", "Decision Reasons"]
 
 
 def industry_members() -> pd.DataFrame:

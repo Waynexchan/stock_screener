@@ -9,7 +9,15 @@ means Watch Later or confirmation is still required before trading.
 `System Warnings` counts distinct warning messages, while `Affected Candidates`
 counts unique rows with price, incomplete-data, or model-target warnings.
 
-Portfolio status always appears. An existing position file with no open rows is a genuine `0.00R`; a missing, stale, or invalid file is `Not Available` and blocks final new-risk permission.
+Portfolio status always appears. An existing position file with an explicit
+`status` column and no rows marked `open` is a genuine `0.00R`; a missing
+`status` column, blank status value, stale data, or invalid file is
+`Not Available` and blocks final new-risk permission.
+
+The production decision pass treats portfolio permission as a hard gate and
+allocates candidates in descending Final Score order. Every accepted FULL/HALF
+candidate consumes the same projected open-position and heat capacity seen by
+later candidates; capacity is never reset per row.
 
 Only `Qualified Current Leaders` appear in actionable Top Industries. Rotation watches, lagging long-term leaders, and small-sample groups remain visible but do not grant normal industry or sister-stock confirmation.
 
@@ -82,8 +90,9 @@ Every candidate records generated time, signal date, price-data as-of date, and
 latest bar timestamp. The gate expects the latest completed regular US session,
 including weekends and regular full-day holidays. Exceptional exchange closures
 are not covered by the current calendar; `PRICE_STALE_HOURS` is a fallback only
-when session evaluation fails. Stale or partial critical bars cannot be FULL or
-HALF.
+when session evaluation fails. A daily bar dated for the current session before
+the close/grace boundary is `INCOMPLETE`, not `CURRENT`. Stale, future-dated, or
+partial critical bars cannot be FULL or HALF.
 
 After CSV, HTML, and email pass semantic cross-validation, each valid production
 run creates a new evidence bundle under
