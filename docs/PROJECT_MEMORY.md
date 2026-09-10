@@ -112,9 +112,12 @@ The project has previously identified or guarded against:
 - historical snapshots being mutable or created before semantic validation.
 - unfinished or future-dated daily bars being treated as current;
 - current-run market labels being mistaken for persisted prior-regime state;
-- missing or blank position status being interpreted as zero open positions;
-- portfolio stop-new-risk permission being omitted from canonical decisions;
-- candidates independently reusing the same portfolio position/heat capacity.
+- missing, blank, or unsupported position status being interpreted as zero open
+  positions;
+- market or portfolio stop-new-risk permission being omitted from canonical
+  decisions;
+- candidates independently reusing portfolio position/heat capacity or exceeding
+  the aggregate daily new-initial-risk cap.
 
 Do not mark these permanently fixed merely because current tests pass. Preserve the tests and validate the relevant path after changes.
 
@@ -173,5 +176,10 @@ Do not begin these steps without an explicit task.
   unittest tests, industry/report invariants, offline sample dry run, and generated
   HTML semantic validation. Six regression tests cover the five corrected P1
   findings, including separate shared position-count and heat-capacity cases.
+- Post-review boundary result: 207 pytest tests pass after adding direct
+  regressions for market permission, unsupported position status, and the 2R
+  aggregate daily new-initial-risk cap. The 118-test legacy suite, industry and
+  report invariants, offline dry run, HTML semantic validation, and focused
+  research production-isolation verification also pass.
 
 The framework checkpoint hash is recorded in the task handoff because a commit cannot contain its own hash.

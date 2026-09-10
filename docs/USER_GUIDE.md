@@ -9,15 +9,17 @@ means Watch Later or confirmation is still required before trading.
 `System Warnings` counts distinct warning messages, while `Affected Candidates`
 counts unique rows with price, incomplete-data, or model-target warnings.
 
-Portfolio status always appears. An existing position file with an explicit
-`status` column and no rows marked `open` is a genuine `0.00R`; a missing
-`status` column, blank status value, stale data, or invalid file is
-`Not Available` and blocks final new-risk permission.
+Portfolio status always appears. Supported status values are `open` and
+`closed` (case-insensitive, with surrounding whitespace ignored). An existing
+position file with valid statuses and no rows marked `open` is a genuine
+`0.00R`; a missing `status` column, blank or unsupported status value, stale
+data, or invalid file is `Not Available` and blocks final new-risk permission.
 
-The production decision pass treats portfolio permission as a hard gate and
-allocates candidates in descending Final Score order. Every accepted FULL/HALF
-candidate consumes the same projected open-position and heat capacity seen by
-later candidates; capacity is never reset per row.
+The production decision pass treats market and portfolio permissions as hard
+gates and allocates candidates in descending Final Score order. Every accepted
+FULL/HALF candidate consumes the same projected open-position, heat, and daily
+new-initial-risk capacity seen by later candidates; capacity is never reset per
+row, and total newly authorised risk cannot exceed the configured 2R daily cap.
 
 Only `Qualified Current Leaders` appear in actionable Top Industries. Rotation watches, lagging long-term leaders, and small-sample groups remain visible but do not grant normal industry or sister-stock confirmation.
 

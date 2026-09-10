@@ -528,6 +528,8 @@ def canonical_candidate_decision(
     open_position_count: int | None,
     new_positions_today: int = 0,
     portfolio_new_risk_allowed: bool | None = None,
+    market_new_risk_allowed: bool | None = None,
+    remaining_new_risk_r: float | None = None,
 ) -> TradeSizingDecision:
     """Authoritative FULL/HALF/WATCH/NO TRADE decision and sizing pipeline."""
     hard: list[str] = []
@@ -587,8 +589,15 @@ def canonical_candidate_decision(
         hard.append(f"{market_regime} market does not permit new risk")
     if not drawdown.new_risk_allowed:
         hard.append("drawdown stop-new-risk threshold reached")
+    if market_new_risk_allowed is False:
+        hard.append("market status prohibits new risk")
     if portfolio_new_risk_allowed is False:
         hard.append("portfolio status prohibits new risk")
+    if (
+        remaining_new_risk_r is not None
+        and remaining_new_risk_r < config.HALF_RISK_R - 1e-9
+    ):
+        hard.append("daily new-risk limit reached")
     if (
         drawdown.mode == "DEFENSIVE"
         and new_positions_today >= config.DEFENSIVE_MAX_NEW_HALF_POSITIONS
@@ -656,6 +665,10 @@ def canonical_candidate_decision(
     full_capacity = bool(
         portfolio is not None
         and portfolio.remaining_heat_r >= config.FULL_RISK_R
+        and (
+            remaining_new_risk_r is None
+            or remaining_new_risk_r >= config.FULL_RISK_R - 1e-9
+        )
         and portfolio.industry_heat.get(industry, 0.0) + config.FULL_RISK_R
         <= config.MAX_INDUSTRY_EFFECTIVE_HEAT_R
         and portfolio.theme_heat.get(theme, 0.0) + config.FULL_RISK_R
@@ -774,6 +787,17 @@ def load_portfolio_status(
     if normalised_status.eq("").any():
         return {
             "data_status": "Invalid: position status is missing",
+            "portfolio": None,
+            "open_position_count": None,
+            "portfolio_new_risk_allowed": False,
+        }
+    unsupported_statuses = sorted(set(normalised_status) - {"open", "closed"})
+    if unsupported_statuses:
+        return {
+            "data_status": (
+                "Invalid: unsupported position status: "
+                + ", ".join(unsupported_statuses)
+            ),
             "portfolio": None,
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,

@@ -8,13 +8,15 @@ Production has one authoritative candidate pipeline:
    liquidity, and no overextension.
 3. Classify Setup Integrity as `PASS`, `MARGINAL`, or `FAIL` from deterministic
    setup fields.
-4. Apply market, drawdown, open-position, portfolio-heat, industry-heat, and
-   theme-heat hard gates.
+4. Apply explicit market/portfolio permission, drawdown, open-position,
+   portfolio-heat, industry-heat, theme-heat, and aggregate 2R daily
+   new-initial-risk hard gates.
 5. Treat incomplete industry, sister-stock, and volume confirmation as secondary
    confirmation only after primary edge has passed.
 6. Produce exactly one `FULL`, `HALF`, `WATCH`, or `NO TRADE` record.
-7. Size only authorised FULL/HALF decisions, then apply configured candidate
-   industry/sector concentration limits.
+7. Size only authorised FULL/HALF decisions, apply configured candidate
+   industry/sector concentration limits, then reserve shared capacity in
+   deterministic Final Score order.
 8. Export the unchanged canonical decision to CSV, Markdown, HTML, email, and
    the immutable forward snapshot.
 

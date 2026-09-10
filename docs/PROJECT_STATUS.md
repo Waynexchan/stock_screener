@@ -13,9 +13,10 @@ Fast handoff as of 2026-09-10. Read `AGENTS.md` before this file and `docs/PROJE
   this fix.
 - Production status: five fail-closed risk-boundary defects are corrected:
   unfinished/future-dated daily bars cannot be `CURRENT`; a current market label
-  is not reused as the previous regime; missing/blank position status is invalid;
-  portfolio stop-new-risk permission is a canonical hard gate; and accepted
-  candidates share projected position and heat capacity in Final Score order.
+  is not reused as the previous regime; missing, blank, or unsupported position
+  status is invalid; market and portfolio stop-new-risk permissions are canonical
+  hard gates; and accepted candidates share projected position, heat, and 2R
+  daily new-initial-risk capacity in Final Score order.
 - Canonical production command: `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_production.ps1`.
 - Canonical verification command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
 - Safe dry run: `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_dry_run.ps1`.
@@ -43,6 +44,12 @@ Post-P1-fix full verification on 2026-09-10: PASS — Python syntax, Ruff format
 and lint, mypy, 204 pytest tests, 118 legacy unittest tests, industry/report
 invariants, offline sample Daily Watchlist dry run, and generated HTML semantic
 validation all passed.
+
+Post-review P1 verification on 2026-09-10: PASS — 207 pytest tests cover the
+additional market-permission, unknown-status, and aggregate 2R daily-risk
+boundaries; 118 legacy unittest tests, industry/report invariants, the offline
+sample dry run, and generated HTML semantic validation also passed. Focused
+research verification remained at 28 tests and confirmed production isolation.
 
 ## High-priority known issues
 

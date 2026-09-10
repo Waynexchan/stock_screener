@@ -84,6 +84,20 @@ def test_portfolio_file_without_status_column_is_invalid_not_zero(tmp_path: Path
     assert not blank["portfolio_new_risk_allowed"]
 
 
+def test_portfolio_file_with_unknown_status_is_invalid_not_zero(tmp_path: Path):
+    positions = tmp_path / "positions.csv"
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares,status\n"
+        "IMVT,2026-08-01,40,38,39,100,opne\n",
+        encoding="utf-8",
+    )
+    status = load_portfolio_status(str(positions), "Strong")
+    assert status["data_status"] == "Invalid: unsupported position status: opne"
+    assert status["portfolio"] is None
+    assert status["open_position_count"] is None
+    assert not status["portfolio_new_risk_allowed"]
+
+
 def test_minimal_position_input_is_enriched_from_current_snapshot(tmp_path: Path):
     positions = tmp_path / "positions.csv"
     positions.write_text(

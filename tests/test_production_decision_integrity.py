@@ -80,9 +80,11 @@ def context(
     current_portfolio: PortfolioRisk | None = None,
     open_positions: int | None = 0,
     new_risk_allowed: bool = True,
+    market_new_risk_allowed: bool = True,
 ) -> dict[str, object]:
     return {
         "market_regime": SimpleNamespace(regime="Strong"),
+        "market_new_risk_allowed": market_new_risk_allowed,
         "drawdown": calculate_drawdown_state(100_000, 100_000),
         "portfolio_status": {
             "portfolio": current_portfolio or portfolio(),
@@ -291,6 +293,13 @@ def test_explicit_portfolio_stop_new_risk_flag_blocks_canonical_candidate():
     assert "portfolio status prohibits new risk" in result["Decision Reasons"]
 
 
+def test_explicit_market_stop_new_risk_flag_blocks_canonical_candidate():
+    result = decision(candidate(), context(market_new_risk_allowed=False))
+    assert result["Final Decision"] == "NO TRADE"
+    assert result["Maximum Shares"] == 0
+    assert "market status prohibits new risk" in result["Decision Reasons"]
+
+
 def test_candidates_consume_shared_open_position_capacity_in_priority_order():
     rows = pd.DataFrame(
         [
@@ -337,6 +346,40 @@ def test_candidates_consume_shared_portfolio_heat_in_priority_order():
     assert final.loc["FIRST", "Final Decision"] == "FULL"
     assert final.loc["SECOND", "Final Decision"] == "NO TRADE"
     assert "portfolio heat exhausted" in final.loc["SECOND", "Decision Reasons"]
+
+
+def test_candidates_share_daily_new_initial_r_limit_in_priority_order():
+    rows = pd.DataFrame(
+        [
+            candidate("FIRST", **{"Final Score": 90.0}),
+            candidate(
+                "SECOND",
+                **{
+                    "Final Score": 80.0,
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                },
+            ),
+            candidate(
+                "THIRD",
+                **{
+                    "Final Score": 70.0,
+                    "Sector": "Industrials",
+                    "Industry": "Machinery",
+                    "Theme": "Industry: Machinery",
+                },
+            ),
+        ]
+    )
+    final = run_screener.apply_canonical_decision_pipeline(
+        rows, context(portfolio(remaining=3.0), open_positions=1)
+    ).set_index("Ticker")
+    assert final.loc["FIRST", "Final Decision"] == "FULL"
+    assert final.loc["SECOND", "Final Decision"] == "FULL"
+    assert final.loc["THIRD", "Final Decision"] == "NO TRADE"
+    assert final["Maximum Risk R"].sum() == config.MAX_NEW_INITIAL_R_PER_DAY
+    assert "daily new-risk limit reached" in final.loc["THIRD", "Decision Reasons"]
 
 
 def industry_members() -> pd.DataFrame:

@@ -4489,7 +4489,8 @@ def apply_canonical_decision_pipeline(
     portfolio_status = decision_context["portfolio_status"]
     portfolio = portfolio_status["portfolio"]
     drawdown = decision_context["drawdown"]
-    portfolio_permission = portfolio_status.get("portfolio_new_risk_allowed")
+    market_permission = decision_context.get("market_new_risk_allowed") is True
+    portfolio_permission = portfolio_status.get("portfolio_new_risk_allowed") is True
 
     def apply_decision_fields(
         record: dict[str, object], decision: TradeSizingDecision
@@ -4535,6 +4536,7 @@ def apply_canonical_decision_pipeline(
             portfolio,
             portfolio_status["open_position_count"],
             portfolio_new_risk_allowed=portfolio_permission,
+            market_new_risk_allowed=market_permission,
         )
         rows.append(apply_decision_fields(record, decision))
 
@@ -4544,6 +4546,7 @@ def apply_canonical_decision_pipeline(
     projected_portfolio = portfolio
     base_open_count = portfolio_status["open_position_count"]
     accepted_count = 0
+    allocated_new_risk_r = 0.0
     final_records = {
         index: record for index, record in enumerate(concentrated.to_dict("records"))
     }
@@ -4567,6 +4570,10 @@ def apply_canonical_decision_pipeline(
             None if base_open_count is None else base_open_count + accepted_count,
             accepted_count,
             portfolio_new_risk_allowed=portfolio_permission,
+            market_new_risk_allowed=market_permission,
+            remaining_new_risk_r=max(
+                0.0, config.MAX_NEW_INITIAL_R_PER_DAY - allocated_new_risk_r
+            ),
         )
         revised = apply_decision_fields(record, decision)
         final_records[index] = revised
@@ -4593,9 +4600,12 @@ def apply_canonical_decision_pipeline(
             theme_heat=theme_heat,
         )
         accepted_count += 1
+        allocated_new_risk_r += reserved_r
     final = pd.DataFrame([final_records[index] for index in range(len(final_records))])
     errors = validate_canonical_decision_invariants(final)
     actionable = final[final["Final Decision"].isin(["FULL", "HALF"])]
+    if not market_permission and not actionable.empty:
+        errors.append("market stop-new-risk flag has actionable rows")
     if portfolio_permission is False and not actionable.empty:
         errors.append("portfolio stop-new-risk flag has actionable rows")
     if base_open_count is None and not actionable.empty:
@@ -4611,6 +4621,8 @@ def apply_canonical_decision_pipeline(
         )
         if allocated_r > portfolio.remaining_heat_r + 1e-9:
             errors.append("candidate allocation exceeds remaining portfolio heat")
+        if allocated_r > config.MAX_NEW_INITIAL_R_PER_DAY + 1e-9:
+            errors.append("candidate allocation exceeds daily new-risk limit")
     if errors:
         raise RuntimeError("Decision invariant failure: " + "; ".join(errors))
     return final
