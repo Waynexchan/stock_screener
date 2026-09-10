@@ -1,5 +1,19 @@
 # Project Roadmap
 
+## Completed 2026-08-06
+
+- [x] Recent RS hard-gate model and regression coverage
+- [x] Eligible-universe industry qualification and breadth gates
+- [x] Canonical decision, setup consistency, and concentration primitives
+- [x] Portfolio Heat and position-risk model
+- [x] Market Regime risk-limit model with hysteresis and emergency trigger
+- [x] Structural R/R validation
+- [x] Trade-journal expectancy analytics and sample-size labels
+- [x] Permanent verification framework and offline report regression fixture
+
+Further calibration requires completed-trade evidence; these engineering controls
+do not establish profitability.
+
 ## Version 2.0
 
 ### Completed
@@ -152,6 +166,16 @@ Suggested Version:
 2.0.
 
 ## Version 2.1
+
+### Completed - 2026-08-05
+
+- Recent RS Model — Completed after lightweight and unit tests passed.
+- Better Industry Rotation Model — Completed using the full eligible liquid universe and median SPY-relative returns.
+- Industry Leadership vs Momentum — Completed with separate scores and ranks.
+- Operational Priority Consistency — Completed with deterministic Review Tier and confirmed-setup ordering.
+- Market Character Classification — Completed with rule-based candidate-distribution logic.
+- Tight Consolidation Integrity — Completed with Developing Base preservation.
+- Support Signal Deduplication — Completed with order-preserving display deduplication.
 
 ### In Progress
 

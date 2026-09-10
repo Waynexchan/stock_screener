@@ -90,8 +90,14 @@ def _compact_records(frame: pd.DataFrame, limit: int) -> list[dict[str, Any]]:
         "Category": "Category",
         "Action": "Action",
         "Review Tier": "Review Tier",
+        "Final Decision": "Final Decision",
+        "Maximum Risk R": "Maximum Risk R",
+        "Maximum Risk Dollars": "Maximum Risk Dollars",
+        "Maximum Shares": "Maximum Shares",
         "Noise Filter Reason": "Noise Filter Reason",
         "RS Score": "RS Score",
+        "Recent RS Score": "Recent RS Score",
+        "Review Priority Score": "Review Priority Score",
         "RS Trend": "RS Trend",
         "RS Trend Delta": "RS Trend Delta",
         "Industry Rank": "Industry Rank",
@@ -111,21 +117,55 @@ def _compact_records(frame: pd.DataFrame, limit: int) -> list[dict[str, Any]]:
     compact = frame.head(limit)[available].rename(columns=compact_columns).copy()
     compact["Focus Reason"] = compact.apply(_focus_reason, axis=1)
     ordered = [
-        "Ticker", "Category", "Action", "Focus Reason", "RS Score", "RS Trend", "RS Trend Delta",
-        "Review Tier", "Noise Filter Reason", "Industry Rank", "Industry Setup Count",
-        "Risk/Reward Quality", "Pullback Quality", "Extension Status", "VCP Label",
-        "Tightness Label", "Volume Ratio", "ATR Distance", "Distance From Pivot %",
-        "Support Signal", "Price Data Warning",
+        "Ticker",
+        "Category",
+        "Action",
+        "Focus Reason",
+        "RS Score",
+        "Recent RS Score",
+        "RS Trend",
+        "RS Trend Delta",
+        "Review Tier",
+        "Final Decision",
+        "Maximum Risk R",
+        "Maximum Risk Dollars",
+        "Maximum Shares",
+        "Noise Filter Reason",
+        "Review Priority Score",
+        "Industry Rank",
+        "Industry Setup Count",
+        "Risk/Reward Quality",
+        "Pullback Quality",
+        "Extension Status",
+        "VCP Label",
+        "Tightness Label",
+        "Volume Ratio",
+        "ATR Distance",
+        "Distance From Pivot %",
+        "Support Signal",
+        "Price Data Warning",
     ]
-    return compact[[column for column in ordered if column in compact.columns]].fillna("").to_dict(orient="records")
+    return (
+        compact[[column for column in ordered if column in compact.columns]]
+        .fillna("")
+        .to_dict(orient="records")
+    )
 
 
 def _industry_records(frame: pd.DataFrame, limit: int) -> list[dict[str, Any]]:
     if frame.empty:
         return []
     columns = [
-        "Industry", "Sector", "Industry Strength Score", "Candidate Count",
-        "Avg RS Score", "Best RS Score", "Top 3 Leaders",
+        "Industry",
+        "Sector",
+        "Final Rank",
+        "Final Industry Score",
+        "Momentum Rank",
+        "Momentum Score",
+        "Leadership Rank",
+        "Leadership Score",
+        "Industry Status",
+        "Top 3 Leaders",
     ]
     available = [column for column in columns if column in frame.columns]
     return frame.head(limit)[available].fillna("").to_dict(orient="records")
@@ -162,6 +202,7 @@ Important constraints:
 - You must analyse only the Top Action List below.
 - Do not introduce stocks that are not in the Top Action List.
 - Do not make buy/sell decisions.
+- FULL, HALF, NO TRADE, maximum risk, and maximum shares are deterministic fields. Never override or contradict them.
 - Do not predict the market.
 - The human trader makes the final decision.
 - The AI Conviction Score means how well this ticker matches the Stage 2 swing trading system today.
@@ -174,6 +215,10 @@ Important constraints:
   1-2 = wait; setup is too extended, weak, or low priority today.
 - Be strict. Do not assign 8-10 when VCP is Poor, tightness is Loose, price data has a warning, or confirmation is weak unless other evidence is exceptional.
 - Use Review Tier and Noise Filter Reason as deterministic rule-engine context when explaining priority.
+- Never rank High Priority Watch ahead of Review Now. A confirmed rule-based setup takes precedence over AI conviction.
+- Only a confirmed FULL row may use status Best Opportunity. HALF rows are conditional and must use Watch or Wait.
+- When market status is Caution or Risk Off, use Wait for every supplied ticker.
+- Compare candidates using their supplied metrics; do not merely repeat labels.
 - Each ranking reason must include both the main positive and the main concern.
 - Use RS Trend and Industry Setup Count when prioritising emerging leaders and real group sponsorship.
 
@@ -190,7 +235,7 @@ Return strict JSON only, with this schema:
 {{
   "market_summary": "Brief market context from the supplied market status.",
   "industry_rotation_summary": "Brief industry leadership context from supplied industries.",
-  "market_character": "Concise label such as Strong Breakout Market, Healthy Pullback Market, Defensive Market, or Rotation Market.",
+  "market_character": "Secondary narrative only; deterministic report logic supplies the operational market character.",
   "rankings": [
     {{
       "ticker": "Ticker from the Top Action List only",
@@ -355,7 +400,9 @@ def _responses_create(client: Any, model: str, prompt: str) -> Any:
     )
 
 
-def _call_openai(prompt: str, api_key: str) -> tuple[str, str, int | None, int | None, int | None, float]:
+def _call_openai(
+    prompt: str, api_key: str
+) -> tuple[str, str, int | None, int | None, int | None, float]:
     try:
         from openai import OpenAI
     except ImportError:
@@ -438,7 +485,9 @@ def _normalise_rank(value: Any) -> int | str:
     return max(1, rank)
 
 
-def _apply_ai_rankings(top_action_list: pd.DataFrame, rankings: list[dict[str, Any]]) -> pd.DataFrame:
+def _apply_ai_rankings(
+    top_action_list: pd.DataFrame, rankings: list[dict[str, Any]]
+) -> pd.DataFrame:
     updated = _empty_ai_columns(top_action_list)
     if updated.empty:
         return updated
@@ -453,8 +502,12 @@ def _apply_ai_rankings(top_action_list: pd.DataFrame, rankings: list[dict[str, A
         item = by_ticker.get(ticker)
         if not item:
             continue
-        updated.at[index, "AI Conviction Score"] = _normalise_score(item.get("conviction_score"))
-        updated.at[index, "AI Priority Rank"] = _normalise_rank(item.get("priority_rank"))
+        updated.at[index, "AI Conviction Score"] = _normalise_score(
+            item.get("conviction_score")
+        )
+        updated.at[index, "AI Priority Rank"] = _normalise_rank(
+            item.get("priority_rank")
+        )
         updated.at[index, "AI Reason"] = str(item.get("reason", ""))[:240]
         updated.at[index, "AI Bull Case"] = str(item.get("bull_case", ""))[:180]
         updated.at[index, "AI Concern"] = str(item.get("concern", ""))[:180]
@@ -464,7 +517,11 @@ def _apply_ai_rankings(top_action_list: pd.DataFrame, rankings: list[dict[str, A
 
 def _commentary_from_payload(payload: dict[str, Any]) -> str:
     stocks_to_wait = payload.get("stocks_to_wait", [])
-    wait_text = "\n".join(str(item) for item in stocks_to_wait) if isinstance(stocks_to_wait, list) else str(stocks_to_wait)
+    wait_text = (
+        "\n".join(str(item) for item in stocks_to_wait)
+        if isinstance(stocks_to_wait, list)
+        else str(stocks_to_wait)
+    )
     best = []
     for item in payload.get("rankings", []) or []:
         if not isinstance(item, dict) or item.get("status") != "Best Opportunity":
@@ -498,6 +555,38 @@ def _commentary_from_payload(payload: dict[str, Any]) -> str:
             str(payload.get("reminder", "")).strip(),
         ]
     ).strip()
+
+
+def _enforce_payload_decisions(
+    payload: dict[str, Any], top_action_list: pd.DataFrame, market_status: str
+) -> dict[str, Any]:
+    """Prevent narrative labels from overstating deterministic readiness."""
+    safe = dict(payload)
+    decisions = {
+        str(row.get("Ticker", "")): str(row.get("Final Decision", ""))
+        for row in top_action_list.to_dict("records")
+    }
+    rankings = []
+    forced_wait: list[str] = []
+    for raw_item in payload.get("rankings", []) or []:
+        if not isinstance(raw_item, dict):
+            continue
+        item = dict(raw_item)
+        ticker = str(item.get("ticker", ""))
+        decision = decisions.get(ticker, "")
+        if market_status in {"Caution", "Risk Off"} or decision != "FULL":
+            item["status"] = (
+                "Wait" if market_status in {"Caution", "Risk Off"} else "Watch"
+            )
+            forced_wait.append(
+                f"{ticker} - {decision or 'unavailable'}; confirmation required"
+            )
+        rankings.append(item)
+    existing_wait = safe.get("stocks_to_wait", [])
+    wait_items = list(existing_wait) if isinstance(existing_wait, list) else []
+    safe["stocks_to_wait"] = list(dict.fromkeys(wait_items + forced_wait))
+    safe["rankings"] = rankings
+    return safe
 
 
 def analyse_top_action_list(
@@ -558,8 +647,17 @@ def analyse_top_action_list(
     try:
         scoped_top_action_list = top_action_list.head(max_tickers)
         prompt = build_ai_prompt(scoped_top_action_list, top_industries, market_status)
-        raw_text, model_used, input_tokens, output_tokens, response_tokens, response_time = _call_openai(prompt, api_key)
-        payload = json.loads(raw_text)
+        (
+            raw_text,
+            model_used,
+            input_tokens,
+            output_tokens,
+            response_tokens,
+            response_time,
+        ) = _call_openai(prompt, api_key)
+        payload = _enforce_payload_decisions(
+            json.loads(raw_text), scoped_top_action_list, market_status
+        )
         commentary = _commentary_from_payload(payload) or "AI Commentary generated."
         rankings = payload.get("rankings", [])
         if not isinstance(rankings, list):
@@ -608,7 +706,9 @@ def generate_ai_commentary(
     market_status: str,
 ) -> str:
     """Backward-compatible commentary helper."""
-    return analyse_top_action_list(top_action_list, top_industries, market_status).commentary
+    return analyse_top_action_list(
+        top_action_list, top_industries, market_status
+    ).commentary
 
 
 def get_last_ai_analysis_result() -> AIAnalysisResult | None:

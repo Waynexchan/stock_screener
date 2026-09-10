@@ -1,0 +1,6 @@
+Ticker,Sector,Industry,Category,Recent RS Score,RS Score,Tightness Label,VCP Label,Extension Status,Distance From Pivot %,Nearest Support Distance ATR,Planned Entry,Initial Stop,Realistic Target,Industry Qualified,Sister Confirmation,Setup Quality Score,Volume Quality Score,Entry Stop Quality Score,Intermediate Trend Score,Price Data Warning
+IMVT,Healthcare,Biotechnology,Pullback Candidates,,87,Normal,Average VCP,Not Extended,-3.65,0.09,,,,False,False,70,55,0,87,
+DMRA,Healthcare,Biotechnology,Pullback Candidates,,98,Normal,Poor VCP,Not Extended,-3.26,0.48,,,,False,False,55,60,0,98,
+ERAS,Healthcare,Biotechnology,Pullback Candidates,,99,Loose,Poor VCP,Not Extended,-7.25,0.12,,,,False,False,35,45,0,99,
+DELL,Technology,Computer Hardware,Pullback Candidates,,99,Loose,Poor VCP,Not Extended,8.0,0.96,,,,False,False,35,40,0,99,
+PTGX,Healthcare,Biotechnology,Tight Consolidation Candidates,,88,Tight,Poor VCP,Moderately Extended,3.42,0.27,,,,False,False,55,40,0,88,

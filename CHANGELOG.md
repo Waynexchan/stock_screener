@@ -1,5 +1,90 @@
 # Project Changelog
 
+## 2026-09-05 - Canonical production decision integrity
+
+- Unified decision authority under one deterministic FULL/HALF/WATCH/NO TRADE
+  pipeline; the sizing helper can only size an already-authorised state.
+- Added PASS/MARGINAL/FAIL setup integrity, production portfolio and candidate
+  concentration gates, session-aware price freshness, and semantic cross-output
+  validation for CSV, HTML, and email.
+- Made the USD 500m market-cap limitation explicit as `NOT ENFORCED`, added
+  industry metadata coverage diagnostics/downgrades, and introduced immutable
+  daily forward-test evidence bundles.
+- Added regression coverage for loose developing bases, valid early leaders
+  below a 75 score, invalid high-score setups, risk capacity, freshness, report
+  consistency, and snapshot non-overwrite behaviour. No historical backtest or
+  positive-expectancy claim was added.
+
+## 2026-09-02 - Report readiness and invariant hardening
+
+- Prevented Caution/Risk Off regimes from publishing contradictory HALF candidates.
+- Replaced misleading binary trade readiness with READY, CONDITIONAL, and NO.
+- Made missing Recent RS scores unavailable instead of accidentally scoring 100.
+- Constrained AI labels to deterministic trade state, separated warning-message and
+  affected-candidate counts, and added publication-blocking cross-field invariants.
+
+## 2026-08-13 - Drawdown-first three-state sizing
+
+- Replaced action grading with exactly `FULL` (1R), `HALF` (0.5R), and
+  `NO TRADE`; incomplete secondary confirmation reduces size without admitting
+  structurally invalid trades.
+- Added equity high-water-mark drawdown modes, market/drawdown effective heat,
+  a four-position hard cap, concentration-aware maximum shares, and explicit
+  protection against automatic HALF-to-FULL upgrades.
+- Added FULL/HALF journal analytics, deterministic entry timing, concise report
+  fields, AI immutability boundaries, and regression/dry-run coverage for all
+  drawdown and capacity states.
+
+## 2026-08-10 - Production-depth logic audit
+
+- Replaced placeholder market inputs with measured index slopes, breakout
+  success/failure, leadership, high-volume breakdown, and volatility factors.
+- Market confidence now discloses incomplete and thin-sample inputs instead of
+  presenting placeholder zeros as complete high-confidence evidence.
+- Reconciled raw industry candidate counts with qualifying setup counts.
+- Prevented a model-generated 2R feasibility target from qualifying a ticker
+  for Top Action without chart-confirmed resistance, and enforced minimum
+  trade-plan confidence in both decision paths.
+- Added system-level report warnings, target-source visibility, stable breakout
+  failure calculation, and regression coverage for these production defects.
+- Live production follow-up aligned canonical `Valid R/R` with the action and
+  review mappings, exposed below-threshold Recent RS explicitly, and replaced
+  contradictory negative-factor names with human-readable wording.
+
+## 2026-08-06 - Decision-system regression correction
+
+- Connected portfolio heat and position-data status to production output and final risk permission; missing or stale data is no longer represented as zero heat.
+- Split industries into qualified current leaders, rotation watches, lagging long-term leaders, and explicit small-sample classifications. Only qualified leaders receive actionable rank/confirmation benefits.
+- Added sample-quality labels, count-plus-percentage breadth, deterministic source-labelled trade plans, and explicit model-2R target labels.
+- Final Score now retains all six components, base score, penalties, and hard-gate result for WATCH_ONLY and BLOCKED records.
+- Loose/Poor-VCP consistency now updates category, quality, tier, confirmation, and decision rather than only appending text.
+- Executive counters now use unique canonical tickers; added 2026-08-06 regression tests.
+
+## 2026-08-06 - Daily Trading Decision System foundation
+
+- Added deterministic position-risk, Portfolio Heat, market-regime, Recent RS,
+  industry qualification, setup-consistency, real R/R, decision, concentration,
+  and expectancy models in `decision_system.py`.
+- Added the permanent auto-debug policy, offline 2026-08-05 regression fixture,
+  105-test suite, dry-run report, verification command, and guarded production
+  wrapper. Normal production requires a successful verification marker.
+- Fixed the underlying defects: Recent RS was computed before metadata enrichment;
+  missing Recent RS was not a hard gate; EMA reclaims could create confirmation;
+  R/R was inferred without an entry, stop, and target; and weak candidate counts
+  could create industry strength.
+- Industry qualification now uses the eligible liquid universe and explicit
+  absolute/relative momentum, breadth, size, and breakout-quality gates. Setup
+  counts are quality-filtered and an unqualified industry supplies no bonus.
+- Added configurable USD 587 standard risk, regime heat limits, per-trade/day,
+  industry/theme and overnight-gap limits. No live-trading capability was added.
+- Added user, risk-model, and watchlist-logic documentation and blank schemas for
+  open positions and completed trades.
+- Production audit follow-up: prevented candidate skip share from converting a
+  Strong index regime into `Weak / Risk-Off`, made `Loose` an unconditional bar
+  to formal Tight Consolidation, treated unavailable trade-plan R/R as Watch
+  Later rather than weak R/R, and made Final Decision, Confirmed Setup, and
+  Review Tier update together in the final guidance stage.
+
 ## Project Goal
 
 Build a professional long-term Stage 2 swing trading assistant that helps a trader review the market in under 10 minutes using deterministic screening, industry ranking, risk-aware prioritisation, and optional AI commentary.
@@ -48,6 +133,33 @@ Version: 0.3.17
 - Add optional exclusion lists.
 
 ## Changelog Entries
+
+### 2026-08-05 - Version 0.4.0
+
+Root cause: the previous industry model used only RS 75+ Stage 2 stocks that already appeared in a setup category. It excluded weak industry members, added raw candidate-count credit, and had no recent return, SPY-relative, median, minimum-size, or full-universe breadth input. This allowed Healthcare/Biotechnology groups with many historically strong survivors to remain persistently high ranked during recent underperformance.
+
+Previous formula: `70% × Average RS Score + 1.5 × min(raw Candidate Count, 20)`; internal ranks separately sorted average long-term RS then raw count.
+
+Changes:
+
+- Added separate Recent RS Score: 15% 5D, 45% 20D, 30% 60D, and 10% 126D percentile-ranked relative returns versus SPY.
+- Kept the existing long-term RS model and core Stage 2 filters unchanged.
+- Added Industry Momentum Score: 15% median 5D relative return, 35% median 20D, 20% median 60D, 10% median Recent RS, 10% 20D outperformance breadth, 5% above 20EMA, and 5% acceleration percentiles.
+- Added Industry Leadership Score: 40% median long-term RS, 20% average long-term RS, 15% Stage 2 breadth, 10% within 15% of the 52-week high, 10% leader quality, and 5% candidate breadth.
+- Added Final Industry Score: 65% Momentum plus 35% Leadership, with separate ranks and status labels.
+- Normalised candidate influence as Candidate Count / Total Eligible Stocks and removed raw count from the score.
+- Required three eligible stocks for formal Top Industries and added an isolated/emerging section.
+- Ranked leaders by Recent RS, long-term RS, then Review Priority.
+- Fixed operational ordering to use Review Tier, confirmed setup, Review Priority, Recent RS, Industry Rank, then AI only as a tie-breaker.
+- Added deterministic market-character classification; Strong Breakout requires multiple confirmed, volume-supported breakouts.
+- Moved loose/poor-compression bases to Developing Base / Watch Later instead of formal Tight Consolidation.
+- Deduplicated Support Signal display values while preserving order.
+- Expanded AI inputs and instructions to compare supplied metrics without overriding deterministic order or claiming fund flows.
+- Added `--industry-test` and `--report-test` lightweight modes; neither sends email.
+
+Tests completed: Python compilation, 39 existing unit tests, synthetic industry tests, and report-integrity tests. No production screener or email was run during development.
+
+Breaking changes: Top Industry report columns and ranking semantics changed. Core Stage 2 filters and personal trade-management rules remain unchanged.
 
 ### 2026-07-24 - Version 0.3.17
 

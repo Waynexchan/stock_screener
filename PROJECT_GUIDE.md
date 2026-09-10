@@ -1,5 +1,19 @@
 # Project Guide
 
+## Daily Trading Decision Boundary
+
+The project targets long-only momentum swings lasting several days to under two
+months. Recent market-relative behaviour is primary; long-term RS is structural
+context and cannot substitute for missing Recent RS. One deterministic engine
+classifies each canonical ticker as `FULL`, `HALF`, `WATCH`, or `NO TRADE`
+before AI receives validated fields. Report generation and sizing consume that
+record and cannot recalculate or promote the decision.
+
+Portfolio Heat is effective open risk including an overnight gap-risk floor.
+Market Regime controls maximum Heat and new-risk permission. AI cannot override
+these limits, rule confirmation, missing data, or a blocking reason. Technical
+rotation and breadth describe price behaviour, not institutional fund flows.
+
 ## Project Philosophy
 
 The goal is to help a Stage 2 swing trader review the market in under 10 minutes.
@@ -30,11 +44,19 @@ Price-data sanity is required before interpreting technical signals. A stock wit
 
 ## Industry Ranking Philosophy
 
+The system is designed for a discretionary one-to-two-month holding period. Recent RS therefore prioritises 20-day market-relative performance, with 60-day performance confirming durability. Five-day relative performance is used mainly for acceleration and timing, while 126-day and the existing long-term RS model remain structural confirmation rather than the dominant current-opportunity signal.
+
+Industry Momentum and Industry Leadership are separate concepts. Momentum measures recent median market-relative returns, acceleration, and participation across the full eligible liquid universe. Leadership measures durable long-term RS, Stage 2 breadth, proximity to highs, leader quality, and normalised candidate breadth. The final rank weights Momentum at 65% and Leadership at 35%.
+
+Median relative returns are the primary industry measure because they resist distortion from a single gap-up or extreme winner. Averages remain visible as supporting context. Formal industries require at least three eligible members; smaller groups are shown separately as isolated or emerging leaders.
+
+Technical rotation, relative momentum, and breadth improvement are price-based observations. They are not evidence of fund flows, capital inflows, or institutional money flow unless a genuine flow dataset is added.
+
 Industry leadership matters because strong stocks often cluster. One isolated leader can work, but multiple strong candidates in the same group can indicate broader institutional sponsorship.
 
-Institutional money rotates between industries. Ranking industries helps the trader focus on where capital appears to be flowing instead of treating every stock as an unrelated opportunity.
+Leadership rotates between industries. Ranking industries helps the trader focus on improving market-relative performance instead of treating every stock as an unrelated opportunity.
 
-Industry ranking is often more important than any single stock because the best individual setups usually come from the strongest groups. The screener therefore calculates Industry Strength Score from average RS Score and candidate breadth.
+Industry context is important, but it cannot rescue a weak individual setup. The screener therefore displays separate Industry Momentum, Industry Leadership, and Final Industry scores instead of one opaque strength score.
 
 The review workflow is quality-first. The rule engine first identifies individual stocks with Stage 2 structure, liquidity, Relative Strength of 75 or higher, constructive setup behavior, and acceptable risk/reward. Industry strength is then used to prioritise leadership groups, not to rescue weak individual charts. Market status provides context for aggressiveness, but it does not override stock quality or the deterministic setup rules.
 
@@ -69,6 +91,7 @@ AI must not:
 - Override deterministic screening
 - Make buy or sell decisions
 - Predict market direction
+- Override a confirmed rule-based setup or the deterministic Review Tier order
 
 The human trader always makes the final decision.
 
@@ -122,9 +145,9 @@ An empty report caused by missing Yahoo Finance data is not a valid market concl
 
 The universe cache is treated as a last-known-good asset. Refreshes are built into a temporary file and validated before replacement so a partial Yahoo failure cannot overwrite a usable cache. Successful reports are also saved as last-known-good outputs so a later data failure cannot replace a useful watchlist with an empty one.
 
-Universe construction deliberately separates listing discovery from liquidity validation. NASDAQ Trader listed-symbol files define the raw common-stock universe, while Yahoo Finance historical price data is used only to verify price and volume liquidity. Company-profile data such as market cap, sector, and industry is useful when reliable, but it must not be a single point of failure for rebuilding the tradable universe.
+Universe construction deliberately separates listing discovery from liquidity validation. NASDAQ Trader listed-symbol files define the raw common-stock universe, while Yahoo Finance historical price data is used only to verify price and volume liquidity. Company-profile data such as market cap, sector, and industry is useful when reliable, but it must not be a single point of failure for rebuilding the tradable universe. The USD 500m market-cap policy is currently shown as `NOT ENFORCED` because complete reliable metadata is not available; missing values are never fabricated.
 
-Sector and industry metadata is enriched after deterministic filtering through a local cache and best-effort metadata lookup. This keeps universe refresh reliable while allowing industry ranking to improve over time. Missing metadata must not invalidate a quality stock, but only known metadata should be used when ranking industry rotation.
+Sector and industry metadata is enriched after deterministic filtering through a local cache and best-effort metadata lookup. Every run reports mapped/unmapped counts, coverage percentage, and cache date. Coverage below the configured minimum disables high-confidence industry qualification and sister-stock confirmation rather than extrapolating from a partial subset.
 
 Runtime is also part of reliability. Yahoo Finance calls are bounded by per-call timeouts, finite retry attempts, and a maximum full-run duration. If the screener cannot obtain enough data inside those limits, it should produce a clear data-failure result and exit normally. Lightweight `--data-test` and universe-only `--refresh-universe` modes exist so data-source issues can be diagnosed without repeatedly sending emails or running the full trading workflow.
 

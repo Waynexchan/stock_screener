@@ -2,6 +2,26 @@
 
 > A deterministic US stock screening and daily review assistant for Stage 2 swing traders.
 
+## Verified daily commands
+
+```powershell
+.\scripts\verify_project.ps1
+.\scripts\run_daily_dry_run.ps1
+.\scripts\run_daily_production.ps1
+```
+
+The production wrapper verifies first. On failure it returns non-zero, preserves
+the log, and does not generate or email a normal watchlist. The dry run is offline
+and never sends email. Maintain open positions in `data/open_positions.csv` and
+completed trades in `data/completed_trades.csv`; see `docs/USER_GUIDE.md`,
+`docs/RISK_MODEL.md`, and `docs/WATCHLIST_LOGIC.md`.
+
+Maintain current account equity and its latest high-water mark in
+`data/account_equity.csv`. The decision engine uses only `FULL` (1R / $587),
+`HALF` (0.5R / $293.50), and `NO TRADE`. It caps active positions at four by
+default and combines market heat, drawdown heat, concentration, and portfolio
+heat before calculating maximum shares.
+
 This repository is designed for a discretionary trader who wants a focused daily watchlist after market close. The rule engine finds and ranks stocks; optional AI commentary only summarises and prioritises the final Top Action List.
 
 This project is not financial advice, does not predict prices, and does not generate automatic buy or sell signals.
@@ -32,7 +52,7 @@ python test_openai.py
 - Filters for Stage 2 trend structure.
 - Scores Relative Strength using a MarketSmith-style percentile approximation.
 - Tracks RS Trend to detect emerging leadership.
-- Ranks industries by strength and candidate breadth.
+- Ranks industries from the full eligible liquid universe using separate recent Momentum and structural Leadership scores.
 - Separates clean first-review setups from noisy watchlist names.
 - Generates HTML, Markdown, CSV, and email reports.
 - Adds optional AI commentary without allowing AI to select stocks.
@@ -55,10 +75,10 @@ Use the report in this order:
 
 1. Read `Executive Summary` to judge whether the day has enough clean setups.
 2. Read `Daily Review Plan` for the exact review sequence.
-3. Open `Review Now` tickers first.
-4. Review `High Priority Watch` only after confirmed setups.
-5. Treat `Daily Focus List` as a tracking pool, not as a trading list.
-6. Skip `Skip Today` rows unless they return later with cleaner setup quality.
+3. Review `FULL` candidates first, then `HALF` candidates.
+4. Use `NO TRADE` rows only to understand what confirmation or repair is missing.
+5. Treat the diagnostic appendix as audit detail, not as a trading list.
+6. Never exceed the report's maximum shares or risk budget.
 7. Use AI commentary as a briefing aid only.
 
 If the Top Action List is empty, the correct workflow is usually to avoid forcing trades and wait for cleaner setups.
@@ -130,6 +150,8 @@ python run_screener.py --refresh-universe
 python run_screener.py --ai-test
 python run_screener.py --self-test
 python run_screener.py --report-preview
+python run_screener.py --industry-test
+python run_screener.py --report-test
 python test_openai.py
 ```
 
@@ -142,6 +164,8 @@ python test_openai.py
 `--self-test` runs lightweight health checks for configuration, environment loading, OpenAI key presence, Gmail variable presence, universe row count, SPY/QQQ data, OpenAI connection, AI analysis, and report-folder writability. It does not run the full screener or send email.
 
 `--report-preview` rebuilds a local HTML layout preview from `daily_watchlist_last_good.csv` and `summary_history.csv`. It does not download Yahoo Finance data, call OpenAI, send email, append history, or overwrite `daily_watchlist.html`; it writes `daily_watchlist_preview.html`.
+
+`--industry-test` runs synthetic ranking cases for candidate-count bias, median outlier protection, recent rotation, lagging former leaders, and one-stock exclusions. `--report-test` verifies deterministic review order, market character, tight-base integrity, support-signal deduplication, and email-preview ordering without sending email.
 
 The script exports:
 
@@ -203,7 +227,7 @@ Never commit real secrets. `.env` and `*.env` are ignored by Git.
 Edit `config.py` to change deterministic screening thresholds such as:
 
 - Minimum price
-- Minimum market cap
+- Market-cap policy and its explicit enforcement status
 - Minimum average volume
 - ADR limits
 - Relative Strength score
@@ -243,7 +267,7 @@ The screener does not use a hardcoded ticker list. It builds `universe_raw_temp.
 - Price greater than 10
 - 50-day average daily volume greater than 500,000
 
-Market-cap filtering is not applied during universe rebuild unless reliable market-cap data is available. Missing company-profile data does not invalidate the universe refresh.
+The configured USD 500m market-cap threshold is currently **not enforced** because complete reliable market-cap metadata is unavailable. Reports explicitly show `Market Cap Filter: NOT ENFORCED`; missing values are never fabricated or treated as passing values.
 
 Daily runs reuse `universe.csv` when it is less than 7 days old. If the file is missing or at least 7 days old, the script rebuilds it automatically.
 
@@ -259,7 +283,9 @@ The report displays SPY and QQQ trend status at the top. It shows whether each E
 - 20-day EMA
 - 50-day moving average
 
-Market status is informational only and does not block the screener.
+Market status does not change discovery, but the canonical trade-decision engine
+uses the validated market regime as a new-risk gate. Caution and Risk Off can
+therefore leave a stock visible while its final decision is `NO TRADE`.
 
 SPY and QQQ data are mandatory for a valid run. If market data cannot be validated after retries, the run is treated as a data failure and no normal watchlist is exported.
 
@@ -314,7 +340,9 @@ The screener first keeps liquid Stage 2-style stocks:
 - `Tight Consolidation Candidates`: stocks near highs with tight range behavior, controlled distance from the 50MA, and VCP/tightness context.
 - `Extended Candidates`: C or D quality pullbacks near key moving averages, separated from normal pullbacks.
 - `Volume Surge Candidates`: stocks near highs with bullish price action and elevated volume.
-- `Top Industries`: industry groups ranked by Industry Strength Score.
+- `Top Industries`: groups with at least three eligible stocks, ranked by 65% recent Momentum and 35% structural Leadership.
+- `Isolated / Emerging Industry Leaders`: noteworthy groups with fewer than three eligible stocks, excluded from formal ranks.
+- `Developing Base Candidates`: base-shaped names that do not meet formal Tight/Very Tight or acceptable compression/VCP requirements.
 - `AI Commentary`: optional assistant commentary on the Top Action List only.
 
 ## Email Automation
@@ -365,7 +393,11 @@ Top Action uses a deterministic noise gate after candidates are generated. A row
 
 `Review Priority Score` is deliberately hard to max out. Poor VCP, loose price action, weak confirmation, extension risk, poor risk/reward, fading RS trend, and price-data warnings reduce priority even when a stock is technically valid.
 
-HTML reports start with an executive summary panel showing the count of Top Action tickers, confirmed setups, emerging leaders, caution rows, and price warnings. The report then shows `Daily Review Plan`, which converts the filtered list into a practical review sequence. Valid runs append a local `summary_history.csv` snapshot so the next report can compare daily changes in setup quality, Top Action tickers, and Top Industries. HTML and Markdown reports show the daily change summary and a recent summary trend view.
+HTML reports start with an executive summary panel showing the count of Top Action tickers, confirmed setups, emerging leaders, caution rows, and price warnings. They expose exactly four trade states: `FULL`, `HALF`, `WATCH`, and `NO TRADE`. `HALF` is actionable now at no more than 0.5R; `WATCH` is non-actionable with zero shares. Valid runs append summary history and a new immutable evidence bundle under `output/forward_snapshots/<signal-date>/<run-id>/`. The bundle contains candidates, market, portfolio, config, and run metadata and never overwrites an earlier run.
+
+Every candidate and run records the signal date, latest bar timestamp, and price-data as-of date. Freshness is checked against the latest completed regular US session using a weekend and regular full-day holiday calendar. Exceptional exchange closures are not available from the current dependency set and remain a documented limitation.
+
+Industry metadata diagnostics show universe count, mapped count, unmapped count, coverage percentage, and cache date. If coverage is below `MIN_METADATA_COVERAGE_PCT`, industry qualification and sister-stock confidence cannot be presented as complete/high-confidence evidence.
 
 The `Summary Trend` view uses recent valid reports to show whether opportunity quality is improving, deteriorating, or mixed. Its quality score is report context only: confirmed setups and emerging leaders add weight, while caution rows and price warnings subtract weight. It does not change filter output, select stocks, or predict market direction. CSV exports remain plain data without presentation-only badges or summary cards.
 

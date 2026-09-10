@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -41,7 +42,9 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("ticker count below", reason)
 
     def test_spy_qqq_download_failure_rejects_run(self):
-        universe_result = run_screener.UniverseLoadResult(valid_universe(1600), 2000, 1600)
+        universe_result = run_screener.UniverseLoadResult(
+            valid_universe(1600), 2000, 1600
+        )
         market_result = run_screener.MarketConditionResult(
             frame=pd.DataFrame(),
             status="Unknown",
@@ -51,12 +54,16 @@ class DataQualityTests(unittest.TestCase):
             stats=run_screener.DownloadStats(requested=2, successful=0, failed=2),
         )
         stats = run_screener.DownloadStats(requested=1600, successful=1500, failed=100)
-        result = run_screener.validate_run_quality(universe_result, market_result, stats)
+        result = run_screener.validate_run_quality(
+            universe_result, market_result, stats
+        )
         self.assertFalse(result.valid)
         self.assertIn("market data unavailable", result.reason)
 
     def test_download_success_rate_below_70_rejects_run(self):
-        universe_result = run_screener.UniverseLoadResult(valid_universe(1600), 2000, 1600)
+        universe_result = run_screener.UniverseLoadResult(
+            valid_universe(1600), 2000, 1600
+        )
         market_result = run_screener.MarketConditionResult(
             frame=pd.DataFrame(),
             status="Neutral",
@@ -66,7 +73,9 @@ class DataQualityTests(unittest.TestCase):
             stats=run_screener.DownloadStats(requested=2, successful=1, failed=1),
         )
         stats = run_screener.DownloadStats(requested=1600, successful=1000, failed=600)
-        result = run_screener.validate_run_quality(universe_result, market_result, stats)
+        result = run_screener.validate_run_quality(
+            universe_result, market_result, stats
+        )
         self.assertFalse(result.valid)
         self.assertIn("success rate below", result.reason)
 
@@ -106,14 +115,22 @@ class DataQualityTests(unittest.TestCase):
             finally:
                 os.chdir(current_dir)
 
-            self.assertEqual(report.read_text(encoding="utf-8"), "previous valid report")
-            self.assertTrue((Path(temp_dir) / run_screener.DATA_FAILURE_REPORT).exists())
+            self.assertEqual(
+                report.read_text(encoding="utf-8"), "previous valid report"
+            )
+            self.assertTrue(
+                (Path(temp_dir) / run_screener.DATA_FAILURE_REPORT).exists()
+            )
 
     def test_invalid_run_warning_email_has_no_attachment(self):
-        message = send_email.build_data_failure_message("sender@example.com", "recipient@example.com")
+        message = send_email.build_data_failure_message(
+            "sender@example.com", "recipient@example.com"
+        )
         self.assertEqual(message["Subject"], send_email.DATA_FAILURE_SUBJECT)
         self.assertFalse(message.is_multipart())
-        self.assertIn("previous valid watchlist has been preserved", message.get_content())
+        self.assertIn(
+            "previous valid watchlist has been preserved", message.get_content()
+        )
 
     def test_review_priority_prefers_quality_setup_and_volume(self):
         high_quality = {
@@ -169,10 +186,38 @@ class DataQualityTests(unittest.TestCase):
     def test_unknown_industry_excluded_from_top_industries_and_ranks(self):
         base = pd.DataFrame(
             [
-                {"Ticker": "AAA", "Sector": "Unknown", "Industry": "Unknown", "RS Score": 99, "Industry Setup Count": float("nan"), "Avg Volume": 1_000_000},
-                {"Ticker": "BBB", "Sector": "Unknown", "Industry": "Unknown", "RS Score": 98, "Industry Setup Count": float("nan"), "Avg Volume": 1_000_000},
-                {"Ticker": "CCC", "Sector": "Technology", "Industry": "Semiconductors", "RS Score": 85, "Industry Setup Count": float("nan"), "Avg Volume": 1_000_000},
-                {"Ticker": "DDD", "Sector": "Technology", "Industry": "Semiconductors", "RS Score": 82, "Industry Setup Count": float("nan"), "Avg Volume": 1_000_000},
+                {
+                    "Ticker": "AAA",
+                    "Sector": "Unknown",
+                    "Industry": "Unknown",
+                    "RS Score": 99,
+                    "Industry Setup Count": float("nan"),
+                    "Avg Volume": 1_000_000,
+                },
+                {
+                    "Ticker": "BBB",
+                    "Sector": "Unknown",
+                    "Industry": "Unknown",
+                    "RS Score": 98,
+                    "Industry Setup Count": float("nan"),
+                    "Avg Volume": 1_000_000,
+                },
+                {
+                    "Ticker": "CCC",
+                    "Sector": "Technology",
+                    "Industry": "Semiconductors",
+                    "RS Score": 85,
+                    "Industry Setup Count": float("nan"),
+                    "Avg Volume": 1_000_000,
+                },
+                {
+                    "Ticker": "DDD",
+                    "Sector": "Technology",
+                    "Industry": "Semiconductors",
+                    "RS Score": 82,
+                    "Industry Setup Count": float("nan"),
+                    "Avg Volume": 1_000_000,
+                },
             ]
         )
 
@@ -182,15 +227,25 @@ class DataQualityTests(unittest.TestCase):
 
         ranked = run_screener.add_industry_ranks(base)
         unknown_ranks = ranked.loc[ranked["Industry"] == "Unknown", "Industry Rank"]
-        known_ranks = ranked.loc[ranked["Industry"] == "Semiconductors", "Industry Rank"]
+        known_ranks = ranked.loc[
+            ranked["Industry"] == "Semiconductors", "Industry Rank"
+        ]
         self.assertTrue(unknown_ranks.isna().all())
         self.assertTrue((known_ranks == 1).all())
-        self.assertTrue((ranked.loc[ranked["Industry"] == "Semiconductors", "Industry Setup Count"] == 2).all())
+        self.assertTrue(
+            (
+                ranked.loc[
+                    ranked["Industry"] == "Semiconductors", "Industry Setup Count"
+                ]
+                == 2
+            ).all()
+        )
 
     def test_industry_setup_cluster_adds_review_priority_bonus(self):
         solo = {
             "Category": "Pullback Candidates",
             "RS Score": 85,
+            "Recent RS Score": 85,
             "Volume Ratio": 1.0,
             "Avg Volume": 1_000_000,
             "Risk/Reward Quality": "Good R/R",
@@ -200,6 +255,7 @@ class DataQualityTests(unittest.TestCase):
             "Nearest Support Distance ATR": 1.0,
             "Industry Rank": 10,
             "Industry Setup Count": 1,
+            "Industry Qualified": True,
         }
         cluster = dict(solo)
         cluster["Industry Setup Count"] = 5
@@ -284,6 +340,12 @@ class DataQualityTests(unittest.TestCase):
             "Support Signal": "EMA20 reclaim",
             "Review Priority Score": 70,
             "Price Data Warning": "",
+            "Recent RS Score": 90,
+            "Industry Qualified": True,
+            "Sister Confirmation": True,
+            "Planned Entry": 100,
+            "Initial Stop": 95,
+            "Realistic Target": 110,
         }
         noisy = dict(clean)
         noisy["Action"] = "Watch only"
@@ -314,9 +376,10 @@ class DataQualityTests(unittest.TestCase):
             "Support Signal": "EMA20 reclaim",
             "Review Priority Score": 80,
             "Price Data Warning": "",
+            "Recent RS Score": 90,
         }
 
-        self.assertEqual(run_screener.review_tier(row), "Watch Later")
+        self.assertEqual(run_screener.review_tier(row), "Skip Today")
         self.assertIn("poor VCP", run_screener.setup_noise_reasons(row))
         self.assertIn("loose action", run_screener.setup_noise_reasons(row))
 
@@ -339,10 +402,86 @@ class DataQualityTests(unittest.TestCase):
             "Support Signal": "EMA20 reclaim",
             "Review Priority Score": 80,
             "Price Data Warning": "",
+            "Recent RS Score": 90,
         }
 
         self.assertEqual(run_screener.review_tier(row), "Watch Later")
         self.assertIn("wait-only action", run_screener.setup_noise_reasons(row))
+
+    def test_missing_trade_plan_is_watch_later_not_skip(self):
+        row = {
+            "Category": "Pullback Candidates",
+            "Action": "Monitor quiet pullback",
+            "RS Score": 90,
+            "Recent RS Score": 90,
+            "RS Trend": "Improving",
+            "Volume Ratio": 0.8,
+            "Avg Volume": 2_000_000,
+            "Risk/Reward Quality": "Not Available",
+            "Pullback Quality": "B - Healthy Pullback",
+            "Extension Status": "Not Extended",
+            "VCP Label": "Good VCP",
+            "Tightness Label": "Normal",
+            "Nearest Support Distance ATR": 0.5,
+            "Industry Qualified": True,
+            "Industry Rank": 3,
+            "Industry Setup Count": 3,
+            "Review Priority Score": 75,
+            "Price Data Warning": float("nan"),
+        }
+        self.assertEqual(run_screener.review_tier(row), "Watch Later")
+        self.assertIn("R/R not available", run_screener.setup_noise_reasons(row))
+
+    def test_loose_label_blocks_atr_compression_tight_candidate(self):
+        row = pd.Series(
+            {
+                "RANGE_15D_PCT": 15,
+                "RANGE_10D_PCT": 20,
+                "HIGH_52W": 105,
+                "Close": 100,
+                "MA50": 95,
+                "VOLUME_RATIO": 0.5,
+                "ADR_PCT": 2,
+                "ADR60_PCT": 4,
+            }
+        )
+        self.assertFalse(run_screener.is_tight_consolidation_candidate(row))
+
+    def test_strong_regime_is_not_called_risk_off_due_to_skip_share(self):
+        rows = pd.DataFrame([{"Review Tier": "Skip Today", "Volume Ratio": 0.5}] * 5)
+        character = run_screener.determine_market_character(
+            {"Pullback Candidates": rows}, "Strong", pd.DataFrame()
+        )
+        self.assertEqual(character, "Selective Strong Market")
+
+    def test_final_decision_matches_review_tier(self):
+        frame = pd.DataFrame(
+            [
+                {
+                    "Ticker": "WAIT",
+                    "Category": "Pullback Candidates",
+                    "RS Score": 90,
+                    "Recent RS Score": 90,
+                    "RS Trend": "Improving",
+                    "Volume Ratio": 0.8,
+                    "Avg Volume": 2_000_000,
+                    "Risk/Reward Quality": "Not Available",
+                    "Pullback Quality": "B - Healthy Pullback",
+                    "Extension Status": "Not Extended",
+                    "VCP Label": "Good VCP",
+                    "Tightness Label": "Normal",
+                    "Nearest Support Distance ATR": 0.5,
+                    "Industry Qualified": True,
+                    "Industry Rank": 3,
+                    "Industry Setup Count": 3,
+                    "Price Data Warning": "",
+                }
+            ]
+        )
+        guided = run_screener.add_review_guidance_columns(frame)
+        self.assertEqual(guided.iloc[0]["Review Tier"], "Watch Later")
+        self.assertEqual(guided.iloc[0]["Final Decision"], "")
+        self.assertFalse(guided.iloc[0]["Confirmed Setup"])
 
     def test_weak_pullback_quality_is_skipped_from_top_action(self):
         row = {
@@ -375,6 +514,7 @@ class DataQualityTests(unittest.TestCase):
             "Sector": "Technology",
             "Industry": "Semiconductors",
             "RS Score": 96,
+            "Recent RS Score": 90,
             "RS Trend": "Stable Leader",
             "RS Trend Delta": 2,
             "Price": 100,
@@ -395,6 +535,12 @@ class DataQualityTests(unittest.TestCase):
             "Avg Volume": 2_000_000,
             "Support Signal": "EMA20 reclaim",
             "TradingView": "https://example.com/GOOD",
+            "Final Decision": "FULL",
+            "Industry Qualified": True,
+            "Sister Confirmation": True,
+            "Planned Entry": 100,
+            "Initial Stop": 95,
+            "Realistic Target": 110,
         }
         noisy = dict(quality)
         noisy.update(
@@ -405,13 +551,18 @@ class DataQualityTests(unittest.TestCase):
                 "Extension Status": "Extended",
                 "VCP Label": "Poor VCP",
                 "Tightness Label": "Loose",
+                "Final Decision": "NO TRADE",
             }
         )
         categories = {
             "Pullback Candidates": pd.DataFrame([quality, noisy]),
             "Breakout Candidates": pd.DataFrame(columns=run_screener.DISCOVERY_COLUMNS),
-            "Volume Surge Candidates": pd.DataFrame(columns=run_screener.DISCOVERY_COLUMNS),
-            "Tight Consolidation Candidates": pd.DataFrame(columns=run_screener.DISCOVERY_COLUMNS),
+            "Volume Surge Candidates": pd.DataFrame(
+                columns=run_screener.DISCOVERY_COLUMNS
+            ),
+            "Tight Consolidation Candidates": pd.DataFrame(
+                columns=run_screener.DISCOVERY_COLUMNS
+            ),
             "Extended Candidates": pd.DataFrame(columns=run_screener.DISCOVERY_COLUMNS),
         }
 
@@ -430,6 +581,10 @@ class DataQualityTests(unittest.TestCase):
                     "Review Tier": "Review Now",
                     "Noise Filter Reason": "",
                     "RS Score": 96,
+                    "Final Decision": "HALF",
+                    "Maximum Risk R": 0.5,
+                    "Maximum Risk Dollars": 293.5,
+                    "Maximum Shares": 58,
                 }
             ]
         )
@@ -438,6 +593,85 @@ class DataQualityTests(unittest.TestCase):
 
         self.assertEqual(records[0]["Review Tier"], "Review Now")
         self.assertIn("Noise Filter Reason", records[0])
+        self.assertEqual(records[0]["Final Decision"], "HALF")
+        self.assertEqual(records[0]["Maximum Risk R"], 0.5)
+
+    def test_ai_rankings_cannot_override_trade_state_or_risk_size(self):
+        frame = pd.DataFrame(
+            [
+                {
+                    "Ticker": "GOOD",
+                    "Final Decision": "HALF",
+                    "Maximum Risk R": 0.5,
+                    "Maximum Risk Dollars": 293.5,
+                    "Maximum Shares": 58,
+                }
+            ]
+        )
+        malicious = [
+            {
+                "ticker": "GOOD",
+                "priority_rank": 1,
+                "conviction_score": 10,
+                "final_decision": "FULL",
+                "maximum_risk_r": 1.0,
+                "maximum_shares": 999,
+            }
+        ]
+
+        result = ai_analysis._apply_ai_rankings(frame, malicious).iloc[0]
+
+        self.assertEqual(result["Final Decision"], "HALF")
+        self.assertEqual(result["Maximum Risk R"], 0.5)
+        self.assertEqual(result["Maximum Shares"], 58)
+
+    def test_full_candidates_sort_above_half_candidates(self):
+        frame = pd.DataFrame(
+            [
+                {
+                    "Ticker": "HALF1",
+                    "Final Decision": "HALF",
+                    "Review Tier": "Review Now",
+                    "Confirmed Setup": False,
+                    "Review Priority Score": 99,
+                    "Recent RS Score": 99,
+                    "Industry Rank": 1,
+                },
+                {
+                    "Ticker": "FULL1",
+                    "Final Decision": "FULL",
+                    "Review Tier": "Review Now",
+                    "Confirmed Setup": True,
+                    "Review Priority Score": 70,
+                    "Recent RS Score": 80,
+                    "Industry Rank": 2,
+                },
+            ]
+        )
+
+        self.assertEqual(
+            run_screener.sort_top_action_list(frame).iloc[0]["Ticker"], "FULL1"
+        )
+
+    def test_concise_decision_table_does_not_repeat_combined_reason_text(self):
+        table = run_screener.concise_decision_table(
+            pd.DataFrame(
+                [
+                    {
+                        "Ticker": "HALF1",
+                        "Final Decision": "HALF",
+                        "Decision Reasons": "industry leadership incomplete",
+                        "Main Missing Confirmation": "industry leadership incomplete",
+                        "Invalidation Reason": "",
+                    }
+                ]
+            )
+        )
+        self.assertNotIn("Main Missing / Blocking Condition", table.columns)
+        self.assertEqual(
+            table.iloc[0]["Main Missing Confirmation"],
+            "industry leadership incomplete",
+        )
 
     def test_pullback_action_distinguishes_confirmed_and_quiet_setups(self):
         confirmed = {
@@ -446,16 +680,28 @@ class DataQualityTests(unittest.TestCase):
             "Extension Status": "Not Extended",
             "Support Signal": "EMA20 reclaim",
             "Volume Ratio": 0.7,
+            "Recent RS Score": 90,
+            "Industry Qualified": True,
+            "Sister Confirmation": True,
+            "Tightness Label": "Tight",
+            "VCP Label": "Good VCP",
+            "Planned Entry": 100,
+            "Initial Stop": 95,
+            "Realistic Target": 110,
         }
         quiet = dict(confirmed)
         quiet["Support Signal"] = "Recent support"
         quiet["Volume Ratio"] = 0.4
 
-        self.assertEqual(run_screener.action_for_row(confirmed), "Confirmed pullback entry review")
+        self.assertEqual(
+            run_screener.action_for_row(confirmed), "Confirmed pullback entry review"
+        )
         self.assertEqual(run_screener.action_for_row(quiet), "Monitor quiet pullback")
 
     def test_price_data_warning_flags_extreme_latest_close(self):
-        history = pd.DataFrame({"Close": [100.0] * 60 + [400.0], "Volume": [1_000_000] * 61})
+        history = pd.DataFrame(
+            {"Close": [100.0] * 60 + [400.0], "Volume": [1_000_000] * 61}
+        )
         self.assertIn("20-day median", run_screener.price_data_warning(history))
 
     def test_ai_schema_requires_concern_and_confirmation(self):
@@ -572,10 +818,84 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("Executive Summary", html)
         self.assertIn("Market Status", html)
         self.assertIn("Caution", html)
-        self.assertIn("Confirmed Setups", html)
-        self.assertIn("Emerging Leaders", html)
-        self.assertIn("Price Warnings", html)
+        self.assertIn("Current Heat", html)
+        self.assertIn("HALF Candidates", html)
+        self.assertIn("NO TRADE Candidates", html)
+        self.assertIn("New Trade", html)
         self.assertIn("summary-grid", html)
+
+    def test_html_summary_distinguishes_conditional_half_from_ready_trade(self):
+        frame = pd.DataFrame([{"Ticker": "ABC", "Final Decision": "HALF"}])
+        context = {
+            "final_new_risk_allowed": True,
+            "new_trade_status": "CONDITIONAL",
+            "current_heat_r": 0.0,
+            "remaining_heat_r": 3.0,
+            "system_warnings": [],
+        }
+        html = run_screener.html_summary_panel(
+            frame, "Strong", decision_context=context
+        )
+        self.assertIn("CONDITIONAL", html)
+        self.assertIn("READY, CONDITIONAL, or NO", html)
+
+    def test_html_summary_separates_warning_messages_from_affected_candidates(self):
+        frame = pd.DataFrame(
+            [
+                {
+                    "Ticker": "A",
+                    "Final Decision": "NO TRADE",
+                    "Realistic Target Source": "model 2R feasibility target",
+                },
+                {
+                    "Ticker": "B",
+                    "Final Decision": "NO TRADE",
+                    "Realistic Target Source": "model 2R feasibility target",
+                },
+            ]
+        )
+        context = {
+            "current_heat_r": 0.0,
+            "remaining_heat_r": 0.0,
+            "system_warnings": ["2 candidates use model targets"],
+            "new_trade_status": "NO",
+            "final_new_risk_allowed": False,
+        }
+        html = run_screener.html_summary_panel(
+            frame, "Caution", decision_context=context
+        )
+        self.assertIn("System Warnings", html)
+        self.assertIn("Affected Candidates", html)
+        self.assertIn("Distinct warning messages", html)
+
+    def test_blank_price_warning_does_not_count_nan_as_warning(self):
+        frame = pd.DataFrame(
+            [
+                {
+                    "Ticker": "ABC",
+                    "Final Decision": "WATCH",
+                    "Price Data Warning": float("nan"),
+                }
+            ]
+        )
+        self.assertEqual(run_screener.report_summary_counts(frame)["price_warnings"], 0)
+
+    @patch("run_screener.save_metadata_cache")
+    @patch("run_screener.fetch_sector_industry")
+    @patch("run_screener.load_metadata_cache", return_value={})
+    def test_production_metadata_snapshot_does_not_grow_between_runs(
+        self, _load_cache, fetch_metadata, save_cache
+    ):
+        profiles = {"NEWTEST": {"Sector": "Unknown", "Industry": "Unknown"}}
+        first = run_screener.enrich_profiles_with_metadata(
+            profiles, ["NEWTEST"], fetch_missing=False
+        )
+        second = run_screener.enrich_profiles_with_metadata(
+            profiles, ["NEWTEST"], fetch_missing=False
+        )
+        self.assertEqual(first, second)
+        fetch_metadata.assert_not_called()
+        save_cache.assert_not_called()
 
     def test_daily_review_plan_prioritises_review_now_before_tracking(self):
         top_action = pd.DataFrame(
@@ -602,7 +922,9 @@ class DataQualityTests(unittest.TestCase):
             ]
         )
 
-        markdown = run_screener.markdown_daily_review_plan(top_action, daily_focus, "Caution")
+        markdown = run_screener.markdown_daily_review_plan(
+            top_action, daily_focus, "Caution"
+        )
         html = run_screener.html_daily_review_plan(top_action, daily_focus, "Caution")
 
         self.assertIn("Open first: ABC.", markdown)
@@ -623,7 +945,9 @@ class DataQualityTests(unittest.TestCase):
             ]
         )
 
-        markdown = run_screener.markdown_daily_review_plan(top_action, daily_focus, "Neutral")
+        markdown = run_screener.markdown_daily_review_plan(
+            top_action, daily_focus, "Neutral"
+        )
 
         self.assertIn("No clean first-review setups", markdown)
         self.assertIn("Skip today unless conditions improve: XYZ.", markdown)
@@ -753,7 +1077,9 @@ class DataQualityTests(unittest.TestCase):
         self.assertEqual(len(trend["rows"]), 3)
         self.assertEqual(trend["rows"][-1]["generated_at"], current["generated_at"])
         self.assertEqual(trend["assessment"], "Improving opportunity quality")
-        self.assertGreater(trend["rows"][-1]["quality_score"], trend["rows"][0]["quality_score"])
+        self.assertGreater(
+            trend["rows"][-1]["quality_score"], trend["rows"][0]["quality_score"]
+        )
 
     def test_html_trend_panel_renders_mini_trend_table_and_bars(self):
         trend = {
@@ -900,7 +1226,13 @@ class DataQualityTests(unittest.TestCase):
                 import os
 
                 os.chdir(temp_dir)
-                profiles = {"ABC": {"Exchange": "NASDAQ", "Sector": "Unknown", "Industry": "Unknown"}}
+                profiles = {
+                    "ABC": {
+                        "Exchange": "NASDAQ",
+                        "Sector": "Unknown",
+                        "Industry": "Unknown",
+                    }
+                }
                 enriched = run_screener.enrich_profiles_with_metadata(profiles, ["ABC"])
             finally:
                 os.chdir(current_dir)

@@ -2,6 +2,10 @@
 
 MIN_PRICE = 10
 MIN_MARKET_CAP = 500_000_000
+# Reliable market-cap metadata is not currently available for the full production
+# universe.  Keep the intended threshold visible, but never claim that it is
+# enforced until a validated provider is connected.
+ENFORCE_MARKET_CAP_FILTER = False
 MIN_AVG_VOLUME = 500_000
 MIN_ADR_PCT = 1
 MAX_ADR_PCT = 10
@@ -21,6 +25,25 @@ MIN_HIGH_PRIORITY_RS_SCORE = 85
 MIN_ACTIONABLE_INDUSTRY_SETUP_COUNT = 2
 MIN_CONFIRMATION_VOLUME_RATIO = 0.30
 MAX_ACTIONABLE_SUPPORT_DISTANCE_ATR = 2.5
+MIN_FORMAL_INDUSTRY_SIZE = 3
+RECENT_RS_WEIGHTS = {"5D": 0.15, "20D": 0.45, "60D": 0.30, "126D": 0.10}
+INDUSTRY_MOMENTUM_WEIGHTS = {
+    "Median 5D Relative Return": 0.15,
+    "Median 20D Relative Return": 0.35,
+    "Median 60D Relative Return": 0.20,
+    "Median Recent RS Score": 0.10,
+    "20D Outperformance Breadth %": 0.10,
+    "% Above 20EMA": 0.05,
+    "Momentum Acceleration": 0.05,
+}
+INDUSTRY_LEADERSHIP_WEIGHTS = {
+    "Median Long-Term RS Score": 0.40,
+    "Average Long-Term RS Score": 0.20,
+    "Stage 2 Breadth %": 0.15,
+    "% Within 15% of 52-week high": 0.10,
+    "Leader Quality Score": 0.10,
+    "Candidate Breadth %": 0.05,
+}
 DOWNLOAD_CHUNK_SIZE = 100
 UNIVERSE_REFRESH_DAYS = 7
 MIN_RS_SCORE = 75
@@ -34,6 +57,9 @@ DATA_TEST_MAX_RUNTIME_SECONDS = 120
 DATA_TEST_TICKER_LIMIT = 20
 METADATA_CACHE_CSV = "sector_industry_cache.csv"
 MAX_METADATA_FETCH_PER_RUN = 75
+# Keep repeated production reports on one stable classification snapshot.
+# Metadata refresh is a separate maintenance task.
+ALLOW_PRODUCTION_METADATA_ENRICHMENT = False
 MARKET_RETRY_DELAYS_SECONDS = [10, 30, 60]
 HISTORY_RETRY_DELAYS_SECONDS = [2, 5]
 FALLBACK_CHUNK_SIZES = [25, 10]
@@ -49,3 +75,83 @@ EMAIL_ENABLED = True
 UNIVERSE_CSV = "universe.csv"
 NASDAQ_LISTED_URL = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
 OTHER_LISTED_URL = "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
+
+# Daily Trading Decision System risk and decision configuration.
+STANDARD_R_DOLLARS = 587.0
+MARKET_HEAT_LIMITS = {
+    "Strong": 3.0,
+    "Constructive": 2.0,
+    "Neutral": 1.0,
+    "Caution": 0.5,
+    "Risk Off": 0.0,
+}
+MAX_INITIAL_R_PER_TRADE = 1.0
+FULL_RISK_R = 1.0
+HALF_RISK_R = 0.5
+MAX_OPEN_POSITIONS = 4
+MAX_NEW_INITIAL_R_PER_DAY = 2.0
+MAX_INDUSTRY_EFFECTIVE_HEAT_R = 2.0
+MAX_THEME_EFFECTIVE_HEAT_R = 2.0
+OVERNIGHT_GAP_RISK_FLOOR_R = 0.25
+POSITION_STALE_HOURS = 36
+PRICE_STALE_HOURS = 36
+US_MARKET_CLOSE_GRACE_MINUTES = 15
+MIN_METADATA_COVERAGE_PCT = 0.80
+FORWARD_SNAPSHOT_DIR = "output/forward_snapshots"
+
+RECENT_RS_PERIODS = (5, 10, 20, 30)
+RECENT_RS_DECISION_WEIGHTS = {"5D": 0.15, "10D": 0.20, "20D": 0.40, "30D": 0.25}
+MIN_RECENT_RS_ALLOWED = 70.0
+MIN_EARLY_LEADER_RS_SCORE = 60.0
+
+MIN_QUALIFIED_INDUSTRY_SIZE = 5
+MIN_INDUSTRY_ABSOLUTE_RETURN_10D = 0.0
+MIN_INDUSTRY_RELATIVE_RETURN_20D = 0.0
+MIN_INDUSTRY_ABOVE_20EMA_PCT = 50.0
+MIN_INDUSTRY_ABOVE_50MA_PCT = 40.0
+MIN_INDUSTRY_NEAR_20D_HIGH_PCT = 20.0
+MIN_INDUSTRY_VALID_BREAKOUTS = 1
+MAX_INDUSTRY_BREAKOUT_FAILURE_RATE = 50.0
+MIN_BREAKOUT_SAMPLE_FOR_FAILURE_GATE = 3
+INDUSTRY_QUALIFICATION_WEIGHTS = {
+    "Relative Return 20D": 0.30,
+    "Relative Return 10D": 0.20,
+    "Above 20EMA %": 0.20,
+    "Above 50MA %": 0.15,
+    "Near Highs %": 0.10,
+    "Breakout Quality": 0.05,
+}
+
+MIN_REWARD_RISK_ALLOWED = 2.0
+TOP_ACTION_MIN_FINAL_SCORE = 75.0
+REVIEW_NOW_MIN_FINAL_SCORE = 68.0
+CONFIRMED_SETUP_MIN_FINAL_SCORE = 72.0
+MAX_TOP_ACTION_PER_INDUSTRY = 1
+MAX_DAILY_FOCUS_PER_INDUSTRY = 3
+MAX_DAILY_FOCUS_PER_SECTOR = 5
+HIGH_CONVICTION_INDUSTRY_SCORE = 90.0
+MIN_COMPLETED_TRADES_FOR_PRELIMINARY = 10
+MIN_COMPLETED_TRADES_FOR_DEVELOPING = 30
+MIN_COMPLETED_TRADES_FOR_MEANINGFUL = 50
+
+# Deterministic provisional trade-plan construction.
+TRADE_PLAN_ENTRY_BUFFER_PCT = 0.10
+TRADE_PLAN_STOP_ATR_BUFFER = 0.10
+TRADE_PLAN_MIN_RISK_ATR = 0.50
+TRADE_PLAN_MAX_RISK_ATR = 4.00
+MIN_TRADE_PLAN_CONFIDENCE = "Medium"
+POSITION_FILE = "data/open_positions.csv"
+EQUITY_FILE = "data/account_equity.csv"
+
+# Drawdown controls. These are initial risk-policy defaults, not optimised claims.
+DRAWDOWN_REDUCED_AT_R = 2.0
+DRAWDOWN_DEFENSIVE_AT_R = 4.0
+DRAWDOWN_STOP_NEW_RISK_AT_R = 6.0
+DRAWDOWN_HEAT_LIMITS = {
+    "NORMAL": 3.0,
+    "REDUCED": 1.5,
+    "DEFENSIVE": 0.5,
+    "STOP_NEW_RISK": 0.0,
+}
+REDUCED_MODE_ALLOW_FULL = False
+DEFENSIVE_MAX_NEW_HALF_POSITIONS = 1
