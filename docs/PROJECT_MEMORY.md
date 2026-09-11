@@ -198,6 +198,15 @@ can silently ignore a partial write and must not be used. The reconstructed
 same-day ticker set supplies both used initial R and the Defensive-mode daily
 new-position count.
 
+For snapshot-ledger state, a missing signal-date directory means no prior
+authorisation. An existing but empty signal-date directory can be left by an
+interrupted first write and must make the ledger unavailable; it must never be
+interpreted as a zero balance.
+
+The 2026-09-11 empty signal-date directory follow-up passed full verification
+with 216 pytest tests, 118 legacy unittest tests, industry/report invariants,
+the offline sample dry run, and generated HTML semantic validation.
+
 The 2026-09-11 partial-snapshot and Defensive-counter follow-up passed full
 verification with 215 pytest tests, 118 legacy unittest tests, industry/report
 invariants, the offline sample dry run, and generated HTML semantic validation.

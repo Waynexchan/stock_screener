@@ -66,6 +66,12 @@ Full verification passed with 215 pytest tests, 118 legacy unittest tests,
 industry/report invariants, the offline sample dry run, and generated HTML
 semantic validation.
 
+The final empty-directory crash window is now covered: absence of a signal-date
+directory means no prior ledger, while an existing signal-date directory with no
+complete run fails closed. Full verification passed with 216 pytest tests, 118
+legacy unittest tests, industry/report invariants, the offline sample dry run,
+and generated HTML semantic validation.
+
 ## High-priority known issues
 
 - There is not yet enough valid historical evidence to claim positive expectancy.

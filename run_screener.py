@@ -3501,6 +3501,8 @@ def load_authorized_new_risk_by_ticker(
     }
     try:
         run_directories = sorted(path for path in base.iterdir() if path.is_dir())
+        if not run_directories:
+            return None
         for run_directory in run_directories:
             if not all((run_directory / name).is_file() for name in required_files):
                 return None

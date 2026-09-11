@@ -24,8 +24,10 @@ position entries plus prior authorisations recovered from immutable forward
 snapshots for the same signal date. Repeated snapshots of the same ticker retain
 its largest authorisation instead of double-counting it. If this ledger is
 partial, incomplete, or unreadable, new risk is blocked rather than reset to
-zero. The same reconstructed ticker set also preserves the Defensive-mode daily
-new-position count across reruns.
+zero. An absent signal-date directory means no prior authorisation, but an
+already-created empty signal-date directory is treated as an interrupted write
+and blocks new risk. The same reconstructed ticker set also preserves the
+Defensive-mode daily new-position count across reruns.
 
 Only `Qualified Current Leaders` appear in actionable Top Industries. Rotation watches, lagging long-term leaders, and small-sample groups remain visible but do not grant normal industry or sister-stock confirmation.
 

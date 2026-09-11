@@ -677,6 +677,15 @@ def test_partial_snapshot_makes_authorisation_ledger_unavailable(tmp_path: Path)
     )
 
 
+def test_empty_signal_date_directory_makes_authorisation_ledger_unavailable(
+    tmp_path: Path,
+):
+    (tmp_path / "2026-09-04").mkdir()
+    assert (
+        run_screener.load_authorized_new_risk_by_ticker("2026-09-04", tmp_path) is None
+    )
+
+
 def test_decision_context_restores_prior_same_day_authorisation(
     tmp_path: Path, monkeypatch
 ):

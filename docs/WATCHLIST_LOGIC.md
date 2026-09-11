@@ -22,6 +22,8 @@ Production has one authoritative candidate pipeline:
    allowance. Every snapshot directory must contain the complete expected
    artifact set and consistent metadata before it can be used as a ledger entry;
    a partial snapshot makes the ledger unavailable and blocks new risk.
+   An existing signal-date directory with no run directory is also an incomplete
+   ledger, not evidence of zero prior authorisations.
 8. Export the unchanged canonical decision to CSV, Markdown, HTML, email, and
    the immutable forward snapshot.
 
