@@ -23,7 +23,9 @@ row or production rerun. The configured 2R daily cap includes same-market-date
 position entries plus prior authorisations recovered from immutable forward
 snapshots for the same signal date. Repeated snapshots of the same ticker retain
 its largest authorisation instead of double-counting it. If this ledger is
-unreadable, new risk is blocked rather than reset to zero.
+partial, incomplete, or unreadable, new risk is blocked rather than reset to
+zero. The same reconstructed ticker set also preserves the Defensive-mode daily
+new-position count across reruns.
 
 Only `Qualified Current Leaders` appear in actionable Top Industries. Rotation watches, lagging long-term leaders, and small-sample groups remain visible but do not grant normal industry or sister-stock confirmation.
 

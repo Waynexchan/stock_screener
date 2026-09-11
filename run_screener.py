@@ -3492,10 +3492,30 @@ def load_authorized_new_risk_by_ticker(
         return {}
     authorised: dict[str, float] = {}
     required = {"Ticker", "Final Decision", "Maximum Risk R"}
+    required_files = {
+        "candidates.csv",
+        "market.json",
+        "portfolio.json",
+        "config.json",
+        "metadata.json",
+    }
     try:
-        for candidate_path in sorted(base.glob("*/candidates.csv")):
+        run_directories = sorted(path for path in base.iterdir() if path.is_dir())
+        for run_directory in run_directories:
+            if not all((run_directory / name).is_file() for name in required_files):
+                return None
+            candidate_path = run_directory / "candidates.csv"
             frame = pd.read_csv(candidate_path)
             if not required.issubset(frame.columns):
+                return None
+            metadata = json.loads(
+                (run_directory / "metadata.json").read_text(encoding="utf-8")
+            )
+            if (
+                not isinstance(metadata, dict)
+                or metadata.get("signal_trading_date") != canonical_date
+                or metadata.get("candidate_count") != len(frame)
+            ):
                 return None
             rows = frame[frame["Final Decision"].isin(["FULL", "HALF"])]
             for row in rows.to_dict("records"):
@@ -3509,7 +3529,13 @@ def load_authorized_new_risk_by_ticker(
                 ):
                     return None
                 authorised[ticker] = max(authorised.get(ticker, 0.0), risk_r)
-    except (OSError, pd.errors.ParserError, pd.errors.EmptyDataError, ValueError):
+    except (
+        OSError,
+        json.JSONDecodeError,
+        pd.errors.ParserError,
+        pd.errors.EmptyDataError,
+        ValueError,
+    ):
         return None
     return authorised
 
@@ -4307,6 +4333,7 @@ def build_decision_context(
     if authorised_risk is None or position_risk is None:
         portfolio_status["portfolio_new_risk_allowed"] = False
         portfolio_status["new_initial_risk_r_today"] = None
+        portfolio_status["new_position_count_today"] = None
         portfolio_status["data_status"] = (
             str(portfolio_status["data_status"])
             + "; same-day risk authorisation ledger unavailable"
@@ -4319,6 +4346,7 @@ def build_decision_context(
         portfolio_status["new_initial_risk_r_today"] = round(
             sum(combined_risk.values()), 4
         )
+        portfolio_status["new_position_count_today"] = len(combined_risk)
     portfolio = portfolio_status["portfolio"]
     market_allowed = bool(regime.new_risk_allowed)
     portfolio_allowed = bool(portfolio_status["portfolio_new_risk_allowed"])
@@ -4569,6 +4597,16 @@ def apply_canonical_decision_pipeline(
     base_daily_risk_remaining = max(
         0.0, config.MAX_NEW_INITIAL_R_PER_DAY - existing_new_initial_risk
     )
+    existing_new_position_count = pd.to_numeric(
+        portfolio_status.get("new_position_count_today"), errors="coerce"
+    )
+    if (
+        pd.isna(existing_new_position_count)
+        or not np.isfinite(existing_new_position_count)
+        or float(existing_new_position_count) < 0
+    ):
+        existing_new_position_count = config.DEFENSIVE_MAX_NEW_HALF_POSITIONS
+    existing_new_position_count = int(existing_new_position_count)
 
     def apply_decision_fields(
         record: dict[str, object], decision: TradeSizingDecision
@@ -4613,6 +4651,7 @@ def apply_canonical_decision_pipeline(
             drawdown,
             portfolio,
             portfolio_status["open_position_count"],
+            existing_new_position_count,
             portfolio_new_risk_allowed=portfolio_permission,
             market_new_risk_allowed=market_permission,
             remaining_new_risk_r=base_daily_risk_remaining,
@@ -4647,7 +4686,7 @@ def apply_canonical_decision_pipeline(
             drawdown,
             projected_portfolio,
             None if base_open_count is None else base_open_count + accepted_count,
-            accepted_count,
+            existing_new_position_count + accepted_count,
             portfolio_new_risk_allowed=portfolio_permission,
             market_new_risk_allowed=market_permission,
             remaining_new_risk_r=max(

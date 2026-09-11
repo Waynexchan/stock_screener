@@ -59,6 +59,13 @@ authorisations. Full verification passed with 213 pytest tests, 118 legacy
 unittest tests, industry/report invariants, the offline sample dry run, and
 generated HTML semantic validation.
 
+The subsequent independent-review findings are addressed: incomplete snapshot
+directories can no longer make the daily ledger look empty, and Defensive-mode
+same-day new-position usage is reconstructed rather than reset for each run.
+Full verification passed with 215 pytest tests, 118 legacy unittest tests,
+industry/report invariants, the offline sample dry run, and generated HTML
+semantic validation.
+
 ## High-priority known issues
 
 - There is not yet enough valid historical evidence to claim positive expectancy.

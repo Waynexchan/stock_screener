@@ -82,6 +82,7 @@ def context(
     new_risk_allowed: bool = True,
     market_new_risk_allowed: bool = True,
     new_initial_risk_r_today: float | None = 0.0,
+    new_position_count_today: int | None = 0,
 ) -> dict[str, object]:
     return {
         "market_regime": SimpleNamespace(regime="Strong"),
@@ -92,6 +93,7 @@ def context(
             "open_position_count": open_positions,
             "portfolio_new_risk_allowed": new_risk_allowed,
             "new_initial_risk_r_today": new_initial_risk_r_today,
+            "new_position_count_today": new_position_count_today,
         },
     }
 
@@ -426,6 +428,22 @@ def test_existing_same_day_initial_r_is_reserved_on_every_pipeline_run():
     assert "daily new-risk limit reached" in final.loc["SECOND", "Decision Reasons"]
 
 
+def test_defensive_same_day_position_limit_survives_pipeline_rerun():
+    decision_context = context(
+        portfolio(remaining=0.5),
+        open_positions=1,
+        new_initial_risk_r_today=0.25,
+        new_position_count_today=1,
+    )
+    decision_context["drawdown"] = calculate_drawdown_state(100_000 - 4 * 587, 100_000)
+    result = decision(candidate(), decision_context)
+    assert result["Final Decision"] == "NO TRADE"
+    assert (
+        "Defensive drawdown-mode new-position limit reached"
+        in result["Decision Reasons"]
+    )
+
+
 def industry_members() -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -637,10 +655,26 @@ def test_same_day_authorisation_ledger_survives_reruns_without_double_counting(
             {"Ticker": "CCC", "Final Decision": "HALF", "Maximum Risk R": 0.5},
         ]
     ).to_csv(second / "candidates.csv", index=False)
+    for directory in (first, second):
+        for name in ("market.json", "portfolio.json", "config.json"):
+            (directory / name).write_text("{}", encoding="utf-8")
+        (directory / "metadata.json").write_text(
+            json.dumps({"signal_trading_date": "2026-09-04", "candidate_count": 2}),
+            encoding="utf-8",
+        )
 
     authorised = run_screener.load_authorized_new_risk_by_ticker("2026-09-04", tmp_path)
     assert authorised == {"AAA": 1.0, "BBB": 0.5, "CCC": 0.5}
     assert sum(authorised.values()) == config.MAX_NEW_INITIAL_R_PER_DAY
+
+
+def test_partial_snapshot_makes_authorisation_ledger_unavailable(tmp_path: Path):
+    partial = tmp_path / "2026-09-04" / "partial-run"
+    partial.mkdir(parents=True)
+    (partial / "metadata.json").write_text("{}", encoding="utf-8")
+    assert (
+        run_screener.load_authorized_new_risk_by_ticker("2026-09-04", tmp_path) is None
+    )
 
 
 def test_decision_context_restores_prior_same_day_authorisation(
@@ -651,6 +685,12 @@ def test_decision_context_restores_prior_same_day_authorisation(
     pd.DataFrame(
         [{"Ticker": "AAA", "Final Decision": "FULL", "Maximum Risk R": 1.0}]
     ).to_csv(snapshot / "candidates.csv", index=False)
+    for name in ("market.json", "portfolio.json", "config.json"):
+        (snapshot / name).write_text("{}", encoding="utf-8")
+    (snapshot / "metadata.json").write_text(
+        json.dumps({"signal_trading_date": "2026-09-04", "candidate_count": 1}),
+        encoding="utf-8",
+    )
     monkeypatch.setattr(config, "FORWARD_SNAPSHOT_DIR", str(tmp_path))
     monkeypatch.setattr(
         run_screener,
@@ -667,6 +707,7 @@ def test_decision_context_restores_prior_same_day_authorisation(
             "portfolio_new_risk_allowed": True,
             "new_initial_risk_r_today": 0.0,
             "new_initial_risk_by_ticker_today": {},
+            "new_position_count_today": 0,
         },
     )
     monkeypatch.setattr(
@@ -690,3 +731,4 @@ def test_decision_context_restores_prior_same_day_authorisation(
     assert result["portfolio_status"]["new_initial_risk_by_ticker_today"] == {
         "AAA": 1.0
     }
+    assert result["portfolio_status"]["new_position_count_today"] == 1

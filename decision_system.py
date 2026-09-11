@@ -792,6 +792,7 @@ def load_portfolio_status(
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
             "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
         }
     try:
         frame = pd.read_csv(path)
@@ -802,6 +803,7 @@ def load_portfolio_status(
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
             "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
         }
     if "status" not in frame.columns:
         return {
@@ -810,6 +812,7 @@ def load_portfolio_status(
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
             "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
         }
     normalised_status = frame["status"].map(normalise_position_status)
     if normalised_status.eq("").any():
@@ -819,6 +822,7 @@ def load_portfolio_status(
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
             "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
         }
     unsupported_statuses = sorted(set(normalised_status) - SUPPORTED_POSITION_STATUSES)
     if unsupported_statuses:
@@ -831,6 +835,7 @@ def load_portfolio_status(
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
             "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
         }
     reference = as_of or datetime.now(timezone.utc)
     if reference.tzinfo is None:
@@ -886,6 +891,7 @@ def load_portfolio_status(
             "portfolio_new_risk_allowed": False,
             "new_initial_risk_r_today": None,
             "new_initial_risk_by_ticker_today": None,
+            "new_position_count_today": None,
         }
     open_rows = frame[normalised_status.eq("open")]
     if open_rows.empty:
@@ -898,6 +904,7 @@ def load_portfolio_status(
             >= config.HALF_RISK_R,
             "new_initial_risk_r_today": new_initial_risk_r_today,
             "new_initial_risk_by_ticker_today": new_initial_risk_by_ticker_today,
+            "new_position_count_today": len(new_initial_risk_by_ticker_today),
         }
     positions: list[Position] = []
     auto_filled: set[str] = set()
@@ -962,6 +969,7 @@ def load_portfolio_status(
             "portfolio_new_risk_allowed": False,
             "new_initial_risk_r_today": None,
             "new_initial_risk_by_ticker_today": None,
+            "new_position_count_today": None,
         }
     allowed = (
         portfolio.remaining_heat_r >= config.HALF_RISK_R
@@ -975,6 +983,7 @@ def load_portfolio_status(
         "portfolio_new_risk_allowed": allowed,
         "new_initial_risk_r_today": new_initial_risk_r_today,
         "new_initial_risk_by_ticker_today": new_initial_risk_by_ticker_today,
+        "new_position_count_today": len(new_initial_risk_by_ticker_today),
         "auto_filled_fields": sorted(auto_filled),
     }
 

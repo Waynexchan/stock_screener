@@ -18,7 +18,10 @@ Production has one authoritative candidate pipeline:
    industry/sector concentration limits, then reserve shared capacity in
    deterministic Final Score order. Initialise daily capacity from same-day
    position entries and prior immutable authorisation snapshots so a rerun does
-   not restore the full 2R allowance.
+   not restore the full 2R allowance or the Defensive-mode daily new-position
+   allowance. Every snapshot directory must contain the complete expected
+   artifact set and consistent metadata before it can be used as a ledger entry;
+   a partial snapshot makes the ledger unavailable and blocks new risk.
 8. Export the unchanged canonical decision to CSV, Markdown, HTML, email, and
    the immutable forward snapshot.
 

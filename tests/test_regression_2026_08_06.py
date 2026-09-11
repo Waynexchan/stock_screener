@@ -155,6 +155,7 @@ def test_portfolio_reports_initial_r_already_opened_on_as_of_date(tmp_path: Path
         as_of=as_of,
     )
     assert status["new_initial_risk_r_today"] == round(300 / 587, 4)
+    assert status["new_position_count_today"] == 2
 
 
 def test_minimal_position_without_snapshot_price_is_invalid_not_zero(tmp_path: Path):

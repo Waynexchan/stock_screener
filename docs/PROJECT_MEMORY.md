@@ -191,6 +191,17 @@ authorisations are deduplicated by ticker using the largest prior risk amount;
 an unreadable existing authorisation ledger blocks new risk. This is operational
 risk state, not research evidence or a strategy filter.
 
+Snapshot-ledger discovery must enumerate every run directory and require the
+complete candidates/market/portfolio/config/metadata artifact set plus matching
+signal date and candidate count. Merely globbing existing `candidates.csv` files
+can silently ignore a partial write and must not be used. The reconstructed
+same-day ticker set supplies both used initial R and the Defensive-mode daily
+new-position count.
+
+The 2026-09-11 partial-snapshot and Defensive-counter follow-up passed full
+verification with 215 pytest tests, 118 legacy unittest tests, industry/report
+invariants, the offline sample dry run, and generated HTML semantic validation.
+
 The 2026-09-11 follow-up full verification passed with 213 pytest tests, 118
 legacy unittest tests, industry/report invariants, the offline sample dry run,
 and generated HTML semantic validation.
