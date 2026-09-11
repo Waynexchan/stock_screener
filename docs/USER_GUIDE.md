@@ -19,7 +19,11 @@ The production decision pass treats market and portfolio permissions as hard
 gates and allocates candidates in descending Final Score order. Every accepted
 FULL/HALF candidate consumes the same projected open-position, heat, and daily
 new-initial-risk capacity seen by later candidates; capacity is never reset per
-row, and total newly authorised risk cannot exceed the configured 2R daily cap.
+row or production rerun. The configured 2R daily cap includes same-market-date
+position entries plus prior authorisations recovered from immutable forward
+snapshots for the same signal date. Repeated snapshots of the same ticker retain
+its largest authorisation instead of double-counting it. If this ledger is
+unreadable, new risk is blocked rather than reset to zero.
 
 Only `Qualified Current Leaders` appear in actionable Top Industries. Rotation watches, lagging long-term leaders, and small-sample groups remain visible but do not grant normal industry or sister-stock confirmation.
 

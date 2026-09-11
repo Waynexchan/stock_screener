@@ -51,6 +51,14 @@ boundaries; 118 legacy unittest tests, industry/report invariants, the offline
 sample dry run, and generated HTML semantic validation also passed. Focused
 research verification remained at 28 tests and confirmed production isolation.
 
+Follow-up risk-boundary work on 2026-09-11 makes missing canonical market or
+portfolio permission fail closed, enforces the position-status allowlist inside
+the portfolio domain, and persists the 2R daily allowance across production
+reruns using same-day position entries plus immutable same-signal-date
+authorisations. Full verification passed with 213 pytest tests, 118 legacy
+unittest tests, industry/report invariants, the offline sample dry run, and
+generated HTML semantic validation.
+
 ## High-priority known issues
 
 - There is not yet enough valid historical evidence to claim positive expectancy.

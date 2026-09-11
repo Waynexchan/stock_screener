@@ -117,7 +117,10 @@ The project has previously identified or guarded against:
 - market or portfolio stop-new-risk permission being omitted from canonical
   decisions;
 - candidates independently reusing portfolio position/heat capacity or exceeding
-  the aggregate daily new-initial-risk cap.
+  the aggregate daily new-initial-risk cap, including by resetting that cap on a
+  same-day rerun;
+- compatibility callers bypassing a fail-closed permission or status check at
+  the canonical/domain boundary.
 
 Do not mark these permanently fixed merely because current tests pass. Preserve the tests and validate the relevant path after changes.
 
@@ -181,5 +184,15 @@ Do not begin these steps without an explicit task.
   aggregate daily new-initial-risk cap. The 118-test legacy suite, industry and
   report invariants, offline dry run, HTML semantic validation, and focused
   research production-isolation verification also pass.
+
+Daily new-initial-risk usage is reconstructed from current-market-date position
+entries and immutable forward snapshots for the same signal date. Snapshot
+authorisations are deduplicated by ticker using the largest prior risk amount;
+an unreadable existing authorisation ledger blocks new risk. This is operational
+risk state, not research evidence or a strategy filter.
+
+The 2026-09-11 follow-up full verification passed with 213 pytest tests, 118
+legacy unittest tests, industry/report invariants, the offline sample dry run,
+and generated HTML semantic validation.
 
 The framework checkpoint hash is recorded in the task handoff because a commit cannot contain its own hash.

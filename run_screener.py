@@ -3474,6 +3474,46 @@ def write_forward_snapshot(
     return target
 
 
+def load_authorized_new_risk_by_ticker(
+    signal_date: str, root: str | Path | None = None
+) -> dict[str, float] | None:
+    """Load prior same-signal-date authorisations from immutable snapshots.
+
+    Repeated snapshots may contain the same ticker, so the largest prior
+    authorisation per ticker is retained instead of double-counting reruns.
+    A malformed existing ledger fails closed by returning ``None``.
+    """
+    try:
+        canonical_date = date.fromisoformat(signal_date).isoformat()
+    except ValueError:
+        return None
+    base = Path(root or config.FORWARD_SNAPSHOT_DIR) / canonical_date
+    if not base.exists():
+        return {}
+    authorised: dict[str, float] = {}
+    required = {"Ticker", "Final Decision", "Maximum Risk R"}
+    try:
+        for candidate_path in sorted(base.glob("*/candidates.csv")):
+            frame = pd.read_csv(candidate_path)
+            if not required.issubset(frame.columns):
+                return None
+            rows = frame[frame["Final Decision"].isin(["FULL", "HALF"])]
+            for row in rows.to_dict("records"):
+                ticker = str(row.get("Ticker", "")).strip().upper()
+                risk_r = float(row.get("Maximum Risk R"))
+                if (
+                    not ticker
+                    or not np.isfinite(risk_r)
+                    or risk_r <= 0
+                    or risk_r > config.MAX_INITIAL_R_PER_TRADE + 1e-9
+                ):
+                    return None
+                authorised[ticker] = max(authorised.get(ticker, 0.0), risk_r)
+    except (OSError, pd.errors.ParserError, pd.errors.EmptyDataError, ValueError):
+        return None
+    return authorised
+
+
 def compact_industry_table(frame: pd.DataFrame) -> pd.DataFrame:
     """Return only the fields needed for the daily industry decision."""
     columns = [
@@ -4254,6 +4294,31 @@ def build_decision_context(
         market_snapshot=eligible,
         maximum_heat_override_r=effective_heat_limit,
     )
+    signal_dates = [
+        str(value)
+        for value in canonical.get("Signal Date", pd.Series(dtype=str)).dropna()
+        if str(value).strip()
+    ]
+    signal_date = (
+        max(signal_dates) if signal_dates else expected_latest_us_session().isoformat()
+    )
+    authorised_risk = load_authorized_new_risk_by_ticker(signal_date)
+    position_risk = portfolio_status.get("new_initial_risk_by_ticker_today")
+    if authorised_risk is None or position_risk is None:
+        portfolio_status["portfolio_new_risk_allowed"] = False
+        portfolio_status["new_initial_risk_r_today"] = None
+        portfolio_status["data_status"] = (
+            str(portfolio_status["data_status"])
+            + "; same-day risk authorisation ledger unavailable"
+        )
+    else:
+        combined_risk = dict(position_risk)
+        for ticker, risk_r in authorised_risk.items():
+            combined_risk[ticker] = max(combined_risk.get(ticker, 0.0), risk_r)
+        portfolio_status["new_initial_risk_by_ticker_today"] = combined_risk
+        portfolio_status["new_initial_risk_r_today"] = round(
+            sum(combined_risk.values()), 4
+        )
     portfolio = portfolio_status["portfolio"]
     market_allowed = bool(regime.new_risk_allowed)
     portfolio_allowed = bool(portfolio_status["portfolio_new_risk_allowed"])
@@ -4491,6 +4556,19 @@ def apply_canonical_decision_pipeline(
     drawdown = decision_context["drawdown"]
     market_permission = decision_context.get("market_new_risk_allowed") is True
     portfolio_permission = portfolio_status.get("portfolio_new_risk_allowed") is True
+    existing_new_initial_risk = pd.to_numeric(
+        portfolio_status.get("new_initial_risk_r_today"), errors="coerce"
+    )
+    if (
+        pd.isna(existing_new_initial_risk)
+        or not np.isfinite(existing_new_initial_risk)
+        or float(existing_new_initial_risk) < 0
+    ):
+        existing_new_initial_risk = config.MAX_NEW_INITIAL_R_PER_DAY
+    existing_new_initial_risk = float(existing_new_initial_risk)
+    base_daily_risk_remaining = max(
+        0.0, config.MAX_NEW_INITIAL_R_PER_DAY - existing_new_initial_risk
+    )
 
     def apply_decision_fields(
         record: dict[str, object], decision: TradeSizingDecision
@@ -4537,6 +4615,7 @@ def apply_canonical_decision_pipeline(
             portfolio_status["open_position_count"],
             portfolio_new_risk_allowed=portfolio_permission,
             market_new_risk_allowed=market_permission,
+            remaining_new_risk_r=base_daily_risk_remaining,
         )
         rows.append(apply_decision_fields(record, decision))
 
@@ -4546,7 +4625,7 @@ def apply_canonical_decision_pipeline(
     projected_portfolio = portfolio
     base_open_count = portfolio_status["open_position_count"]
     accepted_count = 0
-    allocated_new_risk_r = 0.0
+    batch_allocated_r = 0.0
     final_records = {
         index: record for index, record in enumerate(concentrated.to_dict("records"))
     }
@@ -4572,7 +4651,7 @@ def apply_canonical_decision_pipeline(
             portfolio_new_risk_allowed=portfolio_permission,
             market_new_risk_allowed=market_permission,
             remaining_new_risk_r=max(
-                0.0, config.MAX_NEW_INITIAL_R_PER_DAY - allocated_new_risk_r
+                0.0, base_daily_risk_remaining - batch_allocated_r
             ),
         )
         revised = apply_decision_fields(record, decision)
@@ -4600,7 +4679,7 @@ def apply_canonical_decision_pipeline(
             theme_heat=theme_heat,
         )
         accepted_count += 1
-        allocated_new_risk_r += reserved_r
+        batch_allocated_r += reserved_r
     final = pd.DataFrame([final_records[index] for index in range(len(final_records))])
     errors = validate_canonical_decision_invariants(final)
     actionable = final[final["Final Decision"].isin(["FULL", "HALF"])]
@@ -4621,7 +4700,7 @@ def apply_canonical_decision_pipeline(
         )
         if allocated_r > portfolio.remaining_heat_r + 1e-9:
             errors.append("candidate allocation exceeds remaining portfolio heat")
-        if allocated_r > config.MAX_NEW_INITIAL_R_PER_DAY + 1e-9:
+        if allocated_r > base_daily_risk_remaining + 1e-9:
             errors.append("candidate allocation exceeds daily new-risk limit")
     if errors:
         raise RuntimeError("Decision invariant failure: " + "; ".join(errors))

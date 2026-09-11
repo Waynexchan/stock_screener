@@ -280,6 +280,15 @@ def position(**updates):
     return Position(**data)
 
 
+def test_portfolio_domain_rejects_unsupported_position_status():
+    try:
+        calculate_portfolio_risk([position(status="opne")], "Strong")
+    except ValueError as exc:
+        assert "unsupported position status: opne" in str(exc)
+    else:
+        raise AssertionError("unsupported position status did not fail closed")
+
+
 def market(regime="Strong"):
     values = {
         "spy_above_20ema": True,

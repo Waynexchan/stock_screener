@@ -16,7 +16,9 @@ Production has one authoritative candidate pipeline:
 6. Produce exactly one `FULL`, `HALF`, `WATCH`, or `NO TRADE` record.
 7. Size only authorised FULL/HALF decisions, apply configured candidate
    industry/sector concentration limits, then reserve shared capacity in
-   deterministic Final Score order.
+   deterministic Final Score order. Initialise daily capacity from same-day
+   position entries and prior immutable authorisation snapshots so a rerun does
+   not restore the full 2R allowance.
 8. Export the unchanged canonical decision to CSV, Markdown, HTML, email, and
    the immutable forward snapshot.
 
@@ -57,3 +59,7 @@ written under `output/forward_snapshots`; existing bundles are never overwritten
 
 AI sees validated records only. It can rank or describe them, but it cannot
 change decisions, setup integrity, confirmation, R/R, risk, or shares.
+
+Position status normalization and the `open`/`closed` allowlist are enforced at
+both CSV ingestion and the portfolio-risk domain boundary. Unknown status values
+cannot silently disappear from portfolio heat.

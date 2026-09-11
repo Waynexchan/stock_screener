@@ -1,4 +1,6 @@
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -124,6 +126,35 @@ def test_minimal_position_input_is_enriched_from_current_snapshot(tmp_path: Path
         "sector",
         "last_updated",
     }
+
+
+def test_portfolio_reports_initial_r_already_opened_on_as_of_date(tmp_path: Path):
+    positions = tmp_path / "positions.csv"
+    as_of = datetime.now(timezone.utc)
+    entry_date = as_of.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares,status\n"
+        f"IMVT,{entry_date},40,38,39,100,open\n"
+        f"CLOSED,{entry_date},20,19,19,100,closed\n",
+        encoding="utf-8",
+    )
+    snapshot = pd.DataFrame(
+        [
+            {
+                "Ticker": "IMVT",
+                "Price": 42.0,
+                "Industry": "Biotechnology",
+                "Sector": "Healthcare",
+            }
+        ]
+    )
+    status = load_portfolio_status(
+        str(positions),
+        "Strong",
+        snapshot,
+        as_of=as_of,
+    )
+    assert status["new_initial_risk_r_today"] == round(300 / 587, 4)
 
 
 def test_minimal_position_without_snapshot_price_is_invalid_not_zero(tmp_path: Path):
