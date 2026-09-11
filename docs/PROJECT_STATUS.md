@@ -1,16 +1,16 @@
 # Project Status
 
-Fast handoff as of 2026-09-10. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-09-11. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
-- Active fix branch: `fix/production-risk-boundaries`, based on and tracking
-  `origin/main` at `c84c976ef73c89d140bf089205e30d959d22d456`.
+- Branch: `main`, tracking `origin/main`. The five-commit
+  `fix/production-risk-boundaries` series was merged through `432be57`.
 - Remote confirmed: `https://github.com/Waynexchan/stock_screener.git`; it was not changed.
 - Research-task starting commit: `ff44477d4918852ed81becc84890ce9add8b634c`.
-- Worktree: the production-risk fixes are isolated in a separate worktree. The
-  pre-existing dirty `main` checkout remains preserved and was not modified by
-  this fix.
+- Worktree: clean after integration and verification. The former dirty `main`
+  files were verified blob-for-blob against `origin/main` before integration;
+  a local safety stash remains available as a recovery checkpoint.
 - Production status: five fail-closed risk-boundary defects are corrected:
   unfinished/future-dated daily bars cannot be `CURRENT`; a current market label
   is not reused as the previous regime; missing, blank, or unsupported position
@@ -71,6 +71,15 @@ directory means no prior ledger, while an existing signal-date directory with no
 complete run fails closed. Full verification passed with 216 pytest tests, 118
 legacy unittest tests, industry/report invariants, the offline sample dry run,
 and generated HTML semantic validation.
+
+Post-merge full verification on 2026-09-11: PASS — Python syntax, Ruff format
+and lint, mypy, 216 pytest tests, 118 legacy unittest tests, industry/report
+invariants, the offline sample Daily Watchlist dry run, and generated HTML
+semantic validation all passed on `main`.
+
+Post-merge research verification on 2026-09-11: PASS — Ruff, mypy, 28 research
+tests, the expected `BLOCKED_DATA_NOT_READY` MODEL_0 gate, and production-file
+hash isolation all passed.
 
 ## High-priority known issues
 

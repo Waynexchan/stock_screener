@@ -169,10 +169,17 @@ Do not begin these steps without an explicit task.
 
 ## Last verified
 
-- Date: 2026-09-10 (Europe/London).
+- Date: 2026-09-11 (Europe/London).
 - Research-task source baseline: `ff44477d4918852ed81becc84890ce9add8b634c` on `main`.
 - Worktree note: verification also covered substantial preserved, pre-existing uncommitted source/tests/docs; the base commit alone does not describe the tested source state.
 - Command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
+- Integrated-main result: PASS after merging the five production-risk commits
+  through merge commit `432be57` — 216 pytest tests, 118 legacy unittest tests,
+  Ruff, mypy, industry/report invariants, the offline sample dry run, and
+  generated HTML semantic validation.
+- Post-merge research verification: PASS — Ruff, mypy, 28 research tests, the
+  expected `BLOCKED_DATA_NOT_READY` MODEL_0 gate, and production-file hash
+  isolation.
 - Post-research full-project result: PASS — 198 pytest tests, 118 legacy unittest tests, industry integration tests, report invariants, offline sample dry run, and generated HTML/CSV/email semantic validation.
 - Focused research result: PASS — Ruff, mypy, 28 tests, a gated MODEL_0 report, and unchanged production-file hashes. Data status is `NOT_READY`; no baseline performance is claimed.
 - Production-risk boundary fix result: PASS — 204 pytest tests, 118 legacy
