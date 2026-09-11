@@ -8,13 +8,22 @@ Production has one authoritative candidate pipeline:
    liquidity, and no overextension.
 3. Classify Setup Integrity as `PASS`, `MARGINAL`, or `FAIL` from deterministic
    setup fields.
-4. Apply market, drawdown, open-position, portfolio-heat, industry-heat, and
-   theme-heat hard gates.
+4. Apply explicit market/portfolio permission, drawdown, open-position,
+   portfolio-heat, industry-heat, theme-heat, and aggregate 2R daily
+   new-initial-risk hard gates.
 5. Treat incomplete industry, sister-stock, and volume confirmation as secondary
    confirmation only after primary edge has passed.
 6. Produce exactly one `FULL`, `HALF`, `WATCH`, or `NO TRADE` record.
-7. Size only authorised FULL/HALF decisions, then apply configured candidate
-   industry/sector concentration limits.
+7. Size only authorised FULL/HALF decisions, apply configured candidate
+   industry/sector concentration limits, then reserve shared capacity in
+   deterministic Final Score order. Initialise daily capacity from same-day
+   position entries and prior immutable authorisation snapshots so a rerun does
+   not restore the full 2R allowance or the Defensive-mode daily new-position
+   allowance. Every snapshot directory must contain the complete expected
+   artifact set and consistent metadata before it can be used as a ledger entry;
+   a partial snapshot makes the ledger unavailable and blocks new risk.
+   An existing signal-date directory with no run directory is also an incomplete
+   ledger, not evidence of zero prior authorisations.
 8. Export the unchanged canonical decision to CSV, Markdown, HTML, email, and
    the immutable forward snapshot.
 
@@ -44,7 +53,9 @@ because complete reliable values are unavailable.
 Price freshness is evaluated against the latest completed regular US trading
 session, including weekends and regular full-day US holidays. `PRICE_STALE_HOURS`
 is retained only as a fallback when session evaluation cannot be completed.
-Exceptional exchange closures are not represented by the current calendar.
+A daily bar later than that completed-session date is treated as incomplete or
+future-dated and cannot be actionable. Exceptional exchange closures are not
+represented by the current calendar.
 
 Before a valid production run is preserved, the row-level validator verifies
 state/risk/share/actionability semantics and confirms that CSV, HTML, and email
@@ -53,3 +64,7 @@ written under `output/forward_snapshots`; existing bundles are never overwritten
 
 AI sees validated records only. It can rank or describe them, but it cannot
 change decisions, setup integrity, confirmation, R/R, risk, or shares.
+
+Position status normalization and the `open`/`closed` allowlist are enforced at
+both CSV ingestion and the portfolio-risk domain boundary. Unknown status values
+cannot silently disappear from portfolio heat.

@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import math
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -19,6 +20,13 @@ import config
 
 
 DECISIONS = {"FULL", "HALF", "WATCH", "NO TRADE"}
+SUPPORTED_POSITION_STATUSES = {"open", "closed"}
+
+
+def normalise_position_status(value: object) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    return str(value).strip().lower()
 
 
 @dataclass(frozen=True)
@@ -272,15 +280,24 @@ def calculate_portfolio_risk(
     maximum_heat_override_r: float | None = None,
 ) -> PortfolioRisk:
     items = list(positions)
-    tickers = [p.ticker.upper() for p in items if p.status.lower() == "open"]
+    statuses = [normalise_position_status(position.status) for position in items]
+    unsupported_statuses = sorted(set(statuses) - SUPPORTED_POSITION_STATUSES)
+    if unsupported_statuses:
+        labels = [status or "<blank>" for status in unsupported_statuses]
+        raise ValueError("unsupported position status: " + ", ".join(labels))
+    tickers = [
+        position.ticker.upper()
+        for position, status in zip(items, statuses, strict=True)
+        if status == "open"
+    ]
     warnings = [
         f"duplicate open position: {ticker}"
         for ticker in sorted(set(tickers))
         if tickers.count(ticker) > 1
     ]
     risks: list[PositionRisk] = []
-    for position in items:
-        if position.status.lower() != "open":
+    for position, status in zip(items, statuses, strict=True):
+        if status != "open":
             continue
         risks.append(calculate_position_risk(position))
 
@@ -527,6 +544,9 @@ def canonical_candidate_decision(
     portfolio: PortfolioRisk | None,
     open_position_count: int | None,
     new_positions_today: int = 0,
+    portfolio_new_risk_allowed: bool | None = None,
+    market_new_risk_allowed: bool | None = None,
+    remaining_new_risk_r: float | None = None,
 ) -> TradeSizingDecision:
     """Authoritative FULL/HALF/WATCH/NO TRADE decision and sizing pipeline."""
     hard: list[str] = []
@@ -586,6 +606,15 @@ def canonical_candidate_decision(
         hard.append(f"{market_regime} market does not permit new risk")
     if not drawdown.new_risk_allowed:
         hard.append("drawdown stop-new-risk threshold reached")
+    if market_new_risk_allowed is not True:
+        hard.append("market status prohibits new risk")
+    if portfolio_new_risk_allowed is not True:
+        hard.append("portfolio status prohibits new risk")
+    if (
+        remaining_new_risk_r is not None
+        and remaining_new_risk_r < config.HALF_RISK_R - 1e-9
+    ):
+        hard.append("daily new-risk limit reached")
     if (
         drawdown.mode == "DEFENSIVE"
         and new_positions_today >= config.DEFENSIVE_MAX_NEW_HALF_POSITIONS
@@ -653,6 +682,10 @@ def canonical_candidate_decision(
     full_capacity = bool(
         portfolio is not None
         and portfolio.remaining_heat_r >= config.FULL_RISK_R
+        and (
+            remaining_new_risk_r is None
+            or remaining_new_risk_r >= config.FULL_RISK_R - 1e-9
+        )
         and portfolio.industry_heat.get(industry, 0.0) + config.FULL_RISK_R
         <= config.MAX_INDUSTRY_EFFECTIVE_HEAT_R
         and portfolio.theme_heat.get(theme, 0.0) + config.FULL_RISK_R
@@ -698,6 +731,14 @@ def size_trade_candidate(
         portfolio,
         open_position_count,
         new_positions_today,
+        portfolio_new_risk_allowed=bool(
+            portfolio is not None
+            and open_position_count is not None
+            and open_position_count < config.MAX_OPEN_POSITIONS
+            and portfolio.remaining_heat_r >= config.HALF_RISK_R
+            and not portfolio.warnings
+        ),
+        market_new_risk_allowed=market_regime in {"Strong", "Constructive"},
     )
 
 
@@ -750,6 +791,8 @@ def load_portfolio_status(
             "portfolio": None,
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
+            "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
         }
     try:
         frame = pd.read_csv(path)
@@ -759,13 +802,98 @@ def load_portfolio_status(
             "portfolio": None,
             "open_position_count": None,
             "portfolio_new_risk_allowed": False,
+            "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
         }
-    open_rows = frame[
-        frame.get("status", pd.Series("", index=frame.index))
-        .astype(str)
-        .str.lower()
-        .eq("open")
-    ]
+    if "status" not in frame.columns:
+        return {
+            "data_status": "Invalid: required status column is missing",
+            "portfolio": None,
+            "open_position_count": None,
+            "portfolio_new_risk_allowed": False,
+            "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
+        }
+    normalised_status = frame["status"].map(normalise_position_status)
+    if normalised_status.eq("").any():
+        return {
+            "data_status": "Invalid: position status is missing",
+            "portfolio": None,
+            "open_position_count": None,
+            "portfolio_new_risk_allowed": False,
+            "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
+        }
+    unsupported_statuses = sorted(set(normalised_status) - SUPPORTED_POSITION_STATUSES)
+    if unsupported_statuses:
+        return {
+            "data_status": (
+                "Invalid: unsupported position status: "
+                + ", ".join(unsupported_statuses)
+            ),
+            "portfolio": None,
+            "open_position_count": None,
+            "portfolio_new_risk_allowed": False,
+            "new_initial_risk_r_today": None,
+            "new_position_count_today": None,
+        }
+    reference = as_of or datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    market_date = reference.astimezone(ZoneInfo("America/New_York")).date()
+
+    def entry_market_date(value: object):
+        entry_timestamp = pd.Timestamp(value)
+        if pd.isna(entry_timestamp):
+            raise ValueError("entry_date unavailable")
+        if entry_timestamp.tzinfo is not None:
+            entry_timestamp = entry_timestamp.tz_convert("America/New_York")
+        return entry_timestamp.date()
+
+    try:
+        new_initial_risk_by_ticker_today: dict[str, float] = {}
+        for row in frame.to_dict("records"):
+            if entry_market_date(row.get("entry_date")) != market_date:
+                continue
+            ticker = str(row.get("ticker", "")).strip().upper()
+            entry = float(row.get("entry_price"))
+            initial_stop = float(row.get("initial_stop"))
+            shares = float(row.get("shares"))
+            raw_standard_r = row.get("standard_r_dollars_at_entry")
+            standard_r = (
+                config.STANDARD_R_DOLLARS
+                if raw_standard_r is None or pd.isna(raw_standard_r)
+                else float(raw_standard_r)
+            )
+            risk_values = (entry, initial_stop, shares, standard_r)
+            if (
+                not ticker
+                or not all(np.isfinite(value) for value in risk_values)
+                or entry <= initial_stop
+                or shares <= 0
+                or standard_r <= 0
+            ):
+                raise ValueError(
+                    f"{ticker or 'position'}: invalid same-day initial-risk facts"
+                )
+            initial_r = (entry - initial_stop) * shares / standard_r
+            new_initial_risk_by_ticker_today[ticker] = round(
+                new_initial_risk_by_ticker_today.get(ticker, 0.0) + initial_r, 4
+            )
+        new_initial_risk_r_today = round(
+            sum(new_initial_risk_by_ticker_today.values()), 4
+        )
+    except (TypeError, ValueError, OverflowError) as exc:
+        return {
+            "data_status": f"Invalid / Stale: {exc}",
+            "portfolio": None,
+            "open_position_count": None,
+            "portfolio_new_risk_allowed": False,
+            "new_initial_risk_r_today": None,
+            "new_initial_risk_by_ticker_today": None,
+            "new_position_count_today": None,
+        }
+    open_rows = frame[normalised_status.eq("open")]
     if open_rows.empty:
         portfolio = calculate_portfolio_risk([], market_regime, maximum_heat_override_r)
         return {
@@ -774,6 +902,9 @@ def load_portfolio_status(
             "open_position_count": 0,
             "portfolio_new_risk_allowed": portfolio.remaining_heat_r
             >= config.HALF_RISK_R,
+            "new_initial_risk_r_today": new_initial_risk_r_today,
+            "new_initial_risk_by_ticker_today": new_initial_risk_by_ticker_today,
+            "new_position_count_today": len(new_initial_risk_by_ticker_today),
         }
     positions: list[Position] = []
     auto_filled: set[str] = set()
@@ -787,9 +918,7 @@ def load_portfolio_status(
             ticker = str(snapshot_row.get("Ticker", "")).strip().upper()
             if ticker:
                 snapshot_by_ticker[ticker] = snapshot_row
-    timestamp = (
-        (as_of or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
-    )
+    timestamp = reference.astimezone(timezone.utc).isoformat()
     try:
         for row in open_rows.to_dict("records"):
             ticker = str(row.get("ticker", "")).strip().upper()
@@ -838,6 +967,9 @@ def load_portfolio_status(
             "portfolio": None,
             "open_position_count": len(open_rows),
             "portfolio_new_risk_allowed": False,
+            "new_initial_risk_r_today": None,
+            "new_initial_risk_by_ticker_today": None,
+            "new_position_count_today": None,
         }
     allowed = (
         portfolio.remaining_heat_r >= config.HALF_RISK_R
@@ -849,6 +981,9 @@ def load_portfolio_status(
         "portfolio": portfolio,
         "open_position_count": len(positions),
         "portfolio_new_risk_allowed": allowed,
+        "new_initial_risk_r_today": new_initial_risk_r_today,
+        "new_initial_risk_by_ticker_today": new_initial_risk_by_ticker_today,
+        "new_position_count_today": len(new_initial_risk_by_ticker_today),
         "auto_filled_fields": sorted(auto_filled),
     }
 
@@ -1644,6 +1779,12 @@ def decide_candidate(
         normal_drawdown,
         portfolio,
         len(portfolio.positions),
+        portfolio_new_risk_allowed=bool(
+            len(portfolio.positions) < config.MAX_OPEN_POSITIONS
+            and portfolio.remaining_heat_r >= config.HALF_RISK_R
+            and not portfolio.warnings
+        ),
+        market_new_risk_allowed=market.new_risk_allowed,
     )
     tier = (
         "Review Now"

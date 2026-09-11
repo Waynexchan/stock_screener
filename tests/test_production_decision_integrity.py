@@ -79,13 +79,21 @@ def portfolio(
 def context(
     current_portfolio: PortfolioRisk | None = None,
     open_positions: int | None = 0,
+    new_risk_allowed: bool = True,
+    market_new_risk_allowed: bool = True,
+    new_initial_risk_r_today: float | None = 0.0,
+    new_position_count_today: int | None = 0,
 ) -> dict[str, object]:
     return {
         "market_regime": SimpleNamespace(regime="Strong"),
+        "market_new_risk_allowed": market_new_risk_allowed,
         "drawdown": calculate_drawdown_state(100_000, 100_000),
         "portfolio_status": {
             "portfolio": current_portfolio or portfolio(),
             "open_position_count": open_positions,
+            "portfolio_new_risk_allowed": new_risk_allowed,
+            "new_initial_risk_r_today": new_initial_risk_r_today,
+            "new_position_count_today": new_position_count_today,
         },
     }
 
@@ -241,10 +249,199 @@ def test_price_freshness_stale_weekday_and_partial_bar():
     assert missing_column.status == "MISSING"
 
 
+def test_price_freshness_rejects_current_session_daily_bar_before_close():
+    during_session = datetime(2026, 9, 2, 14, tzinfo=timezone.utc)
+    freshness = run_screener.price_freshness_status(
+        history("2026-09-02"), during_session
+    )
+    assert freshness.status == "INCOMPLETE"
+    assert freshness.expected_session == "2026-09-01"
+    assert "latest completed US session" in freshness.warning
+
+
 def test_missing_production_freshness_status_blocks_actionability():
     result = decision(candidate(**{"Price Freshness Status": ""}))
     assert result["Final Decision"] == "NO TRADE"
     assert result["Maximum Shares"] == 0
+
+
+def test_current_market_label_is_not_used_as_previous_regime(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_regime(metrics, previous_regime=None):
+        captured["previous_regime"] = previous_regime
+        return SimpleNamespace(
+            regime="Constructive",
+            maximum_heat_r=2.0,
+            new_risk_allowed=True,
+            data_complete=True,
+            confidence="High",
+        )
+
+    monkeypatch.setattr(run_screener, "market_regime_from_metrics", fake_regime)
+    monkeypatch.setattr(
+        run_screener,
+        "LAST_ELIGIBLE_UNIVERSE",
+        pd.DataFrame(columns=["Recent RS Score"]),
+    )
+    run_screener.build_decision_context(
+        pd.DataFrame(), pd.DataFrame(), "Strong", index_metrics={}
+    )
+    assert captured["previous_regime"] is None
+
+
+def test_explicit_portfolio_stop_new_risk_flag_blocks_canonical_candidate():
+    result = decision(candidate(), context(new_risk_allowed=False))
+    assert result["Final Decision"] == "NO TRADE"
+    assert result["Maximum Shares"] == 0
+    assert "portfolio status prohibits new risk" in result["Decision Reasons"]
+
+
+def test_explicit_market_stop_new_risk_flag_blocks_canonical_candidate():
+    result = decision(candidate(), context(market_new_risk_allowed=False))
+    assert result["Final Decision"] == "NO TRADE"
+    assert result["Maximum Shares"] == 0
+    assert "market status prohibits new risk" in result["Decision Reasons"]
+
+
+def test_missing_market_permission_fails_closed_at_canonical_boundary():
+    result = run_screener.canonical_candidate_decision(
+        candidate(),
+        "Strong",
+        calculate_drawdown_state(100_000, 100_000),
+        portfolio(),
+        0,
+        portfolio_new_risk_allowed=True,
+    )
+    assert result.state == "NO TRADE"
+    assert "market status prohibits new risk" in result.reasons
+
+
+def test_candidates_consume_shared_open_position_capacity_in_priority_order():
+    rows = pd.DataFrame(
+        [
+            candidate(
+                "SECOND",
+                **{
+                    "Final Score": 80.0,
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                },
+            ),
+            candidate("FIRST", **{"Final Score": 90.0}),
+        ]
+    )
+    final = run_screener.apply_canonical_decision_pipeline(
+        rows, context(open_positions=config.MAX_OPEN_POSITIONS - 1)
+    ).set_index("Ticker")
+    assert final.loc["FIRST", "Final Decision"] == "FULL"
+    assert final.loc["SECOND", "Final Decision"] == "NO TRADE"
+    assert (
+        "maximum open-position count reached" in final.loc["SECOND", "Decision Reasons"]
+    )
+
+
+def test_candidates_consume_shared_portfolio_heat_in_priority_order():
+    rows = pd.DataFrame(
+        [
+            candidate("FIRST", **{"Final Score": 90.0}),
+            candidate(
+                "SECOND",
+                **{
+                    "Final Score": 80.0,
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                },
+            ),
+        ]
+    )
+    final = run_screener.apply_canonical_decision_pipeline(
+        rows, context(portfolio(remaining=1.0))
+    ).set_index("Ticker")
+    assert final.loc["FIRST", "Final Decision"] == "FULL"
+    assert final.loc["SECOND", "Final Decision"] == "NO TRADE"
+    assert "portfolio heat exhausted" in final.loc["SECOND", "Decision Reasons"]
+
+
+def test_candidates_share_daily_new_initial_r_limit_in_priority_order():
+    rows = pd.DataFrame(
+        [
+            candidate("FIRST", **{"Final Score": 90.0}),
+            candidate(
+                "SECOND",
+                **{
+                    "Final Score": 80.0,
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                },
+            ),
+            candidate(
+                "THIRD",
+                **{
+                    "Final Score": 70.0,
+                    "Sector": "Industrials",
+                    "Industry": "Machinery",
+                    "Theme": "Industry: Machinery",
+                },
+            ),
+        ]
+    )
+    final = run_screener.apply_canonical_decision_pipeline(
+        rows, context(portfolio(remaining=3.0), open_positions=1)
+    ).set_index("Ticker")
+    assert final.loc["FIRST", "Final Decision"] == "FULL"
+    assert final.loc["SECOND", "Final Decision"] == "FULL"
+    assert final.loc["THIRD", "Final Decision"] == "NO TRADE"
+    assert final["Maximum Risk R"].sum() == config.MAX_NEW_INITIAL_R_PER_DAY
+    assert "daily new-risk limit reached" in final.loc["THIRD", "Decision Reasons"]
+
+
+def test_existing_same_day_initial_r_is_reserved_on_every_pipeline_run():
+    rows = pd.DataFrame(
+        [
+            candidate("FIRST", **{"Final Score": 90.0}),
+            candidate(
+                "SECOND",
+                **{
+                    "Final Score": 80.0,
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                },
+            ),
+        ]
+    )
+    final = run_screener.apply_canonical_decision_pipeline(
+        rows,
+        context(
+            portfolio(remaining=3.0),
+            open_positions=1,
+            new_initial_risk_r_today=1.5,
+        ),
+    ).set_index("Ticker")
+    assert final.loc["FIRST", "Final Decision"] == "HALF"
+    assert final.loc["SECOND", "Final Decision"] == "NO TRADE"
+    assert final["Maximum Risk R"].sum() == 0.5
+    assert "daily new-risk limit reached" in final.loc["SECOND", "Decision Reasons"]
+
+
+def test_defensive_same_day_position_limit_survives_pipeline_rerun():
+    decision_context = context(
+        portfolio(remaining=0.5),
+        open_positions=1,
+        new_initial_risk_r_today=0.25,
+        new_position_count_today=1,
+    )
+    decision_context["drawdown"] = calculate_drawdown_state(100_000 - 4 * 587, 100_000)
+    result = decision(candidate(), decision_context)
+    assert result["Final Decision"] == "NO TRADE"
+    assert (
+        "Defensive drawdown-mode new-position limit reached"
+        in result["Decision Reasons"]
+    )
 
 
 def industry_members() -> pd.DataFrame:
@@ -436,3 +633,111 @@ def test_forward_snapshots_are_unique_and_never_overwritten(tmp_path: Path):
     assert metadata["price_data_as_of"] == "2026-09-04"
     assert metadata["candidate_count"] == 1
     assert metadata["candidate_record_hash"]
+
+
+def test_same_day_authorisation_ledger_survives_reruns_without_double_counting(
+    tmp_path: Path,
+):
+    signal_root = tmp_path / "2026-09-04"
+    first = signal_root / "run-1"
+    second = signal_root / "run-2"
+    first.mkdir(parents=True)
+    second.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {"Ticker": "AAA", "Final Decision": "FULL", "Maximum Risk R": 1.0},
+            {"Ticker": "BBB", "Final Decision": "HALF", "Maximum Risk R": 0.5},
+        ]
+    ).to_csv(first / "candidates.csv", index=False)
+    pd.DataFrame(
+        [
+            {"Ticker": "AAA", "Final Decision": "FULL", "Maximum Risk R": 1.0},
+            {"Ticker": "CCC", "Final Decision": "HALF", "Maximum Risk R": 0.5},
+        ]
+    ).to_csv(second / "candidates.csv", index=False)
+    for directory in (first, second):
+        for name in ("market.json", "portfolio.json", "config.json"):
+            (directory / name).write_text("{}", encoding="utf-8")
+        (directory / "metadata.json").write_text(
+            json.dumps({"signal_trading_date": "2026-09-04", "candidate_count": 2}),
+            encoding="utf-8",
+        )
+
+    authorised = run_screener.load_authorized_new_risk_by_ticker("2026-09-04", tmp_path)
+    assert authorised == {"AAA": 1.0, "BBB": 0.5, "CCC": 0.5}
+    assert sum(authorised.values()) == config.MAX_NEW_INITIAL_R_PER_DAY
+
+
+def test_partial_snapshot_makes_authorisation_ledger_unavailable(tmp_path: Path):
+    partial = tmp_path / "2026-09-04" / "partial-run"
+    partial.mkdir(parents=True)
+    (partial / "metadata.json").write_text("{}", encoding="utf-8")
+    assert (
+        run_screener.load_authorized_new_risk_by_ticker("2026-09-04", tmp_path) is None
+    )
+
+
+def test_empty_signal_date_directory_makes_authorisation_ledger_unavailable(
+    tmp_path: Path,
+):
+    (tmp_path / "2026-09-04").mkdir()
+    assert (
+        run_screener.load_authorized_new_risk_by_ticker("2026-09-04", tmp_path) is None
+    )
+
+
+def test_decision_context_restores_prior_same_day_authorisation(
+    tmp_path: Path, monkeypatch
+):
+    snapshot = tmp_path / "2026-09-04" / "run-1"
+    snapshot.mkdir(parents=True)
+    pd.DataFrame(
+        [{"Ticker": "AAA", "Final Decision": "FULL", "Maximum Risk R": 1.0}]
+    ).to_csv(snapshot / "candidates.csv", index=False)
+    for name in ("market.json", "portfolio.json", "config.json"):
+        (snapshot / name).write_text("{}", encoding="utf-8")
+    (snapshot / "metadata.json").write_text(
+        json.dumps({"signal_trading_date": "2026-09-04", "candidate_count": 1}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "FORWARD_SNAPSHOT_DIR", str(tmp_path))
+    monkeypatch.setattr(
+        run_screener,
+        "LAST_ELIGIBLE_UNIVERSE",
+        pd.DataFrame(columns=["Recent RS Score"]),
+    )
+    monkeypatch.setattr(
+        run_screener,
+        "load_portfolio_status",
+        lambda *args, **kwargs: {
+            "data_status": "No open positions",
+            "portfolio": portfolio(),
+            "open_position_count": 0,
+            "portfolio_new_risk_allowed": True,
+            "new_initial_risk_r_today": 0.0,
+            "new_initial_risk_by_ticker_today": {},
+            "new_position_count_today": 0,
+        },
+    )
+    monkeypatch.setattr(
+        run_screener,
+        "market_regime_from_metrics",
+        lambda *args, **kwargs: SimpleNamespace(
+            regime="Strong",
+            maximum_heat_r=3.0,
+            new_risk_allowed=True,
+            data_complete=True,
+            confidence="High",
+        ),
+    )
+    result = run_screener.build_decision_context(
+        pd.DataFrame([{"Signal Date": "2026-09-04"}]),
+        pd.DataFrame(),
+        "Strong",
+        {},
+    )
+    assert result["portfolio_status"]["new_initial_risk_r_today"] == 1.0
+    assert result["portfolio_status"]["new_initial_risk_by_ticker_today"] == {
+        "AAA": 1.0
+    }
+    assert result["portfolio_status"]["new_position_count_today"] == 1

@@ -4,11 +4,19 @@ Fast handoff as of 2026-09-10. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
-- Branch: `main`, tracking `origin/main`.
+- Active fix branch: `fix/production-risk-boundaries`, based on and tracking
+  `origin/main` at `c84c976ef73c89d140bf089205e30d959d22d456`.
 - Remote confirmed: `https://github.com/Waynexchan/stock_screener.git`; it was not changed.
 - Research-task starting commit: `ff44477d4918852ed81becc84890ce9add8b634c`.
-- Worktree: substantially dirty before this framework task. Existing modified/untracked source, tests, scripts, docs, and runtime outputs are preserved and are not owned by this checkpoint.
-- Production status: post-framework verification passed; no production trading logic or output behavior was intentionally changed by the agent-framework task.
+- Worktree: the production-risk fixes are isolated in a separate worktree. The
+  pre-existing dirty `main` checkout remains preserved and was not modified by
+  this fix.
+- Production status: five fail-closed risk-boundary defects are corrected:
+  unfinished/future-dated daily bars cannot be `CURRENT`; a current market label
+  is not reused as the previous regime; missing, blank, or unsupported position
+  status is invalid; market and portfolio stop-new-risk permissions are canonical
+  hard gates; and accepted candidates share projected position, heat, and 2R
+  daily new-initial-risk capacity in Final Score order.
 - Canonical production command: `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_production.ps1`.
 - Canonical verification command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
 - Safe dry run: `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_dry_run.ps1`.
@@ -31,6 +39,38 @@ Pre-edit full-project baseline on 2026-09-10: PASS.
 Post-research full verification on 2026-09-10: PASS — 198 pytest tests, 118 legacy unittest tests, industry/report invariants, offline sample Daily Watchlist dry run, and generated HTML/CSV/email semantic validation all passed.
 
 Focused research verification on 2026-09-10: PASS — Ruff, mypy, 28 research tests, gated MODEL_0 execution, and production-file hash isolation all passed. The gated run returned `BLOCKED_DATA_NOT_READY`, not performance evidence.
+
+Post-P1-fix full verification on 2026-09-10: PASS — Python syntax, Ruff format
+and lint, mypy, 204 pytest tests, 118 legacy unittest tests, industry/report
+invariants, offline sample Daily Watchlist dry run, and generated HTML semantic
+validation all passed.
+
+Post-review P1 verification on 2026-09-10: PASS — 207 pytest tests cover the
+additional market-permission, unknown-status, and aggregate 2R daily-risk
+boundaries; 118 legacy unittest tests, industry/report invariants, the offline
+sample dry run, and generated HTML semantic validation also passed. Focused
+research verification remained at 28 tests and confirmed production isolation.
+
+Follow-up risk-boundary work on 2026-09-11 makes missing canonical market or
+portfolio permission fail closed, enforces the position-status allowlist inside
+the portfolio domain, and persists the 2R daily allowance across production
+reruns using same-day position entries plus immutable same-signal-date
+authorisations. Full verification passed with 213 pytest tests, 118 legacy
+unittest tests, industry/report invariants, the offline sample dry run, and
+generated HTML semantic validation.
+
+The subsequent independent-review findings are addressed: incomplete snapshot
+directories can no longer make the daily ledger look empty, and Defensive-mode
+same-day new-position usage is reconstructed rather than reset for each run.
+Full verification passed with 215 pytest tests, 118 legacy unittest tests,
+industry/report invariants, the offline sample dry run, and generated HTML
+semantic validation.
+
+The final empty-directory crash window is now covered: absence of a signal-date
+directory means no prior ledger, while an existing signal-date directory with no
+complete run fails closed. Full verification passed with 216 pytest tests, 118
+legacy unittest tests, industry/report invariants, the offline sample dry run,
+and generated HTML semantic validation.
 
 ## High-priority known issues
 

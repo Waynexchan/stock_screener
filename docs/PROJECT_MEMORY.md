@@ -110,6 +110,17 @@ The project has previously identified or guarded against:
 - portfolio/equity data being treated as zero risk when unavailable;
 - generated reports diverging from the canonical record;
 - historical snapshots being mutable or created before semantic validation.
+- unfinished or future-dated daily bars being treated as current;
+- current-run market labels being mistaken for persisted prior-regime state;
+- missing, blank, or unsupported position status being interpreted as zero open
+  positions;
+- market or portfolio stop-new-risk permission being omitted from canonical
+  decisions;
+- candidates independently reusing portfolio position/heat capacity or exceeding
+  the aggregate daily new-initial-risk cap, including by resetting that cap on a
+  same-day rerun;
+- compatibility callers bypassing a fail-closed permission or status check at
+  the canonical/domain boundary.
 
 Do not mark these permanently fixed merely because current tests pass. Preserve the tests and validate the relevant path after changes.
 
@@ -164,5 +175,44 @@ Do not begin these steps without an explicit task.
 - Command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
 - Post-research full-project result: PASS — 198 pytest tests, 118 legacy unittest tests, industry integration tests, report invariants, offline sample dry run, and generated HTML/CSV/email semantic validation.
 - Focused research result: PASS — Ruff, mypy, 28 tests, a gated MODEL_0 report, and unchanged production-file hashes. Data status is `NOT_READY`; no baseline performance is claimed.
+- Production-risk boundary fix result: PASS — 204 pytest tests, 118 legacy
+  unittest tests, industry/report invariants, offline sample dry run, and generated
+  HTML semantic validation. Six regression tests cover the five corrected P1
+  findings, including separate shared position-count and heat-capacity cases.
+- Post-review boundary result: 207 pytest tests pass after adding direct
+  regressions for market permission, unsupported position status, and the 2R
+  aggregate daily new-initial-risk cap. The 118-test legacy suite, industry and
+  report invariants, offline dry run, HTML semantic validation, and focused
+  research production-isolation verification also pass.
+
+Daily new-initial-risk usage is reconstructed from current-market-date position
+entries and immutable forward snapshots for the same signal date. Snapshot
+authorisations are deduplicated by ticker using the largest prior risk amount;
+an unreadable existing authorisation ledger blocks new risk. This is operational
+risk state, not research evidence or a strategy filter.
+
+Snapshot-ledger discovery must enumerate every run directory and require the
+complete candidates/market/portfolio/config/metadata artifact set plus matching
+signal date and candidate count. Merely globbing existing `candidates.csv` files
+can silently ignore a partial write and must not be used. The reconstructed
+same-day ticker set supplies both used initial R and the Defensive-mode daily
+new-position count.
+
+For snapshot-ledger state, a missing signal-date directory means no prior
+authorisation. An existing but empty signal-date directory can be left by an
+interrupted first write and must make the ledger unavailable; it must never be
+interpreted as a zero balance.
+
+The 2026-09-11 empty signal-date directory follow-up passed full verification
+with 216 pytest tests, 118 legacy unittest tests, industry/report invariants,
+the offline sample dry run, and generated HTML semantic validation.
+
+The 2026-09-11 partial-snapshot and Defensive-counter follow-up passed full
+verification with 215 pytest tests, 118 legacy unittest tests, industry/report
+invariants, the offline sample dry run, and generated HTML semantic validation.
+
+The 2026-09-11 follow-up full verification passed with 213 pytest tests, 118
+legacy unittest tests, industry/report invariants, the offline sample dry run,
+and generated HTML semantic validation.
 
 The framework checkpoint hash is recorded in the task handoff because a commit cannot contain its own hash.

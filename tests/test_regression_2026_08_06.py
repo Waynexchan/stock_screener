@@ -1,4 +1,6 @@
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -59,6 +61,45 @@ def test_portfolio_missing_is_not_zero_and_empty_file_is_real_zero(tmp_path: Pat
     assert status["portfolio"].portfolio_heat_r == 0
 
 
+def test_portfolio_file_without_status_column_is_invalid_not_zero(tmp_path: Path):
+    positions = tmp_path / "positions.csv"
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares\n"
+        "IMVT,2026-08-01,40,38,39,100\n",
+        encoding="utf-8",
+    )
+    status = load_portfolio_status(str(positions), "Strong")
+    assert status["data_status"] == "Invalid: required status column is missing"
+    assert status["portfolio"] is None
+    assert status["open_position_count"] is None
+    assert not status["portfolio_new_risk_allowed"]
+
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares,status\n"
+        "IMVT,2026-08-01,40,38,39,100,\n",
+        encoding="utf-8",
+    )
+    blank = load_portfolio_status(str(positions), "Strong")
+    assert blank["data_status"] == "Invalid: position status is missing"
+    assert blank["portfolio"] is None
+    assert blank["open_position_count"] is None
+    assert not blank["portfolio_new_risk_allowed"]
+
+
+def test_portfolio_file_with_unknown_status_is_invalid_not_zero(tmp_path: Path):
+    positions = tmp_path / "positions.csv"
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares,status\n"
+        "IMVT,2026-08-01,40,38,39,100,opne\n",
+        encoding="utf-8",
+    )
+    status = load_portfolio_status(str(positions), "Strong")
+    assert status["data_status"] == "Invalid: unsupported position status: opne"
+    assert status["portfolio"] is None
+    assert status["open_position_count"] is None
+    assert not status["portfolio_new_risk_allowed"]
+
+
 def test_minimal_position_input_is_enriched_from_current_snapshot(tmp_path: Path):
     positions = tmp_path / "positions.csv"
     positions.write_text(
@@ -85,6 +126,36 @@ def test_minimal_position_input_is_enriched_from_current_snapshot(tmp_path: Path
         "sector",
         "last_updated",
     }
+
+
+def test_portfolio_reports_initial_r_already_opened_on_as_of_date(tmp_path: Path):
+    positions = tmp_path / "positions.csv"
+    as_of = datetime.now(timezone.utc)
+    entry_date = as_of.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+    positions.write_text(
+        "ticker,entry_date,entry_price,initial_stop,current_stop,shares,status\n"
+        f"IMVT,{entry_date},40,38,39,100,open\n"
+        f"CLOSED,{entry_date},20,19,19,100,closed\n",
+        encoding="utf-8",
+    )
+    snapshot = pd.DataFrame(
+        [
+            {
+                "Ticker": "IMVT",
+                "Price": 42.0,
+                "Industry": "Biotechnology",
+                "Sector": "Healthcare",
+            }
+        ]
+    )
+    status = load_portfolio_status(
+        str(positions),
+        "Strong",
+        snapshot,
+        as_of=as_of,
+    )
+    assert status["new_initial_risk_r_today"] == round(300 / 587, 4)
+    assert status["new_position_count_today"] == 2
 
 
 def test_minimal_position_without_snapshot_price_is_invalid_not_zero(tmp_path: Path):
