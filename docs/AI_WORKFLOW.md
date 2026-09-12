@@ -52,7 +52,7 @@ Reproduce, diagnose root cause, add a regression test where practical, fix witho
 
 ### STRATEGY RESEARCH
 
-Register the hypothesis, keep it `RESEARCH_ONLY`, use the framework in `docs/RESEARCH_GOVERNANCE.md`, and write outputs outside production reports. Do not change production behavior unless the user explicitly requests a separate production change after reviewing results.
+Load `.agents/skills/research-experiment/SKILL.md`, register the hypothesis, keep it `RESEARCH_ONLY`, use the framework in `docs/RESEARCH_GOVERNANCE.md`, and write outputs outside production reports. The reusable records in `templates/RESEARCH_HYPOTHESIS.md`, `templates/EXPERIMENT_LOG.md`, and `templates/FORWARD_TEST_PLAN.md` may be copied or adapted when the experiment has no equivalent artifact. Do not change production behavior unless the user explicitly requests a separate production change after reviewing results.
 
 ### PRODUCTION CHANGE
 

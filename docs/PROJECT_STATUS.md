@@ -6,6 +6,9 @@ Fast handoff as of 2026-09-11. Read `AGENTS.md` before this file and `docs/PROJE
 
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
+- Agent workflow: the project-adapted optional `research-experiment` skill from
+  workflow-template v1.1.0 is installed. This records the imported domain skill,
+  not a whole-repository template migration.
 - Remote confirmed: `https://github.com/Waynexchan/stock_screener.git`; it was not changed.
 - Research-task starting commit: `ff44477d4918852ed81becc84890ce9add8b634c`.
 - Worktree: clean after integration and verification. The former dirty `main`
@@ -23,6 +26,15 @@ Fast handoff as of 2026-09-11. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-`research-experiment` integration full verification on 2026-09-12: PASS —
+Python syntax, Ruff format and lint, mypy, 216 pytest tests, 118 legacy unittest
+tests, industry/report invariants, the offline sample Daily Watchlist dry run,
+and generated HTML semantic validation all passed.
+
+Post-integration research verification on 2026-09-12: PASS — Ruff, mypy, 28
+research tests, the expected `BLOCKED_DATA_NOT_READY` MODEL_0 gate, and
+production-file hash isolation all passed.
 
 Pre-edit full-project baseline on 2026-09-10: PASS.
 

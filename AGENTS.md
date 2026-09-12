@@ -58,6 +58,8 @@ For every meaningful task:
 
 `RESEARCH` contains experimental signals, thresholds, filters, rankings, and models. Every new strategy idea defaults to `RESEARCH_ONLY` until its evidence is reviewed and production use is explicitly approved.
 
+For systematic investment/trading research, forward-test design, or evaluation of a strategy hypothesis, also read and follow `.agents/skills/research-experiment/SKILL.md`. It is an optional domain workflow, not a substitute for this manual or `docs/RESEARCH_GOVERNANCE.md`, and it does not authorise a production change.
+
 Research must not silently affect `FULL`, `HALF`, `WATCH`, `NO TRADE`, actionability, risk size, shares, production email, or production report. A research feature may be shown in a separately labelled research field or artifact without gating production.
 
 Do not redesign the strategy or promote a research result as part of unrelated engineering work.

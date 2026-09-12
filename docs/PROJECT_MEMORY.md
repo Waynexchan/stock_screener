@@ -147,6 +147,9 @@ Do not mark these permanently fixed merely because current tests pass. Preserve 
 
 - Production decisions are deterministic; AI cannot override them.
 - New strategy ideas default to `RESEARCH_ONLY`.
+- Systematic investment/trading research uses the optional project-local
+  `.agents/skills/research-experiment/SKILL.md` governance workflow; loading the
+  skill does not authorise production changes.
 - Existing implementation is not proof that a filter is validated.
 - No missing critical value may be replaced with a plausible value.
 - Report outputs must agree with the canonical decision record before publication/history/snapshot preservation.
@@ -169,7 +172,12 @@ Do not begin these steps without an explicit task.
 
 ## Last verified
 
-- Date: 2026-09-11 (Europe/London).
+- Date: 2026-09-12 (Europe/London).
+- Research-skill source baseline: `ca4b2df5c0130360d302e70970ba7e873a493163`;
+  the integration checkpoint hash is recorded in the task handoff because a
+  commit cannot contain its own hash.
+- Post-integration full-project and focused research verification both passed;
+  the focused gate remained `BLOCKED_DATA_NOT_READY`, with no performance claim.
 - Research-task source baseline: `ff44477d4918852ed81becc84890ce9add8b634c` on `main`.
 - Worktree note: verification also covered substantial preserved, pre-existing uncommitted source/tests/docs; the base commit alone does not describe the tested source state.
 - Command: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1`.
