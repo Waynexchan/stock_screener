@@ -22,6 +22,23 @@ DATA_FAILURE_BODY = (
 )
 
 
+def visible_email_body(summary: str) -> str:
+    """Remove the machine-readable manifest from the user-facing plain-text body."""
+    lines = summary.splitlines()
+    start_marker = "Decision Manifest"
+    end_marker = "End Decision Manifest"
+    marker_count = (lines.count(start_marker), lines.count(end_marker))
+    if marker_count == (0, 0):
+        return summary
+    if marker_count != (1, 1):
+        raise ValueError("email decision manifest markers are malformed")
+
+    start = lines.index(start_marker)
+    end = lines.index(end_marker, start + 1)
+    visible_lines = lines[:start] + lines[end + 1 :]
+    return "\n".join(visible_lines).strip() + "\n"
+
+
 def load_dotenv_if_available() -> None:
     """Load .env values when python-dotenv is installed; keep OS env support."""
     try:
@@ -35,7 +52,7 @@ def load_dotenv_if_available() -> None:
 
 def build_message(sender: str, recipient: str, attachment_path: Path) -> EmailMessage:
     summary_path = Path(EMAIL_SUMMARY)
-    body = (
+    summary = (
         summary_path.read_text(encoding="utf-8")
         if summary_path.exists()
         else (
@@ -43,6 +60,7 @@ def build_message(sender: str, recipient: str, attachment_path: Path) -> EmailMe
             "Open daily_watchlist.html in a browser to view the full report."
         )
     )
+    body = visible_email_body(summary)
 
     message = EmailMessage()
     message["From"] = sender

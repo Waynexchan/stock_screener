@@ -127,6 +127,9 @@ Portfolio Risk, FULL, HALF, WATCH, NO TRADE, and Qualified Current Industries. I
 shows at most eight blocked names to explain the strongest rejected ideas. Full
 candidate, industry, score, and history tables remain in the collapsed
 **Diagnostic Appendix** for audit and debugging.
+The email body contains only the human-readable summary. The machine-readable
+decision manifest remains available to semantic validation and in the attached
+HTML report, but is not printed as JSON in the message body.
 The primary table separates incomplete secondary confirmation from genuine hard
 invalidation and does not repeat the combined diagnostic reason text.
 

@@ -18,6 +18,7 @@ from decision_system import (
     size_authorised_candidate,
 )
 import run_screener
+import send_email
 from scripts.validate_report import validate_csv_semantics
 
 
@@ -565,6 +566,34 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert set(canonical["Final Decision"]) == {"FULL", "HALF", "WATCH", "NO TRADE"}
+
+
+def test_email_body_hides_machine_readable_decision_manifest(
+    tmp_path: Path, monkeypatch
+):
+    summary = tmp_path / "email_summary.txt"
+    summary.write_text(
+        "Daily US Stock Watchlist\n\n"
+        "Top Action List\nNo action tickers.\n\n"
+        "Decision Manifest\n"
+        '{"ticker":"TEST","decision":"NO TRADE"}\n'
+        "End Decision Manifest\n\n"
+        "Full daily_watchlist.html is attached.\n",
+        encoding="utf-8",
+    )
+    attachment = tmp_path / "daily_watchlist.html"
+    attachment.write_text("<html><body>Report</body></html>", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    message = send_email.build_message(
+        "sender@example.com", "to@example.com", attachment
+    )
+    body = message.get_body(preferencelist=("plain",)).get_content()
+
+    assert "Top Action List" in body
+    assert "Full daily_watchlist.html is attached." in body
+    assert "Decision Manifest" not in body
+    assert '"ticker":"TEST"' not in body
 
 
 def test_row_semantic_validator_detects_actionable_contradictions():
