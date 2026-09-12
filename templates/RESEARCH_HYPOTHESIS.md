@@ -40,19 +40,22 @@
 - Data-readiness status/evidence:
 - Research label: <!-- For example, SURVIVORSHIP-BIASED RESEARCH where required. -->
 - Information-availability and label/outcome timing:
-- Discovery period:
-- Holdout period:
-- Chronological ordering and non-overlap:
-- Purge rule and size:
-- Gap/embargo rule, size, and rationale:
+- Discovery period and planned sample size:
+- Validation period and planned sample size:
+- Untouched holdout period and planned sample size:
+- Initial validation status: <!-- Normally UNTOUCHED. -->
+- Initial holdout status: <!-- Normally UNTOUCHED. -->
+- Chronological ordering and non-overlap across both boundaries:
+- Purge rule and size at each boundary:
+- Gap/embargo rule, size, and rationale at each boundary:
 - Walk-forward/cross-validation design, if any:
 - Primary metric:
 - Secondary metrics:
 - Risk metrics:
 - Transaction-cost assumptions:
 - Slippage/fill assumptions:
-- Acceptance criteria:
-- Rejection criteria:
+- Validation acceptance/rejection criteria:
+- Holdout confirmation/rejection criteria:
 
 ## Integrity and limitations
 
@@ -66,3 +69,18 @@
 - Other assumptions and uncertainty:
 - Intended `research/output/` path:
 - Production-isolation scope:
+
+## Evaluation record
+
+> Complete these fields only after the preregistered evaluation. Append the evidence without rewriting the specification above.
+
+- Validation period actually evaluated:
+- Validation actual sample size:
+- Validation sample status: <!-- UNTOUCHED, EVALUATED_ONCE, CONTAMINATED, or UNAVAILABLE. -->
+- Validation result:
+- Validation decision:
+- Holdout period actually evaluated:
+- Holdout actual sample size:
+- Holdout sample status: <!-- UNTOUCHED, EVALUATED_ONCE, CONTAMINATED, or UNAVAILABLE. -->
+- Holdout result:
+- Holdout decision:

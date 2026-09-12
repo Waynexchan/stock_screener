@@ -173,9 +173,25 @@ Do not begin these steps without an explicit task.
 ## Last verified
 
 - Date: 2026-09-12 (Europe/London).
-- Research-skill source baseline: `ca4b2df5c0130360d302e70970ba7e873a493163`;
-  the integration checkpoint hash is recorded in the task handoff because a
-  commit cannot contain its own hash.
+- Research-skill upstream repository:
+  `https://github.com/Waynexchan/ai-agent-workflow-template.git`.
+- Upstream version/source: `VERSION` 1.1.0 at commit
+  `b088397622cf8fb0013396162e7a909b63937d34`. No Git tag points at that commit;
+  `VERSION` is the verifiable release marker used by the template.
+- Exact upstream Git blob IDs at that source commit:
+  - `.agents/skills/research-experiment/SKILL.md`:
+    `216013d78b8d220e50dcbc9ef5c2fb88f10df5c8`
+  - `templates/RESEARCH_HYPOTHESIS.md`:
+    `d7c23c5015e3eafd4fd45d6fe785b2778cb5fd78`
+  - `templates/EXPERIMENT_LOG.md`:
+    `877432920dc6b8863a07b074ee8248835d797499`
+  - `templates/FORWARD_TEST_PLAN.md`:
+    `41783591dfc3b261ec41b9257764b94c98156dbb`
+- Stock-screener integration base:
+  `ca4b2df5c0130360d302e70970ba7e873a493163`. The first project-adapted
+  integration checkpoint is `8e44ce4afff57747eba3ee0c234df17a6626fb6b`;
+  local files intentionally add repository-specific boundaries and therefore
+  are not expected to match the upstream blobs byte-for-byte.
 - Post-integration full-project and focused research verification both passed;
   the focused gate remained `BLOCKED_DATA_NOT_READY`, with no performance claim.
 - Research-task source baseline: `ff44477d4918852ed81becc84890ce9add8b634c` on `main`.

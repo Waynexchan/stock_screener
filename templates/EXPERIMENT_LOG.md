@@ -16,9 +16,14 @@
 - Data-readiness status and research label:
 - Discovery period and sample size:
 - Discovery result:
+- Validation period and sample size:
+- Validation sample status: <!-- UNTOUCHED, EVALUATED_ONCE, CONTAMINATED, or UNAVAILABLE. -->
+- Validation result:
+- Validation decision:
 - Holdout period and sample size:
-- Holdout status: <!-- untouched, evaluated once, or contaminated -->
+- Holdout sample status: <!-- UNTOUCHED, EVALUATED_ONCE, CONTAMINATED, or UNAVAILABLE. -->
 - Holdout result:
+- Holdout decision:
 - Baseline and comparison:
 - Robustness checks:
 - Data/execution limitations:

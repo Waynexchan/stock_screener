@@ -1,14 +1,16 @@
 # Project Status
 
-Fast handoff as of 2026-09-11. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
-- Agent workflow: the project-adapted optional `research-experiment` skill from
-  workflow-template v1.1.0 is installed. This records the imported domain skill,
-  not a whole-repository template migration.
+- Agent workflow: the project-adapted optional `research-experiment` skill is
+  sourced from `Waynexchan/ai-agent-workflow-template`, `VERSION` 1.1.0 at
+  commit `b088397622cf8fb0013396162e7a909b63937d34`. This is not a
+  whole-repository template migration; exact upstream blob IDs are recorded in
+  `docs/PROJECT_MEMORY.md`.
 - Remote confirmed: `https://github.com/Waynexchan/stock_screener.git`; it was not changed.
 - Research-task starting commit: `ff44477d4918852ed81becc84890ce9add8b634c`.
 - Worktree: clean after integration and verification. The former dirty `main`
@@ -26,6 +28,14 @@ Fast handoff as of 2026-09-11. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-independent-review follow-up on 2026-09-12: PASS — the skill and templates
+now enforce `discovery -> validation -> untouched holdout`, preserve explicit
+validation/holdout sample status and results, and record verifiable upstream
+provenance. Full verification passed with 216 pytest tests and 118 legacy
+unittest tests plus all formatting, typing, integration, invariant, dry-run, and
+semantic-validation stages. Focused research verification passed 28 tests, the
+expected `BLOCKED_DATA_NOT_READY` gate, and production-file hash isolation.
 
 Post-`research-experiment` integration full verification on 2026-09-12: PASS —
 Python syntax, Ruff format and lint, mypy, 216 pytest tests, 118 legacy unittest

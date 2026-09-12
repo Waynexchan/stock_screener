@@ -1,11 +1,11 @@
 ---
 name: research-experiment
-description: Govern systematic investment or trading research from a preregistered hypothesis through point-in-time backtesting, isolated holdout validation, robustness checks, forward testing, and production review. Use for domain-specific research, not ordinary software work, securities recommendations, brokerage actions, or automatic production promotion.
+description: Govern systematic investment or trading research from a preregistered hypothesis through point-in-time backtesting, separate validation, untouched holdout evaluation, robustness checks, forward testing, and production review. Use for domain-specific research, not ordinary software work, securities recommendations, brokerage actions, or automatic production promotion.
 ---
 
 # Research experiment
 
-Use this optional skill to make systematic investment and trading research auditable, reproducible where practical, and resistant to overfitting, look-ahead and survivorship bias, data leakage, selection bias, parameter mining, repeated-testing bias, unrealistic execution, and holdout contamination. It governs research; it does not supply a strategy, recommend securities, place trades, connect brokerage accounts, or authorize production changes.
+Use this optional skill to make systematic investment and trading research auditable, reproducible where practical, and resistant to overfitting, look-ahead and survivorship bias, data leakage, selection bias, parameter mining, repeated-testing bias, unrealistic execution, and validation or holdout contamination. It governs research; it does not supply a strategy, recommend securities, place trades, connect brokerage accounts, or authorize production changes.
 
 Keep four things distinct in every report: **hypothesis**, **evidence**, **interpretation**, and **decision**. State data limitations, biases, assumptions, and uncertainty. Research findings are evidence, not guarantees of future returns.
 
@@ -23,7 +23,7 @@ Keep four things distinct in every report: **hypothesis**, **evidence**, **inter
 
 - Do not cherry-pick attractive results, hide failed experiments, or optimize for an appealing backtest.
 - Do not begin parameter optimization before formalizing the hypothesis.
-- Do not repeatedly optimize against holdout data or silently reuse a contaminated holdout.
+- Keep discovery, validation, and untouched holdout roles distinct. Do not repeatedly optimize against validation or holdout data, use the holdout as first validation, or silently reuse a contaminated sample.
 - Do not claim causality from correlation or claim that a profitable backtest proves a strategy works.
 - Do not equate statistical significance with tradability. Evaluate economic magnitude, execution, risk, capacity where relevant, and operational feasibility.
 - Prefer reproducibility and simple, stable rules over unnecessary complexity or a sharp optimum.
@@ -44,7 +44,7 @@ A useful conceptual form is: “When condition X occurs under regime Y, instrume
 
 ## 2. Preregister the hypothesis
 
-Before inspecting outcomes, record the hypothesis, universe, signal, entry, exit, holding periods, portfolio construction and position sizing where applicable, benchmark, primary and secondary metrics, risk metrics, transaction costs, slippage, discovery and holdout periods, temporal split and boundary controls, and acceptance and rejection criteria. Assign an experiment ID and hypothesis version where practical. The primary metric and criteria must be chosen before results are known.
+Before inspecting outcomes, record the hypothesis, universe, signal, entry, exit, holding periods, portfolio construction and position sizing where applicable, benchmark, primary and secondary metrics, risk metrics, transaction costs, slippage, separate discovery, validation, and untouched holdout periods with planned sample sizes, temporal split and boundary controls, sample-status conventions, and stage-specific acceptance and rejection criteria. Assign an experiment ID and hypothesis version where practical. The primary metric and criteria must be chosen before results are known.
 
 Use [RESEARCH_HYPOTHESIS.md](../../../templates/RESEARCH_HYPOTHESIS.md) when the project has no equivalent record. Preserve the original record. A material change to logic, inputs, universe, execution, metrics, periods, or criteria creates a new experiment or version rather than rewriting history.
 
@@ -61,7 +61,7 @@ Before trusting results, inspect and document:
 
 Never treat current index or universe membership as historical membership without evidence. State all known data limitations in the research report and explain how they affect interpretation.
 
-For temporally ordered observations, place discovery before holdout and keep their observations and outcomes non-overlapping. Do not use an ordinary random split unless the research design justifies it and demonstrates that no future information can cross the boundary. Define sample membership from information-availability time and label/outcome end time, not row timestamp alone. Purge observations whose labels, holding periods, or derived windows cross a boundary, and apply an appropriate gap or embargo when feature lookbacks, forecast horizons, overlapping positions, publication delays, or repeated walk-forward folds could leak information. Record the sizes and rationale for these controls; do not assume adjacent date ranges are independent.
+For temporally ordered observations, place discovery before validation and validation before the untouched holdout. Keep observations and outcomes non-overlapping across both boundaries. Do not use an ordinary random split unless the research design justifies it and demonstrates that no future information can cross a boundary. Define sample membership from information-availability time and label/outcome end time, not row timestamp alone. Purge observations whose labels, holding periods, or derived windows cross either boundary, and apply an appropriate gap or embargo when feature lookbacks, forecast horizons, overlapping positions, publication delays, or repeated walk-forward folds could leak information. Record the sizes and rationale for these controls; do not assume adjacent date ranges are independent.
 
 ## 4. Define the backtest and execution model
 
@@ -83,13 +83,21 @@ Use only the discovery sample for hypothesis exploration, feature investigation,
 
 Report the breadth of the search and any repeated use of the same data. Treat unexplained sensitivity and unusually successful isolated variants as warning signs.
 
-## 6. Preserve and evaluate the holdout
+## 6. Evaluate a separate validation sample
 
-Keep holdout data isolated from strategy development. Evaluate the preregistered candidate only after its specification is fixed, and compare **Candidate vs Baseline** on the same holdout period.
+After discovery, freeze the selected candidate version before evaluating it on a separate validation sample. Validation is an intermediate out-of-sample check; it is not the untouched holdout. Compare **Candidate vs Baseline** on the same validation period and compatible assumptions.
 
-Do not repeatedly inspect holdout results and modify the strategy until it passes. If holdout evidence influences design, label the original holdout contaminated. Treat the revised strategy as a new version and, where feasible, validate it on a new untouched period. Never relabel a used sample as untouched.
+Record the validation period, actual sample size, sample status, result, and decision. Use an explicit sample status such as `UNTOUCHED`, `EVALUATED_ONCE`, `CONTAMINATED`, or `UNAVAILABLE`, with an explanation when contaminated or unavailable. Record an inconclusive evaluation as the result, not as sample status. If validation evidence changes the strategy, parameters, universe, execution, metrics, or criteria, create a new version and do not present the used validation result as independent evidence for that revision. Where feasible, give the revised version a new untouched validation sample.
 
-## 7. Evaluate a balanced metric set
+Advance to the untouched holdout only when the validation sample was not used to design the current version and the validation result meets the preregistered gate. If fresh validation evidence is unavailable, contaminated, or inconclusive, use `HOLD`, `REVISE`, or `REJECT` as appropriate instead of spending the holdout. Never use the untouched holdout as the first validation sample or as a substitute for missing validation evidence.
+
+## 7. Preserve and evaluate the untouched holdout
+
+Keep holdout data isolated from discovery, validation, and strategy development. Evaluate it only after the candidate specification is fixed and the separate validation result has been recorded. Compare **Candidate vs Baseline** on the same holdout period and compatible assumptions. Record the holdout period, actual sample size, status, result, and decision.
+
+Do not repeatedly inspect holdout results and modify the strategy until it passes. If holdout evidence influences design, label the original holdout `CONTAMINATED` for the revised version. Treat the revision as a new experiment/version and, where feasible, give it new validation and untouched holdout periods. Never relabel a used sample as untouched.
+
+## 8. Evaluate a balanced metric set
 
 Do not judge a strategy from one metric. Select metrics appropriate to the design, including where relevant: sample size, mean and median return, win rate, payoff ratio, expectancy, cumulative return, drawdown, volatility, Sharpe-like risk-adjusted measures, maximum favorable and adverse excursion (MFE/MAE), turnover, exposure, benchmark-relative return, regime dependence, concentration, and tail outcomes.
 
@@ -101,17 +109,17 @@ Expectancy = P(win) x Average Win - P(loss) x Average Loss
 
 A high win rate alone is not evidence of edge, and a tiny sample is not strong evidence. Report uncertainty and practical magnitude alongside statistical measures.
 
-## 8. Test robustness
+## 9. Test robustness
 
 Before recommending a forward test, choose checks relevant to the hypothesis: nearby parameter values, alternate subperiods and market regimes, bull/bear/sideways or high/low-volatility environments, liquidity groups, sector dependence, outlier sensitivity, costs, slippage, and delayed entry.
 
 Prefer a stable parameter region over one sharp optimum. Treat a cliff such as strong results at 1.99 and 2.00 but failure at 2.01 as suspicious unless a credible structural mechanism explains it. Report negative and mixed checks.
 
-## 9. Compare with a meaningful baseline
+## 10. Compare with a meaningful baseline
 
-Evaluate every candidate against a suitable baseline, such as an existing production strategy, buy-and-hold benchmark, random or unfiltered universe, simpler rule, or prior version. Use identical periods and compatible assumptions. Report candidate and baseline together; do not assess the candidate in isolation.
+Evaluate every candidate against a suitable baseline, such as an existing production strategy, buy-and-hold benchmark, random or unfiltered universe, simpler rule, or prior version. Use identical periods and compatible assumptions within discovery, validation, and holdout. Report candidate and baseline together; do not assess the candidate in isolation.
 
-## 10. Make the historical-research decision
+## 11. Make the historical-research decision
 
 End historical research with exactly one status:
 
@@ -122,19 +130,19 @@ HOLD
 ADVANCE TO FORWARD TEST
 ```
 
-Base it on discovery and holdout evidence, robustness, sample size, data quality, execution realism, complexity, baseline improvement, and known limitations. Prefer the simpler candidate when performance is similar. `ADVANCE TO FORWARD TEST` never means production-ready.
+Base it on discovery, separate validation, and untouched holdout evidence, robustness, sample size, data quality, execution realism, complexity, baseline improvement, and known limitations. Prefer the simpler candidate when performance is similar. `ADVANCE TO FORWARD TEST` never means production-ready.
 
-## 11. Freeze the forward-test specification
+## 12. Freeze the forward-test specification
 
 Before forward testing, version and freeze strategy logic, parameters, universe and signal definitions, entry, exit and risk rules, data-source assumptions, code/config version, and research version. Freeze every material portfolio assumption defined in Stage 4, including construction and selection, position sizing and capital allocation, cash handling and capital reuse, long/short and borrow treatment, leverage and gross/net exposure, concentration and position limits, concurrent or overlapping positions, rebalancing and order netting, and portfolio-return aggregation. Record the frozen strategy/research version. Forward testing evaluates that complete specification, not a moving target. Use [FORWARD_TEST_PLAN.md](../../../templates/FORWARD_TEST_PLAN.md) when no equivalent plan exists.
 
-## 12. Run the forward test on newly arriving data
+## 13. Run the forward test on newly arriving data
 
 Use data unavailable during historical research. Generate signals only from frozen rules; preserve timestamps; journal signals, expected entries, observable or actual execution assumptions, and later outcomes; retain failures, missing signals, and operational incidents; and never rewrite history. Compare forward evidence with backtest expectations. Track operational issues separately from strategy-performance issues.
 
 Do not silently modify the strategy during the forward-test period.
 
-## 13. Control changes during forward testing
+## 14. Control changes during forward testing
 
 Keep the current frozen version unchanged when a potential improvement appears. Route the idea through a new hypothesis, historical research, validation, and candidate version:
 
@@ -145,7 +153,7 @@ new idea -> new experiment -> historical research -> validation -> candidate ver
 
 This boundary prevents continuous live overfitting.
 
-## 14. Apply the production gate
+## 15. Apply the production gate
 
 Forward-test success does not authorize deployment. End with exactly one status:
 
@@ -157,13 +165,14 @@ READY FOR PRODUCTION REVIEW
 
 Never output `DEPLOY TO PRODUCTION` as the research decision. A separate human/release decision must assess forward sample sufficiency, consistency with historical expectations, drawdown, execution and data quality, operational reliability, drift, risk controls, and monitoring capability.
 
-## 15. Preserve the audit trail
+## 16. Preserve the audit trail
 
 Maintain an auditable chain:
 
 ```text
 hypothesis -> experiment ID -> dataset/version -> code/config version
--> discovery results -> holdout results -> decision -> frozen strategy version
+-> discovery results -> validation results -> untouched holdout results
+-> decision -> frozen strategy version
 -> forward signals -> forward outcomes -> production review
 ```
 
