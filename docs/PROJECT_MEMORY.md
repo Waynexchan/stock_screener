@@ -143,6 +143,24 @@ Do not mark these permanently fixed merely because current tests pass. Preserve 
 - How stable are results across regimes, time periods, industries, and liquidity bands?
 - What evidence sample is required before changing production?
 
+## 2026-09-13 filter-audit evidence
+
+`FILTER_AUDIT_V1` is a preregistered, production-isolated engineering discovery
+using the current 1,840-symbol universe and Yahoo adjusted OHLCV. It is labelled
+`SURVIVORSHIP-BIASED RESEARCH`; it did not evaluate the reserved 2024-2025
+holdout. Across the 2017-2023 discovery period it found 30,129 MODEL_0 Stage 2
+transition signals and 259 capacity-limited baseline trades. Full results and
+dataset hashes are preserved in `docs/RESEARCH_RESULTS_FILTER_AUDIT_V1.md`.
+
+The discovery did not support the fixed Recent RS >=70, long-term RS >=75, ADR,
+volume, or rolling beta >=0.8 rules as expectancy improvements over MODEL_0.
+Excluding Utilities was promising for expectancy and drawdown, and current
+extension limits reduced drawdown, but neither result is validation because the
+universe excludes historical failures and Utilities use current classifications.
+No production rule changed. `FORWARD_FILTER_AUDIT_V1` freezes the earliest
+complete immutable snapshot per signal date and accumulates 5/10/20/40-session
+raw return, MFE, MAE, and signal-date rolling beta as outcomes mature.
+
 ## Decisions already made
 
 - Production decisions are deterministic; AI cannot override them.

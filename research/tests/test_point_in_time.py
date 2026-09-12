@@ -12,6 +12,7 @@ from research.engine.features import (
     MODEL_0_EXCLUDED_ALPHA_FEATURES,
     assert_feature_columns_safe,
     feature_at_date,
+    generate_model_0_features,
 )
 from research.engine.outcomes import calculate_forward_outcomes, next_available_session
 
@@ -134,6 +135,20 @@ def test_baseline_excludes_alpha_filters() -> None:
 def test_baseline_excludes_industry_and_sister_filters() -> None:
     assert "Industry Qualification" in MODEL_0_EXCLUDED_ALPHA_FEATURES
     assert "Sister-Stock Confirmation" in MODEL_0_EXCLUDED_ALPHA_FEATURES
+
+
+def test_vectorized_signal_generation_matches_point_in_time_transition() -> None:
+    history = rising_history(260)
+    generated = generate_model_0_features(
+        {"AAA": history}, "fixture", signals_only=True
+    )
+    assert len(generated) == 1
+    signal_date = pd.Timestamp(generated.iloc[0]["signal_date"])
+    at_signal = feature_at_date("AAA", history, signal_date, "fixture")
+    assert at_signal.valid_data
+    assert at_signal.tradable
+    assert at_signal.stage2_pass
+    assert generated.iloc[0]["structural_stop"] == at_signal.structural_stop
 
 
 def test_default_repository_audit_blocks_untrustworthy_backtest(tmp_path) -> None:

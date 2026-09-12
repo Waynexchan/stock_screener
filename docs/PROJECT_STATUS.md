@@ -4,6 +4,14 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
+- Research update on 2026-09-13: `FILTER_AUDIT_V1` and
+  `FORWARD_FILTER_AUDIT_V1` are implemented as production-isolated workflows.
+  A Yahoo current-universe engineering archive contains 4,126,702 stock bars
+  plus 2,688 SPY bars from 2016-01-04 through 2026-09-11. The preregistered
+  2017-2023 discovery produced 30,129 MODEL_0 signals; results remain explicitly
+  survivorship-biased and the 2024-2025 holdout was not evaluated. The forward
+  journal froze 208 candidates across four immutable signal dates; zero had a
+  mature five-session outcome at the data cutoff. No production filter changed.
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
@@ -28,6 +36,13 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-filter-audit implementation on 2026-09-13: PASS — focused, Ruff, and 33
+research tests passed; the default MODEL_0 data gate remained the expected
+`BLOCKED_DATA_NOT_READY`, and production hash isolation passed. Full project
+verification passed with 222 pytest tests, 118 legacy unittest tests, all
+formatting, typing, industry/report invariant, offline dry-run, and generated
+HTML semantic-validation stages.
 
 Post-independent-review follow-up on 2026-09-12: PASS — the skill and templates
 now enforce `discovery -> validation -> untouched holdout`, preserve explicit

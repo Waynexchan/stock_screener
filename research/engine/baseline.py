@@ -71,6 +71,7 @@ def run_model_0(
             stop_lookback_sessions=int(
                 feature_config["structural_stop_lookback_sessions"]
             ),
+            signals_only=True,
         )
         outcomes = build_outcome_frame(features, histories)
         independent: list[SimulatedTrade] = []

@@ -36,13 +36,19 @@ def simulate_trade(
         return None
     if assumptions.same_bar_policy != "STOP_FIRST":
         raise ValueError("only conservative STOP_FIRST same-bar handling is supported")
-    frame = history.copy()
-    frame.index = pd.to_datetime(frame.index)
-    frame = frame.sort_index()
-    future = frame.loc[frame.index > pd.Timestamp(feature.signal_date)].head(
-        assumptions.maximum_holding_sessions
-    )
-    if future.empty or not bool(valid_bar_mask(future.iloc[[0]]).iloc[0]):
+    if (
+        isinstance(history.index, pd.DatetimeIndex)
+        and history.index.is_monotonic_increasing
+    ):
+        frame = history
+    else:
+        frame = history.copy()
+        frame.index = pd.to_datetime(frame.index)
+        frame = frame.sort_index()
+    start = frame.index.searchsorted(pd.Timestamp(feature.signal_date), side="right")
+    future = frame.iloc[start : start + assumptions.maximum_holding_sessions]
+    valid_future = valid_bar_mask(future)
+    if future.empty or not bool(valid_future.iloc[0]):
         return None
 
     entry_date = pd.Timestamp(future.index[0])
@@ -69,7 +75,7 @@ def simulate_trade(
     exit_reason = "MAX_HOLD"
     observed = future.iloc[0:0]
     for position, (bar_date, bar) in enumerate(future.iterrows()):
-        if not bool(valid_bar_mask(future.iloc[[position]]).iloc[0]):
+        if not bool(valid_future.iloc[position]):
             break
         observed = future.iloc[: position + 1]
         open_price = float(bar["Open"])

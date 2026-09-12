@@ -1,0 +1,39 @@
+{
+  "experiment_id": "FILTER_AUDIT_V1",
+  "status": "PREREGISTERED_ENGINEERING_DISCOVERY",
+  "production_effect": "NONE",
+  "baseline": "MODEL_0_BASELINE",
+  "research_label": "SURVIVORSHIP-BIASED RESEARCH",
+  "discovery_period": ["2017-01-01", "2023-12-31"],
+  "validation_status": "UNAVAILABLE_UNTIL_POINT_IN_TIME_DATA",
+  "untouched_holdout_period": [["2024-01-01", "2025-12-31"]],
+  "filters": {
+    "recent_rs_ge_70": {"column": "recent_rs_score", "operator": ">=", "value": 70.0},
+    "long_term_rs_ge_75": {"column": "long_term_rs_score", "operator": ">=", "value": 75.0},
+    "volume_ratio_ge_0_30": {"column": "volume_ratio", "operator": ">=", "value": 0.3},
+    "adr_between_1_and_10": {"column": "adr_pct", "operator": "between", "value": [1.0, 10.0]},
+    "within_extension_limits": {"column": "within_extension_limits", "operator": "is_true"},
+    "exclude_beta_below_0_8": {"column": "rolling_beta_126", "operator": ">=", "value": 0.8},
+    "exclude_utilities": {"column": "is_utility", "operator": "is_false"}
+  },
+  "beta_buckets": [null, 0.5, 0.8, 1.0, 1.2, 1.5, null],
+  "primary_metric": "expectancy_r_after_costs",
+  "secondary_metrics": ["profit_factor", "maximum_drawdown_r", "payoff_ratio", "exposure", "trade_count", "MFE_R", "MAE_R"],
+  "execution": {
+    "signal_time": "after close",
+    "entry": "next available session open",
+    "entry_slippage_bps": 5.0,
+    "exit_slippage_bps": 5.0,
+    "stop": "trailing 20-session structural low",
+    "maximum_holding_sessions": 40,
+    "same_bar_policy": "STOP_FIRST",
+    "maximum_positions": 4
+  },
+  "decision_rule": "A filter is only a removal candidate when it fails to improve expectancy or drawdown by an economically meaningful amount across independent validation; this biased discovery run cannot promote or remove production filters.",
+  "constraints": [
+    "Do not evaluate the untouched holdout in the free engineering run",
+    "Do not optimize thresholds",
+    "Do not treat current sector metadata as historical point-in-time classification",
+    "Do not change production from this experiment"
+  ]
+}

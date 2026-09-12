@@ -150,33 +150,80 @@ def generate_model_0_features(
     min_average_volume: float = 500_000.0,
     minimum_history_sessions: int = 220,
     stop_lookback_sessions: int = 20,
+    signals_only: bool = False,
 ) -> pd.DataFrame:
     """Emit a signal only on a false-to-true MODEL_0 eligibility transition."""
 
-    records: list[dict[str, object]] = []
+    frames: list[pd.DataFrame] = []
     for ticker in sorted(histories):
-        history = histories[ticker].sort_index()
-        previous_eligible = False
-        for date in history.index:
-            feature = feature_at_date(
-                ticker,
-                history,
-                date,
-                universe_version,
-                min_price=min_price,
-                min_average_volume=min_average_volume,
-                minimum_history_sessions=minimum_history_sessions,
-                stop_lookback_sessions=stop_lookback_sessions,
-            )
-            eligible = bool(
-                feature.valid_data
-                and feature.tradable
-                and feature.stage2_pass
-                and feature.structural_stop is not None
-            )
-            record = feature.to_dict()
-            record["model_0_signal"] = bool(eligible and not previous_eligible)
-            records.append(record)
-            previous_eligible = eligible
+        history = histories[ticker].copy().sort_index()
+        history.index = pd.to_datetime(history.index)
+        indicators = add_indicators(history)
+        valid_window = (
+            valid_bar_mask(history)
+            .astype(int)
+            .rolling(minimum_history_sessions, min_periods=minimum_history_sessions)
+            .sum()
+            .eq(minimum_history_sessions)
+        )
+        required = indicators[
+            [
+                "Close",
+                "Volume",
+                "AVG_VOLUME50",
+                "MA50",
+                "MA150",
+                "MA200",
+                "MA200_20D_AGO",
+            ]
+        ].apply(pd.to_numeric, errors="coerce")
+        finite = pd.Series(
+            np.isfinite(required.to_numpy(dtype=float)).all(axis=1),
+            index=history.index,
+        )
+        valid_data = valid_window & finite
+        tradable = (
+            valid_data
+            & required["Close"].ge(min_price)
+            & required["AVG_VOLUME50"].ge(min_average_volume)
+        )
+        stage2 = (
+            valid_data
+            & required["Close"].gt(required["MA50"])
+            & required["MA50"].gt(required["MA150"])
+            & required["MA150"].gt(required["MA200"])
+            & required["MA200"].gt(required["MA200_20D_AGO"])
+        )
+        stop = (
+            history["Low"]
+            .rolling(stop_lookback_sessions, min_periods=stop_lookback_sessions)
+            .min()
+        )
+        stop = stop.where(np.isfinite(stop) & stop.lt(required["Close"]))
+        eligible = valid_data & tradable & stage2 & stop.notna()
+        signal = eligible & ~eligible.shift(1, fill_value=False)
+        frame = pd.DataFrame(
+            {
+                "signal_date": history.index.date.astype(str),
+                "ticker": ticker.upper(),
+                "universe_version": universe_version,
+                "data_as_of": history.index.date.astype(str),
+                "price": required["Close"],
+                "volume": required["Volume"],
+                "dollar_volume": required["Close"] * required["Volume"],
+                "average_volume_50d": required["AVG_VOLUME50"],
+                "valid_data": valid_data,
+                "tradable": tradable,
+                "stage2_pass": stage2,
+                "structural_stop": stop,
+                "model_0_signal": signal,
+            },
+            index=history.index,
+        )
+        if signals_only:
+            frame = frame[frame["model_0_signal"]]
+        frames.append(frame.reset_index(drop=True))
     columns = list(FeatureRecord.__dataclass_fields__)
-    return pd.DataFrame(records).reindex(columns=columns)
+    if not frames:
+        return pd.DataFrame(columns=columns)
+    return pd.concat(frames, ignore_index=True).reindex(columns=columns)
