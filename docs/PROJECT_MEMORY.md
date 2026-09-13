@@ -360,3 +360,32 @@ Post-implementation verification passed 73 focused research tests plus the
 data-readiness gate and production hash isolation. Full-project verification
 passed 262 pytest tests, 118 legacy unittest tests, industry/report invariants,
 the offline sample dry run, and generated HTML semantic validation.
+
+## 2026-09-13 corrected staircase exposure robustness
+
+The earlier three-position cap did not express the user's intended repeated
+expansion. `STAIRCASE_EXPOSURE_ROBUSTNESS_V2` therefore froze a 2R starting
+state, +1R after every positive net realised exit batch, and either -1R STEP or
+immediate RESET-to-2R after a non-positive batch. Hard ceilings of 4R, 6R, and
+8R prevent an unbounded historical simulation. Every variant retained the
+20-day-low stop, no target, 40-session exit, and ten-calendar-day pre-earnings
+blackout.
+
+No staircase variant met the complete two-period gate. Reused 2017–2023
+maximum drawdown ranged from 15.58% to 16.59% for the dynamic paths, above the
+frozen 10% ceiling. In reused March 2024–October 2025, 4R STEP, 4R RESET, and
+6R/8R RESET stayed below 10%, but could not repair the older-period failure.
+The fixed-2R earnings-blackout baseline alone passed both numeric stage gates:
+42.78% return / 9.75% drawdown in the older period and 13.13% / 4.84% in the
+later period. This is a risk benchmark, not independent validation.
+
+The audit found no heat/floor violations, no missing marks, and no earnings
+blackout violations among 1,523 accepted ledger rows across all cells. The run
+used clean implementation commit `3eed4e1` after preregistration commit
+`0df092a`. Decision: HOLD. Production and the immutable forward journal remain
+unchanged; there is no untouched holdout.
+
+Post-result focused verification passed 79 research tests, the expected
+data-readiness gate, and production hash isolation. Full-project verification
+passed 268 pytest tests, 118 legacy unittest tests, industry/report invariants,
+the offline sample dry run, and generated HTML semantic validation.

@@ -333,6 +333,23 @@
       "notes": "Remain RESEARCH_ONLY. It correctly never exceeded three positions but failed older-period risk stability; there is no untouched holdout."
     },
     {
+      "id": "staircase_exposure_after_realised_wins",
+      "name": "Repeated win-expand, loss-contract exposure staircase",
+      "category": "portfolio_allocation_research",
+      "status": "RESEARCH_ONLY",
+      "production_effect": "NONE; adaptive robustness only.",
+      "evidence_summary": "All six 2R-start staircase variants failed the complete two-period gate because reused 2017-2023 maximum drawdown exceeded 10%.",
+      "sample_size": 25413,
+      "discovery_result": "Reused 2017-2023: dynamic variants accepted 179-214 trades, returned 33.54%-83.11%, had 0.176R-0.464R expectancy and 1.293-1.802 profit factor, but reached 15.58%-16.59% maximum drawdown. Fixed 2R returned 42.78% with 9.75% drawdown.",
+      "validation_result": "Reused March 2024-October 2025, not independent: 4R STEP/RESET and 6R/8R RESET stayed below 10% drawdown, while 6R/8R STEP reached 12.91%. No dynamic rule passed both periods.",
+      "holdout_result": null,
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-13",
+      "notes": "Remain RESEARCH_ONLY and HOLD. The fixed-2R earnings-blackout baseline was the only numeric two-period gate pass. Prices are survivorship-biased, earnings dates are retrospective, and there is no untouched holdout."
+    },
+    {
       "id": "pre_earnings_signal_blackout",
       "name": "Ten-calendar-day pre-earnings signal blackout",
       "category": "event_risk_control_research",

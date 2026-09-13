@@ -195,6 +195,16 @@ were unstable. The Yahoo event dates are retrospective rather than point-in-time
 schedule snapshots, so the decision remains `HOLD` and production is unchanged.
 See `docs/RESEARCH_RESULTS_EARNINGS_EXPOSURE_ROBUSTNESS_V1.md`.
 
+The corrected `STAIRCASE_EXPOSURE_ROBUSTNESS_V2` study removed the mistaken
+three-position interpretation: it started at 2R, added one position slot after
+each positive realised exit batch, and tested STEP or RESET contraction under
+4R, 6R, and 8R hard ceilings. No dynamic variant passed both reused periods.
+All reached 15.58%–16.59% maximum drawdown in reused 2017–2023 versus the 10%
+gate. Fixed 2R was the only numeric two-period gate pass, at 9.75% and 4.84%
+drawdown, but is not independently validated. Decision remains `HOLD`; no
+production or immutable-forward-journal change. See
+`docs/RESEARCH_RESULTS_STAIRCASE_EXPOSURE_ROBUSTNESS_V2.md`.
+
 ## Next recommended task
 
 Acquire and provenance-check point-in-time price, benchmark, universe, and delisted-symbol history. Once the data gate is satisfied, run the predeclared **RECENT RS ABLATION** against MODEL_0 without changing production thresholds.
