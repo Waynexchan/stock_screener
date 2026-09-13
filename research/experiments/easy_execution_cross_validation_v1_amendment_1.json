@@ -1,0 +1,28 @@
+{
+  "amendment_id": "EASY_EXECUTION_CROSS_VALIDATION_V1_AMENDMENT_1",
+  "experiment_id": "EASY_EXECUTION_CROSS_VALIDATION_V1",
+  "preregistered_commit": "5ba5767",
+  "timing": "Recorded before any outcomes from this experiment were calculated or inspected.",
+  "reason": "Clarify staged account resets, the comparison baseline, and holdout isolation without changing the matrix, ranking, or pass thresholds.",
+  "clarifications": {
+    "stage_accounting": "Discovery, validation, and holdout each start from a fresh 100R account; capital and realised profit do not carry between stages.",
+    "comparison_baseline": {
+      "stop_id": "structural_20d_low",
+      "exit_id": "time_40_sessions",
+      "portfolio_id": "fixed_4r"
+    },
+    "baseline_use": "Evaluate the comparison baseline in validation alongside selected candidates. Evaluate it in holdout only if at least one selected candidate passes validation.",
+    "holdout_isolation": "Do not generate, simulate, rank, or report 2025 signals or outcomes unless a selected candidate first passes the frozen 2024 validation gate.",
+    "comparison_scope": "The baseline is contextual and cannot replace a candidate or alter candidate selection. Report candidate-minus-baseline return, drawdown, expectancy, profit factor, and trade count where available."
+  },
+  "unchanged": [
+    "hypotheses",
+    "168-cell discovery matrix",
+    "discovery gate",
+    "neighbour support rule",
+    "candidate ranking and maximum of three selections",
+    "validation gate",
+    "conditional one-time 2025 holdout rule",
+    "historical HOLD decision"
+  ]
+}
