@@ -38,11 +38,17 @@ python -m research.run_combined_exit_exposure_grid --prices research/output/yaho
 
 # Frozen 6 stop x 7 exit x 4 exposure discovery, 2024 validation, and conditional 2025 holdout
 python -m research.run_easy_execution_cross_validation --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv
+
+# Retrospective earnings-event proxy and adaptive win-to-3/loss-to-2 robustness study
+python -m research.download_yahoo_earnings --start 2017-01-01 --end 2025-11-10
+python -m research.run_earnings_exposure_robustness --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv --earnings research/output/yahoo_earnings_engineering/earnings.csv --earnings-metadata research/output/yahoo_earnings_engineering/download_metadata.json
 ```
 
 `download_yahoo` records source, date range, coverage, failures, and hashes. It uses the current universe and never claims delisted or historical-membership coverage. `run_filter_audit` evaluates only the preregistered 2017–2023 engineering discovery sample and refuses to describe 2024–2025 as evaluated holdout evidence. `run_forward_test` freezes the earliest complete immutable production snapshot per signal date, calculates raw horizons when mature, and conservatively simulates frozen entry/stop/target plans while leaving open immature outcomes missing.
 
 `run_easy_execution_cross_validation` writes all 168 discovery cells, freezes at most three candidates before calculating 2024 validation, and only accesses the 2025 signal/outcome stage when a candidate passes the frozen validation gate. Each stage resets to 100R. The generated results remain `HOLD` because the archive is survivorship-biased.
+
+`run_earnings_exposure_robustness` compares fixed 2R heat with a disciplined state that starts at two 1R positions, permits a third after a net-profitable realised exit batch, and reverts to two after a non-positive batch. Each exposure rule is tested with and without an inclusive ten-calendar-day pre-earnings signal blackout. Yahoo earnings dates are retrospective proxies, not point-in-time schedule snapshots, and all price periods are reused; the study therefore cannot provide independent validation or production approval.
 
 Expected long-form price columns are `Date`, `Ticker`, `Open`, `High`, `Low`, `Close`, and `Volume`; `Adj Close` is optional. The loader validates and sorts bars, removes duplicate ticker/date rows deterministically, reports missing/invalid frequency, and records its adjustment method.
 

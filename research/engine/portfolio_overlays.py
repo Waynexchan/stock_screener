@@ -23,6 +23,7 @@ def policy_limits(
     *,
     realised_profit_high_water_r: float,
     current_drawdown_r: float,
+    dynamic_heat_r: float | None = None,
 ) -> tuple[float, float, str]:
     """Return causal maximum heat, new-trade risk and policy mode."""
 
@@ -33,6 +34,15 @@ def policy_limits(
             float(specification["risk_per_trade_r"]),
             "FIXED",
         )
+    if policy_type == "LAST_EXIT_BATCH":
+        if dynamic_heat_r is None:
+            raise ValueError("LAST_EXIT_BATCH requires dynamic heat state")
+        initial_heat = float(specification["initial_heat_r"])
+        profitable_heat = float(specification["profitable_heat_r"])
+        if dynamic_heat_r not in {initial_heat, profitable_heat}:
+            raise ValueError("invalid LAST_EXIT_BATCH dynamic heat state")
+        mode = "WIN_TO_3" if dynamic_heat_r == profitable_heat else "BASE_2"
+        return dynamic_heat_r, float(specification["risk_per_trade_r"]), mode
     earned_heat = float(specification.get("initial_heat_r", np.inf))
     if policy_type in {"EARNED", "EARNED_DRAWDOWN"}:
         for threshold, unlocked_heat in zip(
@@ -125,6 +135,13 @@ def simulate_portfolio_overlay(
     curve_rows: list[dict[str, Any]] = []
     realised_r = 0.0
     realised_profit_high_water_r = 0.0
+    dynamic_heat_r = (
+        float(specification["initial_heat_r"])
+        if specification["type"] == "LAST_EXIT_BATCH"
+        else None
+    )
+    exposure_expansion_count = 0
+    exposure_contraction_count = 0
     equity_high_water_r = 0.0
     missing_mark_count = 0
     for session in calendar:
@@ -147,6 +164,7 @@ def simulate_portfolio_overlay(
             specification,
             realised_profit_high_water_r=realised_profit_high_water_r,
             current_drawdown_r=current_drawdown_r,
+            dynamic_heat_r=dynamic_heat_r,
         )
         for trade in candidates.get(pd.Timestamp(session), []):
             current_heat = sum(item.allocated_r for item in open_trades)
@@ -172,8 +190,21 @@ def simulate_portfolio_overlay(
             for item in open_trades
             if pd.Timestamp(item.trade.exit_date) == session
         ]
-        realised_r += sum(item.trade.realised_r * item.allocated_r for item in exiting)
+        exit_batch_r = sum(item.trade.realised_r * item.allocated_r for item in exiting)
+        realised_r += exit_batch_r
         realised_profit_high_water_r = max(realised_profit_high_water_r, realised_r)
+        if specification["type"] == "LAST_EXIT_BATCH" and exiting:
+            assert dynamic_heat_r is not None
+            next_heat = float(
+                specification[
+                    "profitable_heat_r" if exit_batch_r > 0 else "non_positive_heat_r"
+                ]
+            )
+            if next_heat > dynamic_heat_r:
+                exposure_expansion_count += 1
+            elif next_heat < dynamic_heat_r:
+                exposure_contraction_count += 1
+            dynamic_heat_r = next_heat
         open_trades = [item for item in open_trades if item not in exiting]
         closing_marks = [
             _marked_pnl_r(item, histories, session, "Close") for item in open_trades
@@ -251,6 +282,8 @@ def simulate_portfolio_overlay(
                 curve["policy_mode_at_open"].eq("STOP_NEW_RISK").sum()
             ),
             "missing_mark_count": missing_mark_count,
+            "exposure_expansion_count": exposure_expansion_count,
+            "exposure_contraction_count": exposure_contraction_count,
         }
         return metrics, ledger, curve
     outcomes = pd.to_numeric(ledger["portfolio_realised_r"], errors="coerce")
@@ -314,5 +347,7 @@ def simulate_portfolio_overlay(
             curve["policy_mode_at_open"].eq("STOP_NEW_RISK").sum()
         ),
         "missing_mark_count": missing_mark_count,
+        "exposure_expansion_count": exposure_expansion_count,
+        "exposure_contraction_count": exposure_contraction_count,
     }
     return metrics, ledger, curve

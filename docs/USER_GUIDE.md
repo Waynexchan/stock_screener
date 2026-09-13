@@ -164,3 +164,12 @@ python -m research.run_easy_execution_cross_validation --prices research/output/
 ```
 
 It evaluates 168 frozen discovery combinations across six initial stops, seven target/time exits, and four exposure rules. It selects no more than three candidates before running the separate March–October 2024 validation. The 2025 holdout is calculated exactly once only when a candidate passes that validation gate. Discovery, validation, and holdout each restart at 100R; none of these research results changes the Daily Watchlist or the existing forward-test journal.
+
+The separate earnings/exposure robustness runner accepts a long-form retrospective earnings calendar:
+
+```powershell
+python -m research.download_yahoo_earnings --start 2017-01-01 --end 2025-11-10
+python -m research.run_earnings_exposure_robustness --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv --earnings research/output/yahoo_earnings_engineering/earnings.csv --earnings-metadata research/output/yahoo_earnings_engineering/download_metadata.json
+```
+
+Its dynamic policy begins at two 1R positions, expands to at most three on the session after a net-profitable realised exit batch, and returns to two after a zero/negative batch. Its earnings variant rejects signals dated from zero through ten calendar days before the retrospective earnings event. These periods and earnings dates are not untouched point-in-time evidence, so the runner cannot change production decisions.

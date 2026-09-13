@@ -67,6 +67,28 @@ def test_earned_policy_unlocks_only_from_realised_profit_high_water() -> None:
     ) == (4.0, 1.0, "EARNED")
 
 
+def test_last_exit_batch_policy_uses_explicit_dynamic_state() -> None:
+    policy = {
+        "type": "LAST_EXIT_BATCH",
+        "initial_heat_r": 2.0,
+        "profitable_heat_r": 3.0,
+        "non_positive_heat_r": 2.0,
+        "risk_per_trade_r": 1.0,
+    }
+    assert policy_limits(
+        policy,
+        realised_profit_high_water_r=99.0,
+        current_drawdown_r=99.0,
+        dynamic_heat_r=2.0,
+    ) == (2.0, 1.0, "BASE_2")
+    assert policy_limits(
+        policy,
+        realised_profit_high_water_r=0.0,
+        current_drawdown_r=0.0,
+        dynamic_heat_r=3.0,
+    ) == (3.0, 1.0, "WIN_TO_3")
+
+
 def test_drawdown_policy_reduces_and_then_stops_new_risk() -> None:
     policy = {
         "type": "DRAWDOWN",
@@ -119,6 +141,47 @@ def test_fixed_heat_rejects_excess_same_session_candidates() -> None:
     assert metrics["average_win_r"] == 2.0
     assert metrics["average_loss_r"] == -1.0
     assert metrics["payoff_ratio"] == 2.0
+
+
+def test_last_exit_batch_win_expands_and_loss_contracts_next_session() -> None:
+    policy = {
+        "type": "LAST_EXIT_BATCH",
+        "initial_heat_r": 2.0,
+        "profitable_heat_r": 3.0,
+        "non_positive_heat_r": 2.0,
+        "risk_per_trade_r": 1.0,
+    }
+    trades = [
+        trade("AAA", entry_date="2026-01-05", exit_date="2026-01-06", realised_r=1),
+        trade("BBB", entry_date="2026-01-05", exit_date="2026-01-08", realised_r=0),
+        trade("CCC", entry_date="2026-01-07", exit_date="2026-01-09", realised_r=-1),
+        trade("DDD", entry_date="2026-01-07", exit_date="2026-01-09", realised_r=0),
+        trade("EEE", entry_date="2026-01-09", exit_date="2026-01-09", realised_r=0),
+    ]
+    prices = {
+        ticker: history(
+            [
+                (date, 100.0, 100.0)
+                for date in pd.bdate_range("2026-01-05", "2026-01-09").strftime(
+                    "%Y-%m-%d"
+                )
+            ]
+        )
+        for ticker in ("AAA", "BBB", "CCC", "DDD", "EEE")
+    }
+    metrics, ledger, curve = simulate_portfolio_overlay(
+        trades,
+        prices,
+        pd.bdate_range("2026-01-05", "2026-01-09"),
+        policy,
+        maximum_positions=3,
+    )
+    assert ledger["ticker"].tolist() == ["AAA", "BBB", "CCC", "DDD"]
+    assert metrics["maximum_positions"] == 3
+    assert metrics["exposure_expansion_count"] == 1
+    assert metrics["exposure_contraction_count"] == 1
+    assert curve.set_index("date").loc["2026-01-07", "policy_heat_limit_r"] == 3.0
+    assert curve.set_index("date").loc["2026-01-09", "policy_heat_limit_r"] == 2.0
 
 
 def test_same_session_exit_does_not_release_capacity_for_entries() -> None:
