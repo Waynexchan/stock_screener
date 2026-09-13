@@ -145,11 +145,20 @@ def simulate_prepared_trade(
 
     if assumptions.same_bar_policy != "STOP_FIRST":
         raise ValueError("only conservative STOP_FIRST same-bar handling is supported")
-    if (
-        assumptions.entry_slippage_bps != prepared.entry_slippage_bps
-        or assumptions.maximum_holding_sessions != prepared.maximum_holding_sessions
-    ):
+    if assumptions.entry_slippage_bps != prepared.entry_slippage_bps:
         raise ValueError("prepared entry or holding assumptions do not match")
+    if (
+        assumptions.maximum_holding_sessions <= 0
+        or assumptions.maximum_holding_sessions > prepared.maximum_holding_sessions
+    ):
+        raise ValueError("requested holding period exceeds prepared execution")
+    holding_limit = min(assumptions.maximum_holding_sessions, len(prepared.dates))
+    dates = prepared.dates[:holding_limit]
+    opens = prepared.opens[:holding_limit]
+    highs = prepared.highs[:holding_limit]
+    lows = prepared.lows[:holding_limit]
+    closes = prepared.closes[:holding_limit]
+    valid = prepared.valid[:holding_limit]
     feature = prepared.feature
     entry = prepared.entry
     stop = float(feature.structural_stop if stop_price is None else stop_price)
@@ -168,44 +177,44 @@ def simulate_prepared_trade(
     if target is not None and (not np.isfinite(target) or target <= entry):
         raise ValueError("target must be finite and above entry")
 
-    reference_exit = float(prepared.closes[-1])
-    exit_date = pd.Timestamp(prepared.dates[-1])
+    reference_exit = float(closes[-1])
+    exit_date = pd.Timestamp(dates[-1])
     exit_reason = "MAX_HOLD"
     observed_count = 0
-    for position in range(len(prepared.dates)):
-        if not prepared.valid[position]:
+    for position in range(len(dates)):
+        if not valid[position]:
             break
         observed_count = position + 1
-        open_price = float(prepared.opens[position])
-        low = float(prepared.lows[position])
-        high = float(prepared.highs[position])
+        open_price = float(opens[position])
+        low = float(lows[position])
+        high = float(highs[position])
         if position > 0 and open_price <= stop:
             reference_exit = open_price
-            exit_date = pd.Timestamp(prepared.dates[position])
+            exit_date = pd.Timestamp(dates[position])
             exit_reason = "STOP_GAP"
             break
         if position > 0 and target is not None and open_price >= target:
             reference_exit = (
                 target if assumptions.favorable_gap_fill == "LEVEL" else open_price
             )
-            exit_date = pd.Timestamp(prepared.dates[position])
+            exit_date = pd.Timestamp(dates[position])
             exit_reason = "TARGET_GAP"
             break
         stop_touched = low <= stop
         target_touched = target is not None and high >= target
         if stop_touched and target_touched:
             reference_exit = stop
-            exit_date = pd.Timestamp(prepared.dates[position])
+            exit_date = pd.Timestamp(dates[position])
             exit_reason = "STOP_AND_TARGET_SAME_BAR_CONSERVATIVE"
             break
         if stop_touched:
             reference_exit = stop
-            exit_date = pd.Timestamp(prepared.dates[position])
+            exit_date = pd.Timestamp(dates[position])
             exit_reason = "STOP"
             break
         if target_touched:
             reference_exit = float(target)
-            exit_date = pd.Timestamp(prepared.dates[position])
+            exit_date = pd.Timestamp(dates[position])
             exit_reason = "TARGET"
             break
     if observed_count == 0:
@@ -222,16 +231,16 @@ def simulate_prepared_trade(
     realised_r = net_pnl / initial_risk_dollars
     mfe_r = max(
         0.0,
-        (float(prepared.highs[:observed_count].max()) - entry) / initial_risk_per_share,
+        (float(highs[:observed_count].max()) - entry) / initial_risk_per_share,
     )
     mae_r = min(
         0.0,
-        (float(prepared.lows[:observed_count].min()) - entry) / initial_risk_per_share,
+        (float(lows[:observed_count].min()) - entry) / initial_risk_per_share,
     )
     return SimulatedTrade(
         signal_date=feature.signal_date,
         ticker=feature.ticker,
-        entry_date=pd.Timestamp(prepared.dates[0]).date().isoformat(),
+        entry_date=pd.Timestamp(dates[0]).date().isoformat(),
         exit_date=exit_date.date().isoformat(),
         entry=round(entry, 6),
         initial_stop=round(stop, 6),

@@ -156,6 +156,38 @@ def test_prepared_execution_matches_single_trade_path() -> None:
     assert actual == expected
 
 
+def test_long_preparation_can_run_a_shorter_time_exit() -> None:
+    history = bars(
+        [
+            ("2026-01-02", 99, 101, 98, 100),
+            ("2026-01-05", 100, 105, 97, 102),
+            ("2026-01-06", 102, 111, 101, 110),
+        ]
+    )
+    long_settings = assumptions(maximum_holding_sessions=2)
+    short_settings = assumptions(maximum_holding_sessions=1)
+    prepared = prepare_trade_execution(signal(), history, long_settings)
+    assert prepared is not None
+    actual = simulate_prepared_trade(prepared, short_settings)
+    expected = simulate_trade(signal(), history, short_settings)
+    assert actual == expected
+
+
+def test_prepared_execution_rejects_a_longer_requested_time_exit() -> None:
+    history = bars(
+        [
+            ("2026-01-02", 99, 101, 98, 100),
+            ("2026-01-05", 100, 105, 97, 102),
+        ]
+    )
+    prepared = prepare_trade_execution(
+        signal(), history, assumptions(maximum_holding_sessions=1)
+    )
+    assert prepared is not None
+    with pytest.raises(ValueError, match="exceeds prepared"):
+        simulate_prepared_trade(prepared, assumptions(maximum_holding_sessions=2))
+
+
 def test_batch_preparation_matches_single_preparation() -> None:
     history = bars(
         [

@@ -67,6 +67,7 @@ def add_risk_inputs(
     result = signals.copy()
     result["atr20"] = np.nan
     result["signal_day_low"] = np.nan
+    result["signal_10d_low"] = np.nan
     result["slipped_next_open"] = np.nan
     for ticker, indexes in result.groupby("ticker", sort=False).groups.items():
         history = histories.get(str(ticker))
@@ -75,12 +76,20 @@ def add_risk_inputs(
         frame = history.sort_index()
         frame.index = pd.to_datetime(frame.index)
         atr = true_range_atr20(frame)
+        ten_day_low = (
+            pd.to_numeric(frame["Low"], errors="coerce")
+            .rolling(10, min_periods=10)
+            .min()
+        )
         signal_dates = pd.to_datetime(result.loc[indexes, "signal_date"])
         for row_index, signal_date in zip(indexes, signal_dates, strict=True):
             if signal_date not in frame.index:
                 continue
             atr_value = pd.to_numeric(atr.loc[signal_date], errors="coerce")
             low_value = pd.to_numeric(frame.loc[signal_date, "Low"], errors="coerce")
+            ten_day_low_value = pd.to_numeric(
+                ten_day_low.loc[signal_date], errors="coerce"
+            )
             next_position = frame.index.searchsorted(signal_date, side="right")
             if next_position >= len(frame):
                 continue
@@ -89,11 +98,12 @@ def add_risk_inputs(
             )
             if not all(
                 np.isfinite(value) and float(value) > 0
-                for value in (atr_value, low_value, next_open)
+                for value in (atr_value, low_value, ten_day_low_value, next_open)
             ):
                 continue
             result.at[row_index, "atr20"] = float(atr_value)
             result.at[row_index, "signal_day_low"] = float(low_value)
+            result.at[row_index, "signal_10d_low"] = float(ten_day_low_value)
             result.at[row_index, "slipped_next_open"] = float(next_open) * (
                 1 + entry_slippage_bps / 10_000
             )
@@ -109,6 +119,13 @@ def stop_for_variant(row: dict[str, Any], specification: dict[str, Any]) -> floa
         value = float(row["slipped_next_open"]) - multiple * float(row["atr20"])
     elif anchor == "signal_day_low":
         value = float(row["signal_day_low"]) - multiple * float(row["atr20"])
+    elif anchor == "signal_10d_low":
+        value = row.get("signal_10d_low")
+    elif anchor == "higher_of_signal_20d_low_and_entry_minus_atr":
+        value = max(
+            float(row["structural_stop"]),
+            float(row["slipped_next_open"]) - multiple * float(row["atr20"]),
+        )
     else:
         raise ValueError(f"unsupported stop anchor: {anchor}")
     parsed = pd.to_numeric(value, errors="coerce")

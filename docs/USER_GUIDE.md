@@ -156,3 +156,11 @@ python -m research.run_combined_exit_exposure_grid --prices research/output/yaho
 ```
 
 It reports all 180 preregistered cells in `research/output/combined_exit_exposure_grid_v1/grid_results.csv`, writes the complete gate passes to `shortlist.csv`, and preserves each numbered ledger and daily equity curve under `cells/`. A shortlist row is not production approval or permission to change the frozen forward test.
+
+The simpler staged cross-validation study can be reproduced with:
+
+```powershell
+python -m research.run_easy_execution_cross_validation --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv
+```
+
+It evaluates 168 frozen discovery combinations across six initial stops, seven target/time exits, and four exposure rules. It selects no more than three candidates before running the separate March–October 2024 validation. The 2025 holdout is calculated exactly once only when a candidate passes that validation gate. Discovery, validation, and holdout each restart at 100R; none of these research results changes the Daily Watchlist or the existing forward-test journal.
