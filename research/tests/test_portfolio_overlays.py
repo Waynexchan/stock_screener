@@ -4,7 +4,11 @@ import pandas as pd
 import pytest
 
 from research.engine.models import SimulatedTrade
-from research.engine.portfolio_overlays import policy_limits, simulate_portfolio_overlay
+from research.engine.portfolio_overlays import (
+    dynamic_heat_after_exit_batch,
+    policy_limits,
+    simulate_portfolio_overlay,
+)
 
 
 def trade(
@@ -87,6 +91,49 @@ def test_last_exit_batch_policy_uses_explicit_dynamic_state() -> None:
         current_drawdown_r=0.0,
         dynamic_heat_r=3.0,
     ) == (3.0, 1.0, "WIN_TO_3")
+
+
+@pytest.mark.parametrize(
+    ("contraction_mode", "after_losses"),
+    [("STEP", [5.0, 4.0]), ("RESET", [2.0, 2.0])],
+)
+def test_staircase_repeated_wins_expand_and_losses_contract(
+    contraction_mode: str, after_losses: list[float]
+) -> None:
+    policy = {
+        "type": "STAIRCASE",
+        "floor_heat_r": 2.0,
+        "ceiling_heat_r": 6.0,
+        "profit_increment_r": 1.0,
+        "loss_step_r": 1.0,
+        "contraction_mode": contraction_mode,
+        "risk_per_trade_r": 1.0,
+    }
+    heat = 2.0
+    for expected in (3.0, 4.0, 5.0, 6.0, 6.0):
+        heat = dynamic_heat_after_exit_batch(policy, heat, 0.25)
+        assert heat == expected
+    for expected in after_losses:
+        heat = dynamic_heat_after_exit_batch(policy, heat, -0.01)
+        assert heat == expected
+
+
+def test_staircase_policy_limit_reports_current_level() -> None:
+    policy = {
+        "type": "STAIRCASE",
+        "floor_heat_r": 2.0,
+        "ceiling_heat_r": 8.0,
+        "profit_increment_r": 1.0,
+        "loss_step_r": 1.0,
+        "contraction_mode": "STEP",
+        "risk_per_trade_r": 1.0,
+    }
+    assert policy_limits(
+        policy,
+        realised_profit_high_water_r=0.0,
+        current_drawdown_r=0.0,
+        dynamic_heat_r=5.0,
+    ) == (5.0, 1.0, "STAIRCASE_5R")
 
 
 def test_drawdown_policy_reduces_and_then_stops_new_risk() -> None:
@@ -182,6 +229,52 @@ def test_last_exit_batch_win_expands_and_loss_contracts_next_session() -> None:
     assert metrics["exposure_contraction_count"] == 1
     assert curve.set_index("date").loc["2026-01-07", "policy_heat_limit_r"] == 3.0
     assert curve.set_index("date").loc["2026-01-09", "policy_heat_limit_r"] == 2.0
+
+
+def test_staircase_simulator_expands_repeatedly_and_steps_down_next_session() -> None:
+    policy = {
+        "type": "STAIRCASE",
+        "floor_heat_r": 2.0,
+        "ceiling_heat_r": 4.0,
+        "profit_increment_r": 1.0,
+        "loss_step_r": 1.0,
+        "contraction_mode": "STEP",
+        "risk_per_trade_r": 1.0,
+    }
+    trades = [
+        trade("AAA", entry_date="2026-01-05", exit_date="2026-01-06", realised_r=1),
+        trade("BBB", entry_date="2026-01-05", exit_date="2026-01-10", realised_r=0),
+        trade("CCC", entry_date="2026-01-07", exit_date="2026-01-08", realised_r=1),
+        trade("DDD", entry_date="2026-01-09", exit_date="2026-01-10", realised_r=-1),
+        trade("EEE", entry_date="2026-01-09", exit_date="2026-01-10", realised_r=0),
+        trade("FFF", entry_date="2026-01-12", exit_date="2026-01-12", realised_r=0),
+    ]
+    sessions = pd.DatetimeIndex(
+        [
+            pd.Timestamp("2026-01-05"),
+            pd.Timestamp("2026-01-06"),
+            pd.Timestamp("2026-01-07"),
+            pd.Timestamp("2026-01-08"),
+            pd.Timestamp("2026-01-09"),
+            pd.Timestamp("2026-01-10"),
+            pd.Timestamp("2026-01-12"),
+        ]
+    )
+    prices = {
+        ticker: history([(date.date().isoformat(), 100.0, 100.0) for date in sessions])
+        for ticker in ("AAA", "BBB", "CCC", "DDD", "EEE", "FFF")
+    }
+    metrics, ledger, curve = simulate_portfolio_overlay(
+        trades, prices, sessions, policy, maximum_positions=4
+    )
+    indexed = curve.set_index("date")
+    assert ledger["ticker"].tolist() == ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"]
+    assert indexed.loc["2026-01-07", "policy_heat_limit_r"] == 3.0
+    assert indexed.loc["2026-01-09", "policy_heat_limit_r"] == 4.0
+    assert indexed.loc["2026-01-12", "policy_heat_limit_r"] == 3.0
+    assert metrics["maximum_positions"] == 3
+    assert metrics["exposure_expansion_count"] == 2
+    assert metrics["exposure_contraction_count"] == 2
 
 
 def test_same_session_exit_does_not_release_capacity_for_entries() -> None:

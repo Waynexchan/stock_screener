@@ -87,7 +87,7 @@ $before = Get-ProtectedState
 Invoke-Stage "Research syntax" { python -m compileall -q research }
 Invoke-Stage "Research Ruff format check" { python -m ruff format --check research }
 Invoke-Stage "Research Ruff lint" { python -m ruff check research }
-Invoke-Stage "Research mypy" { python -m mypy research/engine research/run_baseline.py research/run_filter_audit.py research/run_forward_test.py research/run_exit_stop_grid.py research/run_portfolio_exposure.py research/run_combined_exit_exposure_grid.py research/run_easy_execution_cross_validation.py research/run_earnings_exposure_robustness.py research/download_yahoo.py research/download_yahoo_earnings.py --ignore-missing-imports --disable-error-code import-untyped }
+Invoke-Stage "Research mypy" { python -m mypy research/engine research/run_baseline.py research/run_filter_audit.py research/run_forward_test.py research/run_exit_stop_grid.py research/run_portfolio_exposure.py research/run_combined_exit_exposure_grid.py research/run_easy_execution_cross_validation.py research/run_earnings_exposure_robustness.py research/run_staircase_exposure_robustness.py research/download_yahoo.py research/download_yahoo_earnings.py --ignore-missing-imports --disable-error-code import-untyped }
 Invoke-Stage "Research tests" { python -m pytest -q research/tests }
 Invoke-Stage "Gated MODEL_0 baseline" { python -m research.run_baseline --output-dir research/output/baseline }
 $after = Get-ProtectedState

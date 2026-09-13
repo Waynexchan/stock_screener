@@ -173,3 +173,11 @@ python -m research.run_earnings_exposure_robustness --prices research/output/yah
 ```
 
 Its dynamic policy begins at two 1R positions, expands to at most three on the session after a net-profitable realised exit batch, and returns to two after a zero/negative batch. Its earnings variant rejects signals dated from zero through ten calendar days before the retrospective earnings event. These periods and earnings dates are not untouched point-in-time evidence, so the runner cannot change production decisions.
+
+The corrected repeated-expansion experiment is:
+
+```powershell
+python -m research.run_staircase_exposure_robustness --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv --earnings research/output/yahoo_earnings_engineering/earnings.csv --earnings-metadata research/output/yahoo_earnings_engineering/download_metadata.json
+```
+
+It starts at 2R and adds one 1R position slot after every net-profitable realised exit batch. It compares `STEP` loss contraction with an immediate `RESET` to 2R, under separate 4R, 6R, and 8R hard safety ceilings. State changes apply on the next session, existing positions are not forcibly sold after a contraction, and every cell uses the inclusive ten-calendar-day earnings blackout. The runner is research-only and uses already inspected, survivorship-biased prices plus retrospective earnings dates.

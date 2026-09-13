@@ -34,14 +34,22 @@ def policy_limits(
             float(specification["risk_per_trade_r"]),
             "FIXED",
         )
-    if policy_type == "LAST_EXIT_BATCH":
+    if policy_type in {"LAST_EXIT_BATCH", "STAIRCASE"}:
         if dynamic_heat_r is None:
-            raise ValueError("LAST_EXIT_BATCH requires dynamic heat state")
-        initial_heat = float(specification["initial_heat_r"])
-        profitable_heat = float(specification["profitable_heat_r"])
-        if dynamic_heat_r not in {initial_heat, profitable_heat}:
-            raise ValueError("invalid LAST_EXIT_BATCH dynamic heat state")
-        mode = "WIN_TO_3" if dynamic_heat_r == profitable_heat else "BASE_2"
+            raise ValueError(f"{policy_type} requires dynamic heat state")
+        initial_heat = float(
+            specification.get("initial_heat_r", specification.get("floor_heat_r"))
+        )
+        maximum_heat = float(
+            specification.get("profitable_heat_r", specification.get("ceiling_heat_r"))
+        )
+        if not initial_heat <= dynamic_heat_r <= maximum_heat:
+            raise ValueError(f"invalid {policy_type} dynamic heat state")
+        mode = (
+            ("WIN_TO_3" if dynamic_heat_r > initial_heat else "BASE_2")
+            if policy_type == "LAST_EXIT_BATCH"
+            else f"STAIRCASE_{dynamic_heat_r:g}R"
+        )
         return dynamic_heat_r, float(specification["risk_per_trade_r"]), mode
     earned_heat = float(specification.get("initial_heat_r", np.inf))
     if policy_type in {"EARNED", "EARNED_DRAWDOWN"}:
@@ -71,6 +79,32 @@ def policy_limits(
         risk_r = float(specification["normal_risk_per_trade_r"])
         mode = "NORMAL"
     return min(earned_heat, drawdown_heat), risk_r, mode
+
+
+def dynamic_heat_after_exit_batch(
+    specification: dict[str, Any], current_heat_r: float, exit_batch_r: float
+) -> float:
+    """Apply a realised exit batch to a performance-responsive heat state."""
+
+    policy_type = str(specification["type"])
+    if policy_type == "LAST_EXIT_BATCH":
+        return float(
+            specification[
+                "profitable_heat_r" if exit_batch_r > 0 else "non_positive_heat_r"
+            ]
+        )
+    if policy_type != "STAIRCASE":
+        raise ValueError(f"unsupported dynamic portfolio policy: {policy_type}")
+    floor = float(specification["floor_heat_r"])
+    ceiling = float(specification["ceiling_heat_r"])
+    if exit_batch_r > 0:
+        return min(ceiling, current_heat_r + float(specification["profit_increment_r"]))
+    contraction = str(specification["contraction_mode"])
+    if contraction == "RESET":
+        return floor
+    if contraction == "STEP":
+        return max(floor, current_heat_r - float(specification["loss_step_r"]))
+    raise ValueError(f"unsupported staircase contraction mode: {contraction}")
 
 
 def _price_as_of(
@@ -135,11 +169,12 @@ def simulate_portfolio_overlay(
     curve_rows: list[dict[str, Any]] = []
     realised_r = 0.0
     realised_profit_high_water_r = 0.0
-    dynamic_heat_r = (
-        float(specification["initial_heat_r"])
-        if specification["type"] == "LAST_EXIT_BATCH"
-        else None
-    )
+    if specification["type"] == "LAST_EXIT_BATCH":
+        dynamic_heat_r: float | None = float(specification["initial_heat_r"])
+    elif specification["type"] == "STAIRCASE":
+        dynamic_heat_r = float(specification["floor_heat_r"])
+    else:
+        dynamic_heat_r = None
     exposure_expansion_count = 0
     exposure_contraction_count = 0
     equity_high_water_r = 0.0
@@ -193,12 +228,10 @@ def simulate_portfolio_overlay(
         exit_batch_r = sum(item.trade.realised_r * item.allocated_r for item in exiting)
         realised_r += exit_batch_r
         realised_profit_high_water_r = max(realised_profit_high_water_r, realised_r)
-        if specification["type"] == "LAST_EXIT_BATCH" and exiting:
+        if specification["type"] in {"LAST_EXIT_BATCH", "STAIRCASE"} and exiting:
             assert dynamic_heat_r is not None
-            next_heat = float(
-                specification[
-                    "profitable_heat_r" if exit_batch_r > 0 else "non_positive_heat_r"
-                ]
+            next_heat = dynamic_heat_after_exit_batch(
+                specification, dynamic_heat_r, exit_batch_r
             )
             if next_heat > dynamic_heat_r:
                 exposure_expansion_count += 1
