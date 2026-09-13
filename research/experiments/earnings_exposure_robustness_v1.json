@@ -1,0 +1,76 @@
+{
+  "experiment_id": "EARNINGS_EXPOSURE_ROBUSTNESS_V1",
+  "status": "PREREGISTERED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH",
+  "iteration_disclosure": "The 20-day-low/40-session/fixed-2R candidate and all price periods were inspected in EASY_EXECUTION_CROSS_VALIDATION_V1. This is an adaptive robustness/ablation study, not independent validation, and it has no untouched historical holdout.",
+  "hypotheses": {
+    "dynamic_exposure": "Starting at two 1R positions, permitting a third position only after a net-profitable realised exit batch, and returning to two after a non-positive realised exit batch can improve exposure discipline and reduce drawdown without destroying expectancy.",
+    "earnings_blackout": "Rejecting signals dated zero through ten calendar days before an earnings event can reduce gap-driven drawdown while retaining an economically useful share of return."
+  },
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "post_2023_robustness_signal": ["2024-03-01", "2025-10-31"],
+    "post_2023_robustness_outcome_end": "2025-12-31",
+    "untouched_holdout": null
+  },
+  "frozen_trade_plan": {
+    "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after the close",
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date 20-session low",
+    "profit_target": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "stop_gap_fill": "OPEN"
+  },
+  "portfolio": {
+    "starting_equity_r": 100.0,
+    "standard_r_dollars": 587.0,
+    "risk_per_trade_r": 1.0,
+    "fixed_baseline": {"id": "fixed_2r", "type": "FIXED", "maximum_heat_r": 2.0, "risk_per_trade_r": 1.0},
+    "dynamic_candidate": {
+      "id": "win_to_3_loss_to_2",
+      "type": "LAST_EXIT_BATCH",
+      "initial_heat_r": 2.0,
+      "profitable_heat_r": 3.0,
+      "non_positive_heat_r": 2.0,
+      "risk_per_trade_r": 1.0,
+      "hard_maximum_positions": 3,
+      "transition_timing": "All exits on a session are summed in allocated realised R after the close; positive net R sets next-session heat to 3R, while zero or negative net R sets it to 2R. No existing position is forcibly liquidated and same-session exits cannot fund earlier entries."
+    }
+  },
+  "earnings_blackout": {
+    "id": "signal_within_10_calendar_days_before_earnings",
+    "rule": "Reject a signal when a ticker earnings event falls from signal date through signal date plus ten calendar days, inclusive.",
+    "event_time_policy": "Treat the entire reported earnings calendar date as blocked because the retrospective source cannot reliably reconstruct whether the announcement was before open or after close as known at the signal time.",
+    "source_requirement": "Long-form earnings calendar with ticker and earnings-event timestamp/date covering every queried calendar date.",
+    "point_in_time_limitation": "A retrospectively retrieved event date is an actual/revised-date proxy and does not prove that the schedule was known ten days earlier. Report this as look-ahead/schedule-revision bias."
+  },
+  "variants": [
+    {"id": "fixed_2r_no_blackout", "portfolio_id": "fixed_2r", "earnings_blackout": false},
+    {"id": "dynamic_no_blackout", "portfolio_id": "win_to_3_loss_to_2", "earnings_blackout": false},
+    {"id": "fixed_2r_earnings_blackout", "portfolio_id": "fixed_2r", "earnings_blackout": true},
+    {"id": "dynamic_earnings_blackout", "portfolio_id": "win_to_3_loss_to_2", "earnings_blackout": true}
+  ],
+  "decision_gate": {
+    "each_stage_maximum_drawdown_pct_at_most": 10.0,
+    "each_stage_total_return_pct_above": 0.0,
+    "each_stage_expectancy_per_trade_r_above": 0.0,
+    "each_stage_profit_factor_at_least": 1.2,
+    "development_accepted_trade_count_at_least": 100,
+    "post_2023_accepted_trade_count_at_least": 20,
+    "missing_mark_count": 0,
+    "candidate_return_retention_vs_fixed_2r_at_least": 0.8
+  },
+  "decision_rule": "A gate pass may justify prospective forward observation only. It cannot validate or promote the rule because the price periods are reused, the universe is survivorship-biased, and retrospective earnings dates are not point-in-time schedule snapshots.",
+  "constraints": [
+    "Report all four variants in both declared periods",
+    "Do not alter EASY_EXECUTION_CROSS_VALIDATION_V1",
+    "Do not change production or the immutable forward journal",
+    "Do not label 2024-2025 untouched or independent",
+    "Do not silently treat unavailable earnings-calendar coverage as known absence"
+  ]
+}
