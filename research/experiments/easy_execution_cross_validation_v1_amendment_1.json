@@ -8,7 +8,7 @@
     "stage_accounting": "Discovery, validation, and holdout each start from a fresh 100R account; capital and realised profit do not carry between stages.",
     "comparison_baseline": {
       "stop_id": "structural_20d_low",
-      "exit_id": "time_40_sessions",
+      "exit_id": "time_40s_no_target",
       "portfolio_id": "fixed_4r"
     },
     "baseline_use": "Evaluate the comparison baseline in validation alongside selected candidates. Evaluate it in holdout only if at least one selected candidate passes validation.",
