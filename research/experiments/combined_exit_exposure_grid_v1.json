@@ -1,0 +1,75 @@
+{
+  "experiment_id": "COMBINED_EXIT_EXPOSURE_GRID_V1",
+  "status": "PREREGISTERED_ENGINEERING_DISCOVERY",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-BIASED RESEARCH",
+  "hypothesis": "Exit timing and portfolio exposure interact because earlier exits release scarce portfolio capacity; a complete fixed cross can identify whether any simple combination keeps daily mark-to-market drawdown at or below 10% without losing positive expectancy or adequate sample size.",
+  "discovery_price_period": ["2017-01-01", "2023-12-29"],
+  "discovery_signal_period": ["2017-01-01", "2023-11-01"],
+  "outcome_boundary": "Every maximum-40-session exit must be on or before 2023-12-29",
+  "discovery_stability_split": "2020-12-31",
+  "validation_status": "UNAVAILABLE_UNTIL_POINT_IN_TIME_DATA",
+  "untouched_holdout_period": [["2024-01-01", "2025-12-31"]],
+  "starting_equity_r": 100.0,
+  "starting_equity_dollars": 58700.0,
+  "standard_r_dollars": 587.0,
+  "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after the close",
+  "entry": "next available session open plus 5 bps adverse slippage",
+  "execution": {
+    "exit_slippage_bps": 5.0,
+    "commission_per_share": 0.0,
+    "maximum_holding_sessions": 40,
+    "same_bar_policy": "STOP_FIRST",
+    "stop_gap_fill": "OPEN",
+    "favorable_target_gap_fill": "TARGET_LEVEL",
+    "maximum_positions": 4,
+    "cash_and_notional_model": "Normalized R; no cash or maximum-notional constraint"
+  },
+  "stop_variants": [
+    {"id": "structural_20d_low", "anchor": "signal_20d_low", "atr_multiple": 0.0, "complexity": 0},
+    {"id": "entry_minus_0_5atr", "anchor": "slipped_entry", "atr_multiple": 0.5, "complexity": 1},
+    {"id": "entry_minus_1_0atr", "anchor": "slipped_entry", "atr_multiple": 1.0, "complexity": 1},
+    {"id": "signal_low_minus_0_5atr", "anchor": "signal_day_low", "atr_multiple": 0.5, "complexity": 1},
+    {"id": "signal_low_minus_1_0atr", "anchor": "signal_day_low", "atr_multiple": 1.0, "complexity": 1}
+  ],
+  "target_r_variants": [null, 2.0, 2.5, 3.0],
+  "portfolio_variants": [
+    {"id": "fixed_1r", "type": "FIXED", "maximum_heat_r": 1.0, "risk_per_trade_r": 1.0, "complexity": 0},
+    {"id": "fixed_2r", "type": "FIXED", "maximum_heat_r": 2.0, "risk_per_trade_r": 1.0, "complexity": 0},
+    {"id": "fixed_3r", "type": "FIXED", "maximum_heat_r": 3.0, "risk_per_trade_r": 1.0, "complexity": 0},
+    {"id": "fixed_4r_baseline", "type": "FIXED", "maximum_heat_r": 4.0, "risk_per_trade_r": 1.0, "complexity": 0},
+    {"id": "earned_2r_unlock_at_1r_2r", "type": "EARNED", "initial_heat_r": 2.0, "unlock_profit_r": [1.0, 2.0], "unlocked_heat_r": [3.0, 4.0], "risk_per_trade_r": 1.0, "complexity": 1},
+    {"id": "earned_2r_unlock_at_2r_4r", "type": "EARNED", "initial_heat_r": 2.0, "unlock_profit_r": [2.0, 4.0], "unlocked_heat_r": [3.0, 4.0], "risk_per_trade_r": 1.0, "complexity": 1},
+    {"id": "drawdown_2r_4r_6r", "type": "DRAWDOWN", "normal_heat_r": 3.0, "reduced_at_r": 2.0, "reduced_heat_r": 1.5, "defensive_at_r": 4.0, "defensive_heat_r": 0.5, "stop_at_r": 6.0, "normal_risk_per_trade_r": 1.0, "reduced_risk_per_trade_r": 0.5, "complexity": 2},
+    {"id": "drawdown_3r_6r_9r", "type": "DRAWDOWN", "normal_heat_r": 4.0, "reduced_at_r": 3.0, "reduced_heat_r": 2.0, "defensive_at_r": 6.0, "defensive_heat_r": 1.0, "stop_at_r": 9.0, "normal_risk_per_trade_r": 1.0, "reduced_risk_per_trade_r": 0.5, "complexity": 2},
+    {"id": "earned_2r_2r_4r_plus_dd_2r_4r_6r", "type": "EARNED_DRAWDOWN", "initial_heat_r": 2.0, "unlock_profit_r": [2.0, 4.0], "unlocked_heat_r": [3.0, 4.0], "normal_heat_r": 3.0, "reduced_at_r": 2.0, "reduced_heat_r": 1.5, "defensive_at_r": 4.0, "defensive_heat_r": 0.5, "stop_at_r": 6.0, "normal_risk_per_trade_r": 1.0, "reduced_risk_per_trade_r": 0.5, "complexity": 3}
+  ],
+  "combination_count": 180,
+  "shared_constraints": {
+    "same_ticker_overlap": false,
+    "open_trade_heat": "allocated initial R remains charged until exit",
+    "same_day_exit_capacity": "a position exiting during a session still occupies capacity for new entries that session",
+    "ranking": "entry date, signal date, then ticker; never future outcome",
+    "missing_mark_policy": "last known close at or before the session; never use a future price"
+  },
+  "primary_metrics": ["maximum_drawdown_pct", "total_return_pct", "expectancy_per_trade_r"],
+  "secondary_metrics": ["profit_factor", "cagr_pct", "cagr_to_drawdown", "expectancy_per_allocated_r", "accepted_trade_count", "win_rate", "average_heat_r", "maximum_heat_r", "stop_new_risk_sessions", "early_period_return_pct", "late_period_return_pct"],
+  "numeric_shortlist_rule": {
+    "maximum_drawdown_pct_at_most": 10.0,
+    "total_return_pct_above": 0.0,
+    "expectancy_per_trade_r_above": 0.0,
+    "profit_factor_at_least": 1.2,
+    "accepted_trade_count_at_least": 150,
+    "missing_mark_count": 0,
+    "early_period_return_pct_above": 0.0,
+    "late_period_return_pct_above": 0.0
+  },
+  "shortlist_ranking": "Among complete gate passes: descending CAGR-to-drawdown, then descending expectancy per allocated R, then ascending combined complexity, then stable cell id.",
+  "decision_rule": "Report all 180 cells. A passing cell is a discovery shortlist only. Historical decision remains HOLD until separate point-in-time validation; do not evaluate the holdout or start a new forward strategy from this run.",
+  "constraints": [
+    "Do not change any stop, target, exposure policy, metric, boundary, or gate after inspecting outcomes",
+    "Do not hide failed or duplicate cells",
+    "Do not evaluate 2024-2025",
+    "Do not change production or the existing frozen forward journal"
+  ]
+}
