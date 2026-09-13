@@ -318,3 +318,23 @@ legacy unittest tests, industry/report invariants, the offline sample dry run,
 and generated HTML semantic validation.
 
 The framework checkpoint hash is recorded in the task handoff because a commit cannot contain its own hash.
+
+## 2026-09-13 easy-execution staged validation
+
+`EASY_EXECUTION_CROSS_VALIDATION_V1` froze and evaluated 168 stop/exit/exposure
+cells. The only discovery pass was the simple 20-day-low stop, no-target
+40-session exit, and fixed-2R heat policy. It passed the separate March–October
+2024 validation (12 trades, 6.74% return, 4.03% max DD), which unlocked the
+one-time 2025 holdout. The holdout made 26.94% on 13 trades but failed the
+frozen risk gate at 13.29% max DD. The fixed-4R comparison reached 14.14% DD.
+No combination is validated for the requested <=10% drawdown objective;
+production and the immutable forward journal remain unchanged.
+
+The run used current-symbol Yahoo data and remains survivorship-biased. The
+post-2023 portfolios admitted very few trades from thousands of independently
+executable candidates, making deterministic same-day candidate order a major
+path-dependence limitation. Full verification after implementation passed 254
+pytest tests, 118 legacy unittest tests, industry/report invariants, the offline
+sample dry run, and generated HTML semantic validation. Focused research
+verification passed 65 research tests, the expected data-readiness gate, and
+production-file hash isolation.

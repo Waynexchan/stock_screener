@@ -175,6 +175,15 @@ market-cap history. The current-symbol archive remains labelled
 **SURVIVORSHIP-BIASED RESEARCH** and does not satisfy the validation gate. See
 `docs/DATA_READINESS.md`.
 
+The frozen `EASY_EXECUTION_CROSS_VALIDATION_V1` study completed all 168
+discovery cells. One simple candidate—20-day-low stop, no target with a
+40-session exit, and fixed 2R heat—passed discovery and the separate 2024
+validation, then failed the conditional one-time 2025 holdout because maximum
+daily mark-to-market drawdown reached 13.29% versus the frozen 10% ceiling.
+The result remains `RESEARCH_ONLY` and `HOLD`; production and the existing
+forward journal are unchanged. See
+`docs/RESEARCH_RESULTS_EASY_EXECUTION_CROSS_VALIDATION_V1.md`.
+
 ## Next recommended task
 
 Acquire and provenance-check point-in-time price, benchmark, universe, and delisted-symbol history. Once the data gate is satisfied, run the predeclared **RECENT RS ABLATION** against MODEL_0 without changing production thresholds.

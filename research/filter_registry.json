@@ -299,6 +299,23 @@
       "notes": "Remain RESEARCH_ONLY and HOLD. Multiple-testing, survivorship bias, low neighboring stability, and missing independent validation prohibit forward-strategy freeze or production promotion."
     },
     {
+      "id": "easy_execution_cross_validation",
+      "name": "Simple stop, exit, and exposure cross-validation",
+      "category": "portfolio_strategy_research",
+      "status": "RESEARCH_ONLY",
+      "production_effect": "NONE; frozen 168-cell discovery, 2024 validation, and conditional 2025 holdout only.",
+      "evidence_summary": "The simple fixed-2R/20-day-low/40-session candidate passed discovery and the frozen 2024 validation, but failed the one-time 2025 holdout drawdown gate.",
+      "sample_size": 123,
+      "discovery_result": "123 accepted trades; 72.96% return, 0.593R expectancy, 2.198 profit factor, and 6.97% maximum daily MTM drawdown.",
+      "validation_result": "2024: 12 accepted trades; 6.74% return, 0.561R expectancy, 2.420 profit factor, and 4.03% maximum drawdown; frozen gate pass.",
+      "holdout_result": "2025: 13 accepted trades; 26.94% return, 2.072R expectancy, 8.521 profit factor, and 13.29% maximum drawdown; frozen gate fail because drawdown exceeded 10%.",
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-13",
+      "notes": "Remain RESEARCH_ONLY and HOLD. The archive is survivorship-biased, post-2023 accepted samples are small and path-dependent, and no combination proved the <=10% drawdown objective."
+    },
+    {
       "id": "earned_exposure_ladder",
       "name": "Earn the right to expand exposure",
       "category": "portfolio_allocation_research",
