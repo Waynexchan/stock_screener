@@ -1,0 +1,62 @@
+{
+  "experiment_id": "STAIRCASE_EXPOSURE_ROBUSTNESS_V2",
+  "status": "PREREGISTERED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH",
+  "correction": "EARNINGS_EXPOSURE_ROBUSTNESS_V1 incorrectly capped the dynamic policy at three positions. V2 implements the user's intended staircase: good realised performance increases capacity repeatedly and losses reduce it.",
+  "iteration_disclosure": "All price periods and the ten-calendar-day earnings proxy were previously inspected. This is adaptive robustness only and has no untouched historical holdout.",
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "post_2023_robustness_signal": ["2024-03-01", "2025-10-31"],
+    "post_2023_robustness_outcome_end": "2025-12-31",
+    "untouched_holdout": null
+  },
+  "frozen_trade_plan": {
+    "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after the close",
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date 20-session low",
+    "profit_target": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "stop_gap_fill": "OPEN",
+    "earnings_blackout": "Reject signals dated zero through ten calendar days before a retrospective earnings event, inclusive"
+  },
+  "portfolio": {
+    "starting_equity_r": 100.0,
+    "standard_r_dollars": 587.0,
+    "risk_per_trade_r": 1.0,
+    "floor_heat_r": 2.0,
+    "profit_increment_r": 1.0,
+    "loss_step_r": 1.0,
+    "transition_timing": "Net allocated realised R across all exits after a session close controls next-session capacity. A positive batch adds 1R up to the variant ceiling. A zero/negative batch either removes 1R or resets to 2R, according to the frozen contraction variant. No exit funds an earlier same-session entry and no existing valid position is forcibly liquidated."
+  },
+  "ceiling_variants_r": [4.0, 6.0, 8.0],
+  "contraction_variants": [
+    {"id": "step_down_1r", "mode": "STEP", "description": "A non-positive exit batch reduces capacity by 1R, not below 2R."},
+    {"id": "reset_to_2r", "mode": "RESET", "description": "A non-positive exit batch immediately restores the 2R floor."}
+  ],
+  "baseline": {"id": "fixed_2r_earnings_blackout", "type": "FIXED", "maximum_heat_r": 2.0, "risk_per_trade_r": 1.0},
+  "combination_count": 7,
+  "decision_gate": {
+    "each_stage_maximum_drawdown_pct_at_most": 10.0,
+    "each_stage_total_return_pct_above": 0.0,
+    "each_stage_expectancy_per_trade_r_above": 0.0,
+    "each_stage_profit_factor_at_least": 1.2,
+    "development_accepted_trade_count_at_least": 100,
+    "post_2023_accepted_trade_count_at_least": 20,
+    "missing_mark_count": 0,
+    "each_stage_return_retention_vs_fixed_2r_earnings_at_least": 0.8
+  },
+  "ranking": "Among complete gate passes, rank by lowest worst-stage maximum drawdown, then highest lower-stage expectancy, then lower exposure ceiling, then RESET before STEP, then stable variant id.",
+  "decision_rule": "A pass may justify prospective forward observation only. It cannot validate or promote the rule because all price periods are reused, the universe is survivorship-biased, and retrospective earnings dates are not point-in-time schedule snapshots.",
+  "constraints": [
+    "Report the fixed-2R baseline and all six staircase variants",
+    "Never exceed the frozen 4R, 6R, or 8R safety ceiling",
+    "Never let dynamic capacity fall below 2R",
+    "Do not alter or relabel V1",
+    "Do not change production or the immutable forward journal"
+  ]
+}
