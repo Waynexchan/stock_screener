@@ -338,3 +338,25 @@ pytest tests, 118 legacy unittest tests, industry/report invariants, the offline
 sample dry run, and generated HTML semantic validation. Focused research
 verification passed 65 research tests, the expected data-readiness gate, and
 production-file hash isolation.
+
+## 2026-09-13 earnings blackout and exposure relock
+
+The user's intended exposure rule is now represented by the research-only
+`LAST_EXIT_BATCH` policy: start at 2R/two positions, expand to 3R/three positions
+after a positive realised exit batch, and return to 2R/two positions after a
+zero/negative batch. It never permits a fourth position and does not force-close
+an existing valid trade. This is different from the earlier permanent +2R/+4R
+profit-high-water ladder.
+
+`EARNINGS_EXPOSURE_ROBUSTNESS_V1` compared fixed 2R and the dynamic policy with
+and without an inclusive ten-calendar-day pre-earnings signal blackout. Dynamic
+plus blackout returned 57.10% with 13.38% max DD in reused 2017–2023 and 12.86%
+with 9.75% max DD in reused March 2024–October 2025. It failed the complete gate.
+Fixed 2R plus blackout remained below 10% DD in both reused periods but reduced
+older-period return materially and used retrospective event dates. Decision:
+HOLD; no production or immutable-forward-journal change.
+
+Post-implementation verification passed 73 focused research tests plus the
+data-readiness gate and production hash isolation. Full-project verification
+passed 262 pytest tests, 118 legacy unittest tests, industry/report invariants,
+the offline sample dry run, and generated HTML semantic validation.

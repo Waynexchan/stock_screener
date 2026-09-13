@@ -14,6 +14,7 @@ Required label for any run that substitutes currently observed symbols for histo
 | Sector/industry history | NOT_READY | `sector_industry_cache.csv` has 1,069 current mappings but no effective-date history. The current `universe.csv` itself has zero known sector/industry values. |
 | Market-cap history | NOT_READY | The current universe has zero known market-cap values and no historical series. |
 | Benchmark history | NOT_READY | Production downloads SPY/QQQ on demand; no durable benchmark archive exists. |
+| Earnings-event history | PARTIALLY_READY | A 2017-01-01 through 2025-11-10 Yahoo event calendar was retrieved in 2026 with complete weekly query coverage, but it contains retrospective actual/revised dates rather than immutable point-in-time schedule snapshots. |
 | Corporate actions | PARTIALLY_READY | Production asks Yahoo for auto-adjusted bars, but no split/dividend/delisting ledger is stored. |
 | Split adjustment | PARTIALLY_READY | The research loader can consume provider-adjusted bars or apply an Adj Close ratio, but the local repository cannot independently audit splits. |
 | Dividend adjustment | PARTIALLY_READY | Adj Close may include dividends, but dividend and split effects cannot be separated without an action ledger. |

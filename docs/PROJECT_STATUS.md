@@ -184,6 +184,17 @@ The result remains `RESEARCH_ONLY` and `HOLD`; production and the existing
 forward journal are unchanged. See
 `docs/RESEARCH_RESULTS_EASY_EXECUTION_CROSS_VALIDATION_V1.md`.
 
+The adaptive `EARNINGS_EXPOSURE_ROBUSTNESS_V1` study implemented the clarified
+two-state exposure rule: start at two 1R positions, allow a third after a
+net-profitable realised exit batch, and restore the two-position limit after a
+zero/negative batch. The combined dynamic-plus-ten-calendar-day earnings
+blackout failed reused 2017–2023 robustness at 13.38% maximum drawdown, although
+it passed the reused post-2023 numeric gate at 9.75%. Fixed 2R plus the blackout
+stayed below 10% in both reused periods but its direction and opportunity cost
+were unstable. The Yahoo event dates are retrospective rather than point-in-time
+schedule snapshots, so the decision remains `HOLD` and production is unchanged.
+See `docs/RESEARCH_RESULTS_EARNINGS_EXPOSURE_ROBUSTNESS_V1.md`.
+
 ## Next recommended task
 
 Acquire and provenance-check point-in-time price, benchmark, universe, and delisted-symbol history. Once the data gate is satisfied, run the predeclared **RECENT RS ABLATION** against MODEL_0 without changing production thresholds.
