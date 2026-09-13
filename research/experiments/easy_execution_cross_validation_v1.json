@@ -1,0 +1,85 @@
+{
+  "experiment_id": "EASY_EXECUTION_CROSS_VALIDATION_V1",
+  "status": "PREREGISTERED_ENGINEERING_DISCOVERY_VALIDATION_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-BIASED RESEARCH",
+  "iteration_disclosure": "This design follows inspection of earlier 2017-2023 grids. Discovery is therefore iterative and not independent evidence; only the declared post-2023 stages can test the frozen selection rule.",
+  "hypothesis": "A simple initial stop, exit, and exposure combination can retain positive expectancy while holding daily mark-to-market drawdown at or below 10%, and a rule selected without future performance can persist on post-2023 data.",
+  "periods": {
+    "discovery_signal": ["2017-01-01", "2023-11-01"],
+    "discovery_outcome_end": "2023-12-29",
+    "discovery_stability_split": "2020-12-31",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "validation_signal": ["2024-03-01", "2024-10-31"],
+    "validation_outcome_end": "2024-12-31",
+    "holdout_signal": ["2025-01-02", "2025-10-31"],
+    "holdout_outcome_end": "2025-12-31"
+  },
+  "starting_equity_r": 100.0,
+  "starting_equity_dollars": 58700.0,
+  "standard_r_dollars": 587.0,
+  "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after the close",
+  "entry": "next available session open plus 5 bps adverse slippage",
+  "execution": {
+    "exit_slippage_bps": 5.0,
+    "commission_per_share": 0.0,
+    "same_bar_policy": "STOP_FIRST",
+    "stop_gap_fill": "OPEN",
+    "favorable_target_gap_fill": "TARGET_LEVEL",
+    "maximum_positions": 4,
+    "cash_and_notional_model": "Normalized R; no cash or maximum-notional constraint"
+  },
+  "stop_variants": [
+    {"id": "structural_20d_low", "anchor": "signal_20d_low", "atr_multiple": 0.0, "complexity": 0},
+    {"id": "entry_minus_1_0atr", "anchor": "slipped_entry", "atr_multiple": 1.0, "complexity": 0},
+    {"id": "signal_low_minus_0_5atr", "anchor": "signal_day_low", "atr_multiple": 0.5, "complexity": 0},
+    {"id": "signal_low_minus_1_0atr", "anchor": "signal_day_low", "atr_multiple": 1.0, "complexity": 0},
+    {"id": "structural_10d_low", "anchor": "signal_10d_low", "atr_multiple": 0.0, "complexity": 0},
+    {"id": "tighter_20d_or_entry_1atr", "anchor": "higher_of_signal_20d_low_and_entry_minus_atr", "atr_multiple": 1.0, "complexity": 1}
+  ],
+  "exit_variants": [
+    {"id": "target_2r_max40", "target_r": 2.0, "maximum_holding_sessions": 40, "family": "TARGET", "order": 1, "complexity": 1},
+    {"id": "target_2_5r_max40", "target_r": 2.5, "maximum_holding_sessions": 40, "family": "TARGET", "order": 2, "complexity": 1},
+    {"id": "target_3r_max40", "target_r": 3.0, "maximum_holding_sessions": 40, "family": "TARGET", "order": 3, "complexity": 1},
+    {"id": "target_4r_max40", "target_r": 4.0, "maximum_holding_sessions": 40, "family": "TARGET", "order": 4, "complexity": 1},
+    {"id": "time_20s_no_target", "target_r": null, "maximum_holding_sessions": 20, "family": "TIME", "order": 1, "complexity": 0},
+    {"id": "time_30s_no_target", "target_r": null, "maximum_holding_sessions": 30, "family": "TIME", "order": 2, "complexity": 0},
+    {"id": "time_40s_no_target", "target_r": null, "maximum_holding_sessions": 40, "family": "TIME", "order": 3, "complexity": 0}
+  ],
+  "portfolio_variants": [
+    {"id": "fixed_2r", "type": "FIXED", "maximum_heat_r": 2.0, "risk_per_trade_r": 1.0, "complexity": 0},
+    {"id": "fixed_3r", "type": "FIXED", "maximum_heat_r": 3.0, "risk_per_trade_r": 1.0, "complexity": 0},
+    {"id": "fixed_4r", "type": "FIXED", "maximum_heat_r": 4.0, "risk_per_trade_r": 1.0, "complexity": 0},
+    {"id": "earned_2r_to_3r_4r", "type": "EARNED", "initial_heat_r": 2.0, "unlock_profit_r": [2.0, 4.0], "unlocked_heat_r": [3.0, 4.0], "risk_per_trade_r": 1.0, "complexity": 1}
+  ],
+  "combination_count": 168,
+  "discovery_gate": {
+    "maximum_drawdown_pct_at_most": 10.0,
+    "total_return_pct_above": 0.0,
+    "expectancy_per_trade_r_above": 0.0,
+    "profit_factor_at_least": 1.2,
+    "accepted_trade_count_at_least": 100,
+    "missing_mark_count": 0,
+    "early_period_return_pct_above": 0.0,
+    "late_period_return_pct_above": 0.0
+  },
+  "neighbor_support": "A supported cell has an adjacent exit in the same family, stop, and exposure with positive expectancy, profit factor at least 1.10, maximum drawdown at most 12%, at least 75 trades, and non-negative early and late discovery returns.",
+  "discovery_selection": "Select at most three gate passes. Supported cells rank before unsupported cells, then descending CAGR-to-drawdown, descending expectancy per allocated R, ascending combined complexity, and stable cell id.",
+  "validation_gate": {
+    "maximum_drawdown_pct_at_most": 10.0,
+    "total_return_pct_above": 0.0,
+    "expectancy_per_trade_r_above": 0.0,
+    "profit_factor_at_least": 1.1,
+    "accepted_trade_count_at_least": 8,
+    "missing_mark_count": 0
+  },
+  "holdout_rule": "Evaluate 2025 exactly once only for candidates passing the validation gate. Report every evaluated result without changing the frozen candidate.",
+  "decision_rule": "Even a holdout pass remains HOLD because the archive is survivorship-biased. Forward-test or production promotion requires a separate review and authorization.",
+  "constraints": [
+    "Report all 168 discovery cells",
+    "Freeze selected candidates before calculating validation outcomes",
+    "Write validation results before conditionally calculating the holdout",
+    "Do not inspect holdout outcomes for validation failures",
+    "Do not change production or the existing forward journal"
+  ]
+}
