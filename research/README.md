@@ -28,7 +28,7 @@ python -m research.run_filter_audit --prices research/output/yahoo_engineering/p
 python -m research.run_forward_test --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv
 ```
 
-`download_yahoo` records source, date range, coverage, failures, and hashes. It uses the current universe and never claims delisted or historical-membership coverage. `run_filter_audit` evaluates only the preregistered 2017–2023 engineering discovery sample and refuses to describe 2024–2025 as evaluated holdout evidence. `run_forward_test` freezes the earliest complete immutable production snapshot per signal date and leaves immature outcomes missing.
+`download_yahoo` records source, date range, coverage, failures, and hashes. It uses the current universe and never claims delisted or historical-membership coverage. `run_filter_audit` evaluates only the preregistered 2017–2023 engineering discovery sample and refuses to describe 2024–2025 as evaluated holdout evidence. `run_forward_test` freezes the earliest complete immutable production snapshot per signal date, calculates raw horizons when mature, and conservatively simulates frozen entry/stop/target plans while leaving open immature outcomes missing.
 
 Expected long-form price columns are `Date`, `Ticker`, `Open`, `High`, `Low`, `Close`, and `Volume`; `Adj Close` is optional. The loader validates and sorts bars, removes duplicate ticker/date rows deterministically, reports missing/invalid frequency, and records its adjustment method.
 

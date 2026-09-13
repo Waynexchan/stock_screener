@@ -8,10 +8,22 @@ import pandas as pd
 from research.download_yahoo import long_form, ticker_frame, yahoo_symbol
 from research.run_filter_audit import filter_mask
 from research.run_forward_test import (
+    add_filter_flags,
     earliest_complete_snapshots,
     load_snapshot_signals,
     main as run_forward_test,
 )
+
+
+def test_snapshot_actionability_requires_decision_and_actionable_flag() -> None:
+    frame = pd.DataFrame(
+        {
+            "Final Decision": ["FULL", "HALF", "WATCH", "NO TRADE"],
+            "Actionable": [True, False, True, False],
+        }
+    )
+    result = add_filter_flags(frame)
+    assert result["snapshot_actionable"].tolist() == [True, False, False, False]
 
 
 def test_yahoo_download_conversion_preserves_original_ticker() -> None:

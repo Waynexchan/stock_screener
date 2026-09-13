@@ -11,6 +11,7 @@ import pandas as pd
 
 from research.engine.ablation import with_without_summary
 from research.engine.data import load_price_csv
+from research.engine.forward_execution import PLAN_OUTCOME_COLUMNS, simulate_frozen_plan
 from research.engine.market_features import enrich_market_features
 from research.engine.models import FeatureRecord, OutcomeRecord
 from research.engine.outcomes import calculate_forward_outcomes
@@ -104,17 +105,28 @@ def outcome_for_candidate(
 
 def add_filter_flags(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.copy()
+    missing = pd.Series(pd.NA, index=result.index, dtype="object")
+    decision_actionable = (
+        result.get("Final Decision", pd.Series("", index=result.index))
+        .astype(str)
+        .isin({"FULL", "HALF"})
+    )
+    if "Actionable" in result:
+        reported_actionable = result["Actionable"].map(_truth)
+    else:
+        reported_actionable = decision_actionable
+    result["snapshot_actionable"] = decision_actionable & reported_actionable
     result["pass_recent_rs_70"] = pd.to_numeric(
-        result.get("Recent RS Score"), errors="coerce"
+        result.get("Recent RS Score", missing), errors="coerce"
     ).ge(70)
     result["pass_long_term_rs_75"] = pd.to_numeric(
-        result.get("RS Score"), errors="coerce"
+        result.get("RS Score", missing), errors="coerce"
     ).ge(75)
     result["pass_volume_0_30"] = pd.to_numeric(
-        result.get("Volume Ratio"), errors="coerce"
+        result.get("Volume Ratio", missing), errors="coerce"
     ).ge(0.30)
     result["pass_beta_0_8"] = pd.to_numeric(
-        result.get("rolling_beta_126"), errors="coerce"
+        result.get("rolling_beta_126", missing), errors="coerce"
     ).ge(0.8)
     result["exclude_utility"] = ~result.get(
         "Sector", pd.Series("", index=result.index)
@@ -129,7 +141,7 @@ def add_filter_flags(frame: pd.DataFrame) -> pd.DataFrame:
         "Sister Confirmation", pd.Series(False, index=result.index)
     ).map(_truth)
     result["pass_structural_rr_2"] = pd.to_numeric(
-        result.get("Reward/Risk Ratio"), errors="coerce"
+        result.get("Reward/Risk Ratio", missing), errors="coerce"
     ).ge(2.0)
     return result
 
@@ -163,14 +175,24 @@ def main(argv: list[str] | None = None) -> int:
         signals["rolling_beta_126"] = pd.NA
     signals = add_filter_flags(signals)
     outcomes: list[dict[str, Any]] = []
-    for row in signals[["ticker", "signal_date"]].itertuples(index=False):
-        history = histories.get(row.ticker)
+    plan_outcomes: list[dict[str, Any]] = []
+    for row in signals.to_dict("records"):
+        history = histories.get(str(row["ticker"]))
         if history is not None:
-            outcomes.append(outcome_for_candidate(row.ticker, row.signal_date, history))
+            outcomes.append(
+                outcome_for_candidate(
+                    str(row["ticker"]), str(row["signal_date"]), history
+                )
+            )
+            plan_outcomes.append(simulate_frozen_plan(row, history))
     outcome_frame = pd.DataFrame(outcomes).reindex(
         columns=list(OutcomeRecord.__dataclass_fields__)
     )
     journal = signals.merge(outcome_frame, on=["signal_date", "ticker"], how="left")
+    plan_frame = pd.DataFrame(plan_outcomes)
+    if plan_frame.empty:
+        plan_frame = pd.DataFrame(columns=PLAN_OUTCOME_COLUMNS)
+    journal = journal.merge(plan_frame, on=["signal_date", "ticker"], how="left")
     horizon_columns = [f"future_{days}d_return" for days in (5, 10, 20, 40)]
     journal["maximum_mature_horizon"] = journal.apply(
         lambda row: max(
@@ -196,6 +218,12 @@ def main(argv: list[str] | None = None) -> int:
                 outcome_column=outcome,
                 included=lambda values: values.fillna(False).astype(bool),
             )
+        summaries[flag]["plan_realised_r"] = with_without_summary(
+            journal,
+            feature_column=flag,
+            outcome_column="plan_realised_r",
+            included=lambda values: values.fillna(False).astype(bool),
+        )
     journal.to_csv(output_dir / "journal.csv", index=False)
     (output_dir / "filter_outcomes.json").write_text(
         json.dumps(summaries, indent=2, sort_keys=True), encoding="utf-8"
@@ -206,9 +234,21 @@ def main(argv: list[str] | None = None) -> int:
         "snapshot_dates": sorted(journal["signal_date"].astype(str).unique()),
         "candidate_count": len(journal),
         "mature_5d_count": int(journal["future_5d_return"].notna().sum()),
+        "plan_triggered_count": int(journal["plan_triggered"].eq(True).sum()),
+        "plan_mature_count": int(journal["plan_realised_r"].notna().sum()),
+        "plan_open_unmatured_count": int(
+            journal["plan_outcome_status"].eq("OPEN_UNMATURED").sum()
+        ),
+        "actionable_candidate_count": int(journal["snapshot_actionable"].sum()),
+        "actionable_plan_triggered_count": int(
+            (journal["snapshot_actionable"] & journal["plan_triggered"].eq(True)).sum()
+        ),
+        "actionable_plan_mature_count": int(
+            (journal["snapshot_actionable"] & journal["plan_realised_r"].notna()).sum()
+        ),
         "maximum_mature_horizon": int(journal["maximum_mature_horizon"].max()),
         "prices_supplied": bool(args.prices),
-        "plan_trigger_r_outcomes": "NOT_YET_IMPLEMENTED",
+        "plan_trigger_r_outcomes": "ENABLED_CONSERVATIVE_DAILY_BAR_MODEL",
         "production_effect": "NONE",
     }
     (output_dir / "metadata.json").write_text(
@@ -217,6 +257,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Forward journal: {output_dir / 'journal.csv'}")
     print(f"Candidates frozen: {len(journal)}")
     print(f"Mature 5-session outcomes: {metadata['mature_5d_count']}")
+    print(f"Triggered plans: {metadata['plan_triggered_count']}")
+    print(f"Mature plan R outcomes: {metadata['plan_mature_count']}")
+    print(f"Actionable triggered plans: {metadata['actionable_plan_triggered_count']}")
     return 0
 
 

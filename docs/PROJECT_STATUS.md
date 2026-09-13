@@ -11,7 +11,12 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
   2017-2023 discovery produced 30,129 MODEL_0 signals; results remain explicitly
   survivorship-biased and the 2024-2025 holdout was not evaluated. The forward
   journal froze 208 candidates across four immutable signal dates; zero had a
-  mature five-session outcome at the data cutoff. No production filter changed.
+  mature five-session raw outcome at the data cutoff. Its conservative
+  plan-trigger simulator found 40 triggered shadow candidate plans: 33 remain
+  open/unmatured and seven stopped out. None was an actionable FULL/HALF trade;
+  the sole actionable HALF row did not trigger. This is far below the
+  100-mature-plan review floor and is not an expectancy conclusion. No
+  production filter changed.
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
@@ -37,12 +42,12 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Last verification result
 
-Post-filter-audit implementation on 2026-09-13: PASS — focused, Ruff, and 33
-research tests passed; the default MODEL_0 data gate remained the expected
-`BLOCKED_DATA_NOT_READY`, and production hash isolation passed. Full project
-verification passed with 222 pytest tests, 118 legacy unittest tests, all
-formatting, typing, industry/report invariant, offline dry-run, and generated
-HTML semantic-validation stages.
+Post-forward-plan-simulator implementation on 2026-09-13: PASS — Ruff, mypy,
+and 39 research tests passed; the default MODEL_0 data gate remained the
+expected `BLOCKED_DATA_NOT_READY`, and production hash isolation passed. Full
+project verification passed with 228 pytest tests, 118 legacy unittest tests,
+all formatting, typing, industry/report invariant, offline dry-run, and
+generated HTML semantic-validation stages.
 
 Post-independent-review follow-up on 2026-09-12: PASS — the skill and templates
 now enforce `discovery -> validation -> untouched holdout`, preserve explicit
@@ -131,7 +136,12 @@ hash isolation all passed.
 
 The isolated `research/` layer now provides causal features, structurally separate outcomes, conservative next-session execution, R accounting, portfolio capacity, reusable metrics, manifests, reports, and fixed ablation helpers. MODEL_0 is implemented but its empirical run is blocked by the data-readiness gate. Strategy features remain `UNASSESSED`; operational data, stop, heat, position-count, and drawdown protections remain `CORE_RISK_CONTROL`. No feature is marked `VALIDATED`, and no research result has been promoted.
 
-Local-data audit result: **NOT_READY**. There is no durable OHLCV archive, historical universe membership, delisted coverage, effective-dated classifications, market-cap history, or benchmark archive. Any current-symbol substitute must be labelled **SURVIVORSHIP-BIASED RESEARCH**. See `docs/DATA_READINESS.md`.
+Local validation-data audit result: **NOT_READY**. A Yahoo current-universe
+engineering OHLCV/benchmark archive now exists, but there is no historical
+universe membership, delisted coverage, effective-dated classifications, or
+market-cap history. The current-symbol archive remains labelled
+**SURVIVORSHIP-BIASED RESEARCH** and does not satisfy the validation gate. See
+`docs/DATA_READINESS.md`.
 
 ## Next recommended task
 

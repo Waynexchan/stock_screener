@@ -159,7 +159,14 @@ extension limits reduced drawdown, but neither result is validation because the
 universe excludes historical failures and Utilities use current classifications.
 No production rule changed. `FORWARD_FILTER_AUDIT_V1` freezes the earliest
 complete immutable snapshot per signal date and accumulates 5/10/20/40-session
-raw return, MFE, MAE, and signal-date rolling beta as outcomes mature.
+raw return, MFE, MAE, and signal-date rolling beta as outcomes mature. Its
+conservative five-session plan-trigger simulator applies declared slippage,
+gap, same-bar stop-first, target, and 40-session maximum-hold rules without
+turning an open immature trade into a result. The initial four signal dates
+contain 40 triggered shadow candidate plans, of which 33 remain open/unmatured
+and seven stopped out. None was an actionable FULL/HALF trade; the sole
+actionable HALF row did not trigger. This is below the 100-mature-plan review
+floor and is not performance evidence.
 
 ## Decisions already made
 
