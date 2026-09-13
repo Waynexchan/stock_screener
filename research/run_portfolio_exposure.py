@@ -11,6 +11,10 @@ import pandas as pd
 
 from research.engine.baseline import execution_assumptions, load_model_0_config
 from research.engine.data import load_price_csv
+from research.engine.earnings import (
+    apply_earnings_blackout_to_signals,
+    load_verified_earnings_blackout_context,
+)
 from research.engine.execution import prepare_trade_executions, simulate_prepared_trade
 from research.engine.features import generate_model_0_features
 from research.engine.models import FeatureRecord, SimulatedTrade
@@ -24,6 +28,8 @@ def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description=__doc__)
     command.add_argument("--prices", type=Path, required=True)
     command.add_argument("--benchmark", type=Path, required=True)
+    command.add_argument("--earnings", type=Path)
+    command.add_argument("--earnings-metadata", type=Path)
     command.add_argument(
         "--output-dir",
         type=Path,
@@ -77,6 +83,26 @@ def main(argv: list[str] | None = None) -> int:
     start, end = experiment["discovery_signal_period"]
     dates = pd.to_datetime(signals["signal_date"])
     discovery = signals[dates.between(start, end)].copy()
+    pre_blackout_signal_count = len(discovery)
+    blackout_rejections = pd.DataFrame()
+    blackout_provenance: dict[str, Any] | None = None
+    if (args.earnings is None) != (args.earnings_metadata is None):
+        raise ValueError("--earnings and --earnings-metadata must be supplied together")
+    if args.earnings is not None and args.earnings_metadata is not None:
+        context = load_verified_earnings_blackout_context(
+            args.earnings,
+            args.earnings_metadata,
+            required_signal_start=start,
+            required_signal_end=end,
+            blackout_calendar_days=10,
+        )
+        discovery, blackout_rejections = apply_earnings_blackout_to_signals(
+            discovery, context, blackout_calendar_days=10
+        )
+        blackout_provenance = {**context.provenance(), "blackout_calendar_days": 10}
+        blackout_rejections.to_csv(
+            output_dir / "earnings_blackout_rejections.csv", index=False
+        )
     assumptions = execution_assumptions(model_config)
     prepared = prepare_trade_executions(
         [_feature(row) for row in discovery.to_dict("records")],
@@ -142,7 +168,11 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "experiment": experiment,
         "execution_status": "COMPLETED_SURVIVORSHIP_BIASED_ENGINEERING_DISCOVERY",
-        "research_label": "SURVIVORSHIP-BIASED RESEARCH",
+        "research_label": (
+            "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH"
+            if blackout_provenance is not None
+            else "SURVIVORSHIP-BIASED RESEARCH"
+        ),
         "historical_decision": "HOLD",
         "holdout_evaluated": False,
         "prior_2024_boundary_warning": "This V1 purges 40-session outcomes before 2024; earlier FILTER_AUDIT_V1 and EXIT_STOP_GRID_V1 did not and therefore contaminated early 2024 for their own designs.",
@@ -151,6 +181,9 @@ def main(argv: list[str] | None = None) -> int:
         "price_diagnostics": price_diagnostics,
         "benchmark_diagnostics": benchmark_diagnostics,
         "discovery_signal_count": len(discovery),
+        "pre_blackout_signal_count": pre_blackout_signal_count,
+        "earnings_blackout_rejection_count": len(blackout_rejections),
+        "earnings_blackout": blackout_provenance,
         "independent_trade_count": len(independent_trades),
         "fixed_4r_baseline_parity_verified": True,
         "results": rows,
@@ -161,9 +194,12 @@ def main(argv: list[str] | None = None) -> int:
     lines = [
         "# PORTFOLIO_EXPOSURE_V1 engineering discovery",
         "",
-        "> **SURVIVORSHIP-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**",
+        "> **SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**"
+        if blackout_provenance is not None
+        else "> **SURVIVORSHIP-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**",
         "",
         f"Signals after boundary purge: {len(discovery)}",
+        f"Earnings-blackout exclusions: {len(blackout_rejections)}",
         f"Independent executable trades: {len(independent_trades)}",
         "Historical decision: **HOLD**",
         "",

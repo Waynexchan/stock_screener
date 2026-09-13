@@ -181,3 +181,11 @@ python -m research.run_staircase_exposure_robustness --prices research/output/ya
 ```
 
 It starts at 2R and adds one 1R position slot after every net-profitable realised exit batch. It compares `STEP` loss contraction with an immediate `RESET` to 2R, under separate 4R, 6R, and 8R hard safety ceilings. State changes apply on the next session, existing positions are not forcibly sold after a contraction, and every cell uses the inclusive ten-calendar-day earnings blackout. The runner is research-only and uses already inspected, survivorship-biased prices plus retrospective earnings dates.
+
+To regenerate every earlier filter, stop, exit, and exposure setting under the same earnings restriction:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_earnings_blackout_retest.ps1
+```
+
+This executes 385 settings across the filter audit, stop/exit grid, standalone exposure study, full 180-cell cross, and easy-execution 168-cell cross. The blackout is applied before candidate ranking and portfolio allocation. Outputs are separate from the preserved original studies and remain adaptive, survivorship-biased research; reused 2024/2025 data is not an untouched holdout.

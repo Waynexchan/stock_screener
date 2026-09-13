@@ -11,6 +11,10 @@ import pandas as pd
 
 from research.engine.baseline import execution_assumptions, load_model_0_config
 from research.engine.data import load_price_csv
+from research.engine.earnings import (
+    apply_earnings_blackout_to_signals,
+    load_verified_earnings_blackout_context,
+)
 from research.engine.execution import simulate_trade
 from research.engine.features import generate_model_0_features
 from research.engine.market_features import (
@@ -27,6 +31,8 @@ def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description=__doc__)
     command.add_argument("--prices", type=Path, required=True)
     command.add_argument("--benchmark", type=Path, required=True)
+    command.add_argument("--earnings", type=Path)
+    command.add_argument("--earnings-metadata", type=Path)
     command.add_argument(
         "--output-dir", type=Path, default=Path("research/output/filter_audit_v1")
     )
@@ -152,6 +158,26 @@ def main(argv: list[str] | None = None) -> int:
     start, end = experiment["discovery_period"]
     dates = pd.to_datetime(signals["signal_date"])
     discovery = signals[dates.between(start, end)].copy()
+    pre_blackout_signal_count = len(discovery)
+    blackout_rejections = pd.DataFrame()
+    blackout_provenance: dict[str, Any] | None = None
+    if (args.earnings is None) != (args.earnings_metadata is None):
+        raise ValueError("--earnings and --earnings-metadata must be supplied together")
+    if args.earnings is not None and args.earnings_metadata is not None:
+        context = load_verified_earnings_blackout_context(
+            args.earnings,
+            args.earnings_metadata,
+            required_signal_start=start,
+            required_signal_end=end,
+            blackout_calendar_days=10,
+        )
+        discovery, blackout_rejections = apply_earnings_blackout_to_signals(
+            discovery, context, blackout_calendar_days=10
+        )
+        blackout_provenance = {**context.provenance(), "blackout_calendar_days": 10}
+        blackout_rejections.to_csv(
+            output_dir / "earnings_blackout_rejections.csv", index=False
+        )
     assumptions = execution_assumptions(model_config)
     seed = int(model_config["random_seed"])
     independent = simulate_independent_trades(discovery, histories, assumptions)
@@ -169,11 +195,18 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "experiment": experiment,
         "execution_status": "COMPLETED_SURVIVORSHIP_BIASED_ENGINEERING_DISCOVERY",
-        "research_label": "SURVIVORSHIP-BIASED RESEARCH",
+        "research_label": (
+            "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH"
+            if blackout_provenance is not None
+            else "SURVIVORSHIP-BIASED RESEARCH"
+        ),
         "holdout_evaluated": False,
         "classification_warning": "Utilities use current metadata and are not point-in-time historical classifications.",
         "baseline_metrics": baseline_metrics,
         "comparisons": comparisons,
+        "earnings_blackout": blackout_provenance,
+        "pre_blackout_signal_count": pre_blackout_signal_count,
+        "earnings_blackout_rejection_count": len(blackout_rejections),
     }
     signals.to_csv(output_dir / "signal_features.csv", index=False)
     (output_dir / "results.json").write_text(
@@ -182,9 +215,12 @@ def main(argv: list[str] | None = None) -> int:
     lines = [
         "# FILTER_AUDIT_V1 engineering discovery",
         "",
-        "> **SURVIVORSHIP-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**",
+        "> **SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**"
+        if blackout_provenance is not None
+        else "> **SURVIVORSHIP-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**",
         "",
         f"Discovery signals: {len(discovery)}",
+        f"Earnings-blackout exclusions: {len(blackout_rejections)}",
         f"Baseline expectancy R: {baseline_metrics.get('expectancy_r')}",
         f"Baseline profit factor: {baseline_metrics.get('profit_factor')}",
         f"Baseline maximum drawdown R: {baseline_metrics.get('maximum_drawdown_r')}",

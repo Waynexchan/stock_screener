@@ -1,8 +1,19 @@
 from __future__ import annotations
 
-import pandas as pd
+import json
+from pathlib import Path
 
-from research.engine.earnings import apply_earnings_blackout, next_earnings_date
+import pandas as pd
+import pytest
+
+from research.engine.earnings import (
+    EarningsBlackoutContext,
+    apply_earnings_blackout,
+    apply_earnings_blackout_to_signals,
+    load_verified_earnings_blackout_context,
+    next_earnings_date,
+)
+from research.engine.reproducibility import sha256_file
 from research.engine.models import SimulatedTrade
 
 
@@ -63,3 +74,69 @@ def test_earnings_blackout_fails_closed_outside_calendar_coverage() -> None:
     )
     assert not allowed
     assert rejected[0].reason == "CALENDAR_COVERAGE_UNAVAILABLE"
+
+
+def test_signal_blackout_happens_before_downstream_portfolio_selection() -> None:
+    context = EarningsBlackoutContext(
+        calendar={"AAA": pd.DatetimeIndex(["2026-01-15"])},
+        coverage_start="2026-01-01",
+        coverage_end="2026-12-31",
+        earnings_sha256="fixture",
+        metadata_sha256="fixture",
+    )
+    signals = pd.DataFrame(
+        [
+            {"signal_date": "2026-01-05", "ticker": "AAA", "score": 99},
+            {"signal_date": "2026-01-04", "ticker": "AAA", "score": 98},
+            {"signal_date": "2026-01-05", "ticker": "BBB", "score": 97},
+        ]
+    )
+    allowed, rejected = apply_earnings_blackout_to_signals(
+        signals, context, blackout_calendar_days=10
+    )
+    assert allowed[["ticker", "score"]].to_dict("records") == [
+        {"ticker": "AAA", "score": 98},
+        {"ticker": "BBB", "score": 97},
+    ]
+    assert rejected.to_dict("records") == [
+        {
+            "signal_date": "2026-01-05",
+            "ticker": "AAA",
+            "earnings_date": "2026-01-15",
+            "calendar_days_to_earnings": 10,
+            "earnings_rejection_reason": "EARNINGS_WITHIN_BLACKOUT",
+        }
+    ]
+
+
+def test_verified_blackout_context_requires_matching_hash_and_full_window(
+    tmp_path: Path,
+) -> None:
+    earnings = tmp_path / "earnings.csv"
+    earnings.write_text("Ticker,EarningsDate\nAAA,2026-01-15\n", encoding="utf-8")
+    metadata = tmp_path / "metadata.json"
+    payload = {
+        "complete_calendar_date_coverage": True,
+        "earnings_sha256": sha256_file(earnings),
+        "requested_start_inclusive": "2026-01-01",
+        "requested_end_inclusive": "2026-01-31",
+    }
+    metadata.write_text(json.dumps(payload), encoding="utf-8")
+    context = load_verified_earnings_blackout_context(
+        earnings,
+        metadata,
+        required_signal_start="2026-01-05",
+        required_signal_end="2026-01-20",
+        blackout_calendar_days=10,
+    )
+    assert context.earnings_sha256 == payload["earnings_sha256"]
+    payload["earnings_sha256"] = "wrong"
+    metadata.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="hash"):
+        load_verified_earnings_blackout_context(
+            earnings,
+            metadata,
+            required_signal_start="2026-01-05",
+            required_signal_end="2026-01-20",
+            blackout_calendar_days=10,
+        )

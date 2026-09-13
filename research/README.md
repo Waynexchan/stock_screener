@@ -45,6 +45,9 @@ python -m research.run_earnings_exposure_robustness --prices research/output/yah
 
 # Corrected staircase study: start at 2R, expand repeatedly, and test 4R/6R/8R safety ceilings
 python -m research.run_staircase_exposure_robustness --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv --earnings research/output/yahoo_earnings_engineering/earnings.csv --earnings-metadata research/output/yahoo_earnings_engineering/download_metadata.json
+
+# Recalculate all 385 earlier filter/stop/exit/exposure settings with the earnings blackout applied before selection and allocation
+powershell -ExecutionPolicy Bypass -File .\scripts\run_full_earnings_blackout_retest.ps1
 ```
 
 `download_yahoo` records source, date range, coverage, failures, and hashes. It uses the current universe and never claims delisted or historical-membership coverage. `run_filter_audit` evaluates only the preregistered 2017–2023 engineering discovery sample and refuses to describe 2024–2025 as evaluated holdout evidence. `run_forward_test` freezes the earliest complete immutable production snapshot per signal date, calculates raw horizons when mature, and conservatively simulates frozen entry/stop/target plans while leaving open immature outcomes missing.
@@ -54,6 +57,8 @@ python -m research.run_staircase_exposure_robustness --prices research/output/ya
 `run_earnings_exposure_robustness` compares fixed 2R heat with a disciplined state that starts at two 1R positions, permits a third after a net-profitable realised exit batch, and reverts to two after a non-positive batch. Each exposure rule is tested with and without an inclusive ten-calendar-day pre-earnings signal blackout. Yahoo earnings dates are retrospective proxies, not point-in-time schedule snapshots, and all price periods are reused; the study therefore cannot provide independent validation or production approval.
 
 `run_staircase_exposure_robustness` corrects the earlier three-position interpretation. Every positive realised exit batch adds one 1R slot, while a non-positive batch either removes one slot (`STEP`) or immediately resets capacity to 2R (`RESET`). It reports separate 4R, 6R, and 8R hard-ceiling variants against the fixed-2R baseline, with the same earnings blackout. This is adaptive robustness on reused data, not untouched validation.
+
+`run_full_earnings_blackout_retest.ps1` preserves the original experiments and writes a separate adaptive-robustness tree. It removes signals dated zero through ten calendar days before a retrospective earnings event before any filter, execution, ranking, or portfolio-capacity decision. The five suites contain 385 settings in total. Because their histories have already been inspected, none of the regenerated 2024/2025 results is independent validation or an untouched holdout.
 
 Expected long-form price columns are `Date`, `Ticker`, `Open`, `High`, `Low`, `Close`, and `Volume`; `Adj Close` is optional. The loader validates and sorts bars, removes duplicate ticker/date rows deterministically, reports missing/invalid frequency, and records its adjustment method.
 

@@ -12,6 +12,11 @@ import pandas as pd
 
 from research.engine.baseline import execution_assumptions, load_model_0_config
 from research.engine.data import load_price_csv
+from research.engine.earnings import (
+    EarningsBlackoutContext,
+    apply_earnings_blackout_to_signals,
+    load_verified_earnings_blackout_context,
+)
 from research.engine.execution import (
     PreparedTradeExecution,
     prepare_trade_executions,
@@ -34,6 +39,8 @@ def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description=__doc__)
     command.add_argument("--prices", type=Path, required=True)
     command.add_argument("--benchmark", type=Path, required=True)
+    command.add_argument("--earnings", type=Path)
+    command.add_argument("--earnings-metadata", type=Path)
     command.add_argument(
         "--output-dir",
         type=Path,
@@ -313,6 +320,23 @@ def _write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def _apply_stage_blackout(
+    signals: pd.DataFrame,
+    context: EarningsBlackoutContext | None,
+    output_dir: Path,
+    stage_id: str,
+) -> tuple[pd.DataFrame, int]:
+    if context is None:
+        return signals, 0
+    allowed, rejected = apply_earnings_blackout_to_signals(
+        signals, context, blackout_calendar_days=10
+    )
+    rejected.to_csv(
+        output_dir / f"earnings_blackout_rejections__{stage_id}.csv", index=False
+    )
+    return allowed, len(rejected)
+
+
 def _table(rows: list[dict[str, Any]]) -> list[str]:
     lines = [
         "| Role | Cell | Trades | Return % | CAGR % | Max DD % | Exp R | PF | Payoff | Avg hold | Pass |",
@@ -380,9 +404,24 @@ def main(argv: list[str] | None = None) -> int:
     starting_equity_r = float(experiment["starting_equity_r"])
     maximum_positions = int(experiment["execution"]["maximum_positions"])
     periods = experiment["periods"]
+    if (args.earnings is None) != (args.earnings_metadata is None):
+        raise ValueError("--earnings and --earnings-metadata must be supplied together")
+    blackout_context: EarningsBlackoutContext | None = None
+    if args.earnings is not None and args.earnings_metadata is not None:
+        blackout_context = load_verified_earnings_blackout_context(
+            args.earnings,
+            args.earnings_metadata,
+            required_signal_start=periods["discovery_signal"][0],
+            required_signal_end=periods["holdout_signal"][1],
+            blackout_calendar_days=10,
+        )
 
     discovery_signals = _stage_signals(
         histories, model_config, *periods["discovery_signal"]
+    )
+    discovery_pre_blackout_count = len(discovery_signals)
+    discovery_signals, discovery_blackout_count = _apply_stage_blackout(
+        discovery_signals, blackout_context, output_dir, "development_2017_2023"
     )
     discovery_prepared = _prepare_stage(discovery_signals, histories, base_assumptions)
     discovery_dir = output_dir / "discovery_cells"
@@ -482,6 +521,10 @@ def main(argv: list[str] | None = None) -> int:
         validation_signals = _stage_signals(
             histories, model_config, *periods["validation_signal"]
         )
+        validation_pre_blackout_count = len(validation_signals)
+        validation_signals, validation_blackout_count = _apply_stage_blackout(
+            validation_signals, blackout_context, output_dir, "reused_2024"
+        )
         validation_prepared = _prepare_stage(
             validation_signals, histories, base_assumptions
         )
@@ -540,6 +583,10 @@ def main(argv: list[str] | None = None) -> int:
         "evaluated": bool(selected),
         "selected_candidate_count": len(selected),
         "results": validation_results,
+        "pre_blackout_signal_count": (validation_pre_blackout_count if selected else 0),
+        "earnings_blackout_rejection_count": (
+            validation_blackout_count if selected else 0
+        ),
     }
     _write_json(output_dir / "validation_results.json", validation_payload)
     pd.DataFrame(validation_results).to_csv(
@@ -558,6 +605,10 @@ def main(argv: list[str] | None = None) -> int:
         print("2024 gate passed; beginning one-time 2025 holdout", flush=True)
         holdout_signals = _stage_signals(
             histories, model_config, *periods["holdout_signal"]
+        )
+        holdout_pre_blackout_count = len(holdout_signals)
+        holdout_signals, holdout_blackout_count = _apply_stage_blackout(
+            holdout_signals, blackout_context, output_dir, "reused_2025"
         )
         holdout_prepared = _prepare_stage(holdout_signals, histories, base_assumptions)
         holdout_dir = output_dir / "holdout_cells"
@@ -608,6 +659,12 @@ def main(argv: list[str] | None = None) -> int:
             else "No selected candidate passed the frozen 2024 validation gate."
         ),
         "results": holdout_results,
+        "pre_blackout_signal_count": (
+            holdout_pre_blackout_count if holdout_evaluated else 0
+        ),
+        "earnings_blackout_rejection_count": (
+            holdout_blackout_count if holdout_evaluated else 0
+        ),
     }
     _write_json(output_dir / "holdout_results.json", holdout_payload)
     pd.DataFrame(holdout_results).to_csv(
@@ -617,8 +674,16 @@ def main(argv: list[str] | None = None) -> int:
     git_commit, git_dirty = git_state(project_root)
     manifest = {
         "experiment_id": experiment["experiment_id"],
-        "execution_status": "COMPLETED_SURVIVORSHIP_BIASED_STAGED_RESEARCH",
-        "research_label": experiment["research_label"],
+        "execution_status": (
+            "COMPLETED_ADAPTIVE_EARNINGS_BLACKOUT_ROBUSTNESS"
+            if blackout_context is not None
+            else "COMPLETED_SURVIVORSHIP_BIASED_STAGED_RESEARCH"
+        ),
+        "research_label": (
+            "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH"
+            if blackout_context is not None
+            else experiment["research_label"]
+        ),
         "historical_decision": "HOLD",
         "production_effect": "NONE",
         "preregistration_commit": PREREGISTRATION_COMMIT,
@@ -633,6 +698,18 @@ def main(argv: list[str] | None = None) -> int:
         "price_diagnostics": price_diagnostics,
         "benchmark_diagnostics": benchmark_diagnostics,
         "discovery_reported_cells": len(discovery_results),
+        "discovery_pre_blackout_signal_count": discovery_pre_blackout_count,
+        "discovery_earnings_blackout_rejection_count": discovery_blackout_count,
+        "earnings_blackout": (
+            None
+            if blackout_context is None
+            else {**blackout_context.provenance(), "blackout_calendar_days": 10}
+        ),
+        "post_discovery_sample_status": (
+            "REUSED_CONTAMINATED"
+            if blackout_context is not None
+            else "ORIGINAL_V1_LABELS"
+        ),
         "discovery_gate_passes": len(gate_passes),
         "selected_candidates": len(selected),
         "validation_passes": len(validation_passes),
@@ -652,9 +729,12 @@ def main(argv: list[str] | None = None) -> int:
     report = [
         "# EASY_EXECUTION_CROSS_VALIDATION_V1",
         "",
-        "> **SURVIVORSHIP-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**",
+        "> **SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**"
+        if blackout_context is not None
+        else "> **SURVIVORSHIP-BIASED RESEARCH — NOT PRODUCTION EVIDENCE**",
         "",
         f"Discovery cells: {len(discovery_results)} / {expected_count}",
+        f"Discovery earnings-blackout exclusions: {discovery_blackout_count}",
         f"Discovery gate passes: {len(gate_passes)}",
         f"Frozen selected candidates: {len(selected)}",
         f"2024 validation passes: {len(validation_passes)}",
@@ -667,15 +747,23 @@ def main(argv: list[str] | None = None) -> int:
             [{**row, "role": f"RANK_{index}"} for index, row in enumerate(selected, 1)]
         ),
         "",
-        "## 2024 validation",
+        "## Reused 2024 robustness"
+        if blackout_context is not None
+        else "## 2024 validation",
         "",
         *_table(validation_results),
         "",
-        "## Conditional 2025 holdout",
+        "## Reused 2025 robustness"
+        if blackout_context is not None
+        else "## Conditional 2025 holdout",
         "",
         *(_table(holdout_results) if holdout_results else ["Not evaluated."]),
         "",
-        "Every stage starts from a fresh 100R account. The 2025 stage was inaccessible to the simulation until the 2024 result file had been written and a candidate passed its frozen gate.",
+        (
+            "Every stage starts from a fresh 100R account. Both post-discovery stages are reused/contaminated robustness for the blackout revision and are not independent validation or untouched holdout."
+            if blackout_context is not None
+            else "Every stage starts from a fresh 100R account. The 2025 stage was inaccessible to the simulation until the 2024 result file had been written and a candidate passed its frozen gate."
+        ),
         "",
         "No result changes production or the existing forward-test journal.",
     ]
