@@ -231,6 +231,12 @@ def simulate_portfolio_overlay(
             "expectancy_per_allocated_r": None,
             "profit_factor": None,
             "win_rate": None,
+            "average_win_r": None,
+            "average_loss_r": None,
+            "payoff_ratio": None,
+            "average_mfe_r": None,
+            "average_mae_r": None,
+            "average_holding_days": None,
             "total_pnl_r": 0.0,
             "starting_equity_r": starting_equity_r,
             "ending_equity_r": starting_equity_r,
@@ -251,6 +257,8 @@ def simulate_portfolio_overlay(
     allocated_r = pd.to_numeric(ledger["allocated_r"], errors="coerce")
     wins = outcomes[outcomes > 0]
     losses = outcomes[outcomes <= 0]
+    average_win_r = float(wins.mean()) if len(wins) else None
+    average_loss_r = float(losses.mean()) if len(losses) else None
     total_pnl_r = float(outcomes.sum())
     duration_years = max(
         (pd.Timestamp(calendar[-1]) - pd.Timestamp(calendar[0])).days / 365.25,
@@ -276,6 +284,22 @@ def simulate_portfolio_overlay(
             else None
         ),
         "win_rate": float((outcomes > 0).mean()),
+        "average_win_r": average_win_r,
+        "average_loss_r": average_loss_r,
+        "payoff_ratio": (
+            average_win_r / abs(average_loss_r)
+            if average_win_r is not None and average_loss_r not in (None, 0)
+            else None
+        ),
+        "average_mfe_r": float(
+            (pd.to_numeric(ledger["MFE_R"], errors="coerce") * allocated_r).mean()
+        ),
+        "average_mae_r": float(
+            (pd.to_numeric(ledger["MAE_R"], errors="coerce") * allocated_r).mean()
+        ),
+        "average_holding_days": float(
+            pd.to_numeric(ledger["holding_days"], errors="coerce").mean()
+        ),
         "total_pnl_r": total_pnl_r,
         "starting_equity_r": starting_equity_r,
         "ending_equity_r": ending_equity_r,

@@ -29,6 +29,14 @@ Fast handoff as of 2026-09-13. Read `AGENTS.md` before this file and `docs/PROJE
   only 26–52 trades and then spent 1,331–1,482 sessions blocking new risk. No
   variant passed the complete gate, 2024–2025 remains untouched for this new
   experiment, and production did not change.
+  `COMBINED_EXIT_EXPOSURE_GRID_V1` subsequently crossed all 20 exit/stop
+  definitions with all nine exposure overlays after preregistration commit
+  `04365b7`. One of 180 cells passed the complete discovery gate: 20-day-low
+  stop, 2R target, and the earned-2R plus 2R/4R/6R drawdown overlay produced 170
+  trades, 0.194R expectancy, 1.573 profit factor, 33.02% return, and 4.65% daily
+  MTM maximum drawdown. It was an isolated, complex optimum: the same policy at
+  2.5R/3R targets accepted only 31/43 trades and made no later-period gain. The
+  decision remains HOLD; no new forward test or production change was made.
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
@@ -53,6 +61,12 @@ Fast handoff as of 2026-09-13. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-combined-grid implementation on 2026-09-13: PASS — Ruff, mypy, 58
+research tests, the expected `BLOCKED_DATA_NOT_READY` baseline gate, and
+production hash isolation passed. Full project verification passed with 247
+pytest tests, 118 legacy unittest tests, all formatting, typing, industry/report
+invariant, offline dry-run, and generated HTML semantic-validation stages.
 
 Post-portfolio-exposure implementation on 2026-09-13: PASS — Ruff, mypy, 54
 research tests, the expected `BLOCKED_DATA_NOT_READY` baseline gate, and

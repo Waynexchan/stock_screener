@@ -94,7 +94,7 @@ def test_drawdown_policy_reduces_and_then_stops_new_risk() -> None:
 
 
 def test_fixed_heat_rejects_excess_same_session_candidates() -> None:
-    trades = [trade("AAA"), trade("BBB"), trade("CCC")]
+    trades = [trade("AAA", realised_r=2.0), trade("BBB", realised_r=-1.0), trade("CCC")]
     prices = {
         ticker: history(
             [
@@ -116,6 +116,9 @@ def test_fixed_heat_rejects_excess_same_session_candidates() -> None:
     assert metrics["rejection_reasons"] == {"MAX_HEAT": 1}
     assert metrics["maximum_heat_r"] == 2.0
     assert metrics["maximum_positions"] == 2
+    assert metrics["average_win_r"] == 2.0
+    assert metrics["average_loss_r"] == -1.0
+    assert metrics["payoff_ratio"] == 2.0
 
 
 def test_same_session_exit_does_not_release_capacity_for_entries() -> None:

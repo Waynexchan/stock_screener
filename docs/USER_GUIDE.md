@@ -148,3 +148,11 @@ python -m research.run_portfolio_exposure --prices research/output/yahoo_enginee
 ```
 
 It compares fixed 1R–4R heat, two 2R-start earned-exposure ladders, and drawdown-based risk modes. Results are written under `research/output/portfolio_exposure_v1/`; `summary.csv` contains all preregistered variants and each `equity__*.csv` contains the daily mark-to-market curve. These artifacts are research evidence only and cannot alter production sizing or permissions.
+
+The complete exit/stop/exposure cross can be reproduced with:
+
+```powershell
+python -m research.run_combined_exit_exposure_grid --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv
+```
+
+It reports all 180 preregistered cells in `research/output/combined_exit_exposure_grid_v1/grid_results.csv`, writes the complete gate passes to `shortlist.csv`, and preserves each numbered ledger and daily equity curve under `cells/`. A shortlist row is not production approval or permission to change the frozen forward test.

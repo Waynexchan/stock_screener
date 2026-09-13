@@ -282,6 +282,23 @@
       "notes": "Keep research-only. All 20 cells reused one current-universe discovery sample. A later boundary audit found early-2024 price use by late-2023 outcomes, so early 2024 is contaminated for this version; independent point-in-time validation is unavailable."
     },
     {
+      "id": "combined_exit_stop_exposure_grid",
+      "name": "Combined exits, stops, and portfolio exposure",
+      "category": "portfolio_strategy_research",
+      "status": "RESEARCH_ONLY",
+      "production_effect": "NONE; full 180-cell discovery cross only.",
+      "evidence_summary": "One of 180 preregistered cells passed the absolute discovery gate, but it was a complex isolated target optimum with weak later-period performance.",
+      "sample_size": 29452,
+      "discovery_result": "The 20-day-low stop, 2R target, earned-2R plus 2R/4R/6R drawdown cell accepted 170 trades at 0.194R expectancy, 1.573 profit factor, 33.02% return, and 4.65% max daily MTM drawdown. Adjacent 2.5R/3R targets accepted only 31/43 trades and returned 0% in the later discovery period.",
+      "validation_result": null,
+      "holdout_result": null,
+      "expectancy_delta_r": -0.153189,
+      "profit_factor_delta": -0.062114,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-13",
+      "notes": "Remain RESEARCH_ONLY and HOLD. Multiple-testing, survivorship bias, low neighboring stability, and missing independent validation prohibit forward-strategy freeze or production promotion."
+    },
+    {
       "id": "earned_exposure_ladder",
       "name": "Earn the right to expand exposure",
       "category": "portfolio_allocation_research",

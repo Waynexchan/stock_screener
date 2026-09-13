@@ -198,6 +198,22 @@ the 20-cell exit/stop grid after batch-execution optimization exactly preserved
 its 0.348480R baseline expectancy, 1.644219 profit factor, and 22.284245R maximum
 closed-trade drawdown.
 
+`COMBINED_EXIT_EXPOSURE_GRID_V1` froze its full 5-stop x 4-target x 9-exposure
+matrix and decision gate in commit `04365b7` before inspecting combined
+outcomes. The boundary-purged, survivorship-biased discovery reported all 180
+cells, all 180 ledgers, and all 180 daily MTM curves; 20 fixed-4R parity checks
+matched the earlier allocator and no mark was missing. Only the 20-day-low stop,
+2R target, earned-2R plus 2R/4R/6R drawdown cell passed the gate: 170 trades,
+0.194R expectancy, 1.573 profit factor, 33.02% return, and 4.65% maximum
+drawdown. Its late-period return was only 3.85%; adjacent 2.5R and 3R targets
+collapsed to 31 and 43 trades with zero late-period return. This isolated,
+complex optimum remains HOLD and is not ready for a new forward test. Production
+and the existing frozen forward journal are unchanged.
+Focused verification passed 58 research tests plus Ruff, mypy, the expected
+data-readiness gate, and production-file hash isolation. Full verification
+passed 247 pytest tests, 118 legacy unittest tests, all integration/invariant
+checks, the offline dry run, and generated HTML semantic validation.
+
 ## Decisions already made
 
 - Production decisions are deterministic; AI cannot override them.

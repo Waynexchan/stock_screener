@@ -32,6 +32,9 @@ python -m research.run_exit_stop_grid --prices research/output/yahoo_engineering
 
 # Preregistered portfolio heat, earned-exposure, and drawdown-overlay study
 python -m research.run_portfolio_exposure --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv
+
+# Preregistered full 20 exit/stop x 9 exposure cross (180 cells)
+python -m research.run_combined_exit_exposure_grid --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv
 ```
 
 `download_yahoo` records source, date range, coverage, failures, and hashes. It uses the current universe and never claims delisted or historical-membership coverage. `run_filter_audit` evaluates only the preregistered 2017–2023 engineering discovery sample and refuses to describe 2024–2025 as evaluated holdout evidence. `run_forward_test` freezes the earliest complete immutable production snapshot per signal date, calculates raw horizons when mature, and conservatively simulates frozen entry/stop/target plans while leaving open immature outcomes missing.
