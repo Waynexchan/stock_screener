@@ -1,0 +1,56 @@
+{
+  "experiment_id": "EARNINGS_BLACKOUT_FULL_RETEST_V1",
+  "status": "PREREGISTERED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH",
+  "hypothesis": "Because the user will not open a position when an earnings event is zero through ten calendar days after the signal date, every historical filter, stop, exit, and portfolio comparison should be recalculated on that same restricted signal universe.",
+  "iteration_disclosure": "All source experiments, price periods, and retrospective earnings events have already been inspected. This retest is adaptive robustness only. No period may be relabelled as independent validation or untouched holdout for the revised specification.",
+  "earnings_blackout": {
+    "calendar_days": 10,
+    "inclusive": true,
+    "application_order": "Apply to the signal universe before filter selection, trade simulation, candidate ordering, position-capacity allocation, or portfolio-state transitions.",
+    "coverage_policy": "Fail closed if the retrospective earnings archive or its verified date coverage is unavailable.",
+    "point_in_time_limitation": "The retrieved events are retrospective actual/revised dates, not immutable schedule snapshots known on each historical signal date."
+  },
+  "source_suites": [
+    {
+      "id": "FILTER_AUDIT_V1",
+      "configuration_count": 8,
+      "scope": "MODEL_0 baseline plus seven one-at-a-time filters; retain the source period, execution, metrics, and thresholds."
+    },
+    {
+      "id": "EXIT_STOP_GRID_V1",
+      "configuration_count": 20,
+      "scope": "Five initial stops by four target/maximum-hold exits; retain the source period, execution, metrics, and thresholds."
+    },
+    {
+      "id": "PORTFOLIO_EXPOSURE_V1",
+      "configuration_count": 9,
+      "scope": "Nine fixed, earned, drawdown, and combined portfolio policies; retain the source period, execution, metrics, and thresholds."
+    },
+    {
+      "id": "COMBINED_EXIT_EXPOSURE_GRID_V1",
+      "configuration_count": 180,
+      "scope": "Five stops by four exits by nine portfolio policies; retain the source period, execution, metrics, and thresholds."
+    },
+    {
+      "id": "EASY_EXECUTION_CROSS_VALIDATION_V1",
+      "configuration_count": 168,
+      "scope": "Six stops by seven exits by four exposure policies. Retain source periods and gates, but label all post-discovery results REUSED_CONTAMINATED robustness rather than validation or holdout."
+    }
+  ],
+  "retested_configuration_count": 385,
+  "already_compliant_references": [
+    "EARNINGS_EXPOSURE_ROBUSTNESS_V1: fixed_2r_earnings_blackout and dynamic_earnings_blackout",
+    "STAIRCASE_EXPOSURE_ROBUSTNESS_V2: fixed-2R baseline plus all six staircase variants"
+  ],
+  "comparison_plan": "Within each suite, compare every blackout result with its same-suite blackout baseline and report the change from the preserved no-blackout result where schemas permit. Never pool incompatible metrics across suites.",
+  "decision_rule": "Report every configured cell and preserve failed results. A historical pass remains HOLD because the data and earnings schedules are biased and all periods are reused. No result authorises production or a new frozen forward strategy.",
+  "constraints": [
+    "Do not alter or overwrite any source experiment or result",
+    "Do not change source stop, exit, exposure, execution, cost, ordering, metric, gate, or period definitions",
+    "Do not allow an excluded signal to consume portfolio capacity",
+    "Do not describe 2024 or 2025 as untouched for this revised specification",
+    "Do not change production or the immutable forward journal"
+  ]
+}
