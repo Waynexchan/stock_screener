@@ -1,0 +1,56 @@
+{
+  "experiment_id": "EXIT_STOP_GRID_V1",
+  "status": "PREREGISTERED_ENGINEERING_DISCOVERY",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-BIASED RESEARCH",
+  "baseline": {
+    "stop": "signal-date 20-session low fixed after entry",
+    "target_r": null,
+    "maximum_holding_sessions": 40
+  },
+  "discovery_period": ["2017-01-01", "2023-12-31"],
+  "validation_status": "UNAVAILABLE_UNTIL_POINT_IN_TIME_DATA",
+  "untouched_holdout_period": [["2024-01-01", "2025-12-31"]],
+  "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after the close",
+  "entry": "next available session open plus 5 bps adverse slippage",
+  "atr_definition": "20-session simple mean of True Range through the signal date",
+  "stop_variants": [
+    {"id": "structural_20d_low", "anchor": "signal_20d_low", "atr_multiple": 0.0},
+    {"id": "entry_minus_0_5atr", "anchor": "slipped_entry", "atr_multiple": 0.5},
+    {"id": "entry_minus_1_0atr", "anchor": "slipped_entry", "atr_multiple": 1.0},
+    {"id": "signal_low_minus_0_5atr", "anchor": "signal_day_low", "atr_multiple": 0.5},
+    {"id": "signal_low_minus_1_0atr", "anchor": "signal_day_low", "atr_multiple": 1.0}
+  ],
+  "target_r_variants": [null, 2.0, 2.5, 3.0],
+  "combination_count": 20,
+  "execution": {
+    "exit_slippage_bps": 5.0,
+    "commission_per_share": 0.0,
+    "maximum_holding_sessions": 40,
+    "same_bar_policy": "STOP_FIRST",
+    "stop_gap_fill": "OPEN",
+    "favorable_target_gap_fill": "TARGET_LEVEL",
+    "maximum_positions": 4,
+    "standard_r_dollars": 587.0,
+    "cash_and_notional_model": "Normalized 1R sizing only; no portfolio cash or maximum-notional constraint"
+  },
+  "primary_metric": "expectancy_r_after_costs",
+  "secondary_metrics": [
+    "profit_factor",
+    "maximum_drawdown_r",
+    "payoff_ratio",
+    "win_rate",
+    "average_holding_days",
+    "exposure",
+    "trade_count",
+    "MFE_R",
+    "MAE_R"
+  ],
+  "shortlist_rule": "Discovery-only shortlist requires at least +0.10R expectancy versus baseline, profit factor no lower than baseline, maximum drawdown no worse than baseline, and support from an adjacent target or stop setting. It still cannot be promoted without independent validation.",
+  "constraints": [
+    "Report all 20 combinations, not only the best result",
+    "Do not tune additional values after inspecting results",
+    "Do not evaluate the untouched 2024-2025 holdout",
+    "Do not change production logic from this experiment"
+  ]
+}

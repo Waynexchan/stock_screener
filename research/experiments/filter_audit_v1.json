@@ -24,7 +24,7 @@
     "entry": "next available session open",
     "entry_slippage_bps": 5.0,
     "exit_slippage_bps": 5.0,
-    "stop": "trailing 20-session structural low",
+    "stop": "signal-date 20-session structural low, fixed after entry",
     "maximum_holding_sessions": 40,
     "same_bar_policy": "STOP_FIRST",
     "maximum_positions": 4

@@ -16,7 +16,10 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
   open/unmatured and seven stopped out. None was an actionable FULL/HALF trade;
   the sole actionable HALF row did not trigger. This is far below the
   100-mature-plan review floor and is not an expectancy conclusion. No
-  production filter changed.
+  production filter changed. `EXIT_STOP_GRID_V1` also tested 20 fixed
+  target/initial-stop combinations on the same biased 2017–2023 discovery
+  sample. None beat the no-target/20-day-low baseline or met the preregistered
+  shortlist gate; the 2024–2025 holdout remains untouched.
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
@@ -42,10 +45,10 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Last verification result
 
-Post-forward-plan-simulator implementation on 2026-09-13: PASS — Ruff, mypy,
-and 39 research tests passed; the default MODEL_0 data gate remained the
+Post-exit/stop-grid implementation on 2026-09-13: PASS — Ruff, mypy, and 47
+research tests passed; the default MODEL_0 data gate remained the
 expected `BLOCKED_DATA_NOT_READY`, and production hash isolation passed. Full
-project verification passed with 228 pytest tests, 118 legacy unittest tests,
+project verification passed with 236 pytest tests, 118 legacy unittest tests,
 all formatting, typing, industry/report invariant, offline dry-run, and
 generated HTML semantic-validation stages.
 

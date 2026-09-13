@@ -3,7 +3,11 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from research.engine.execution import simulate_trade
+from research.engine.execution import (
+    prepare_trade_execution,
+    simulate_prepared_trade,
+    simulate_trade,
+)
 from research.engine.models import ExecutionAssumptions, FeatureRecord
 
 
@@ -114,6 +118,41 @@ def test_r_calculation_for_two_r_target() -> None:
     assert trade is not None
     assert trade.realised_r == pytest.approx(2.0)
     assert trade.shares == 117
+
+
+def test_explicit_research_stop_overrides_structural_stop() -> None:
+    history = bars(
+        [
+            ("2026-01-02", 99, 101, 98, 100),
+            ("2026-01-05", 100, 104, 97, 103),
+        ]
+    )
+    trade = simulate_trade(
+        signal(stop=95.0),
+        history,
+        assumptions(maximum_holding_sessions=1),
+        stop_price=98.0,
+    )
+    assert trade is not None
+    assert trade.initial_stop == 98.0
+    assert trade.exit_reason == "STOP"
+    assert trade.realised_r == -1.0
+
+
+def test_prepared_execution_matches_single_trade_path() -> None:
+    history = bars(
+        [
+            ("2026-01-02", 99, 101, 98, 100),
+            ("2026-01-05", 100, 105, 97, 102),
+            ("2026-01-06", 102, 111, 101, 110),
+        ]
+    )
+    settings = assumptions(target_r=2.0)
+    expected = simulate_trade(signal(), history, settings)
+    prepared = prepare_trade_execution(signal(), history, settings)
+    assert prepared is not None
+    actual = simulate_prepared_trade(prepared, settings)
+    assert actual == expected
 
 
 def test_mfe_and_mae_calculation() -> None:

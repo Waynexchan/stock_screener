@@ -3,12 +3,30 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
 from .data import valid_bar_mask
 from .models import ExecutionAssumptions, FeatureRecord, SimulatedTrade
+
+
+@dataclass(frozen=True)
+class PreparedTradeExecution:
+    """Validated future bars cached once for multiple execution variants."""
+
+    feature: FeatureRecord
+    dates: pd.DatetimeIndex
+    opens: np.ndarray
+    highs: np.ndarray
+    lows: np.ndarray
+    closes: np.ndarray
+    valid: np.ndarray
+    reference_entry: float
+    entry: float
+    entry_slippage_bps: float
+    maximum_holding_sessions: int
 
 
 def _slipped(price: float, basis_points: float, direction: str) -> float:
@@ -18,24 +36,15 @@ def _slipped(price: float, basis_points: float, direction: str) -> float:
     return float(price * multiplier)
 
 
-def simulate_trade(
+def prepare_trade_execution(
     feature: FeatureRecord,
     history: pd.DataFrame,
     assumptions: ExecutionAssumptions,
-    *,
-    target_price: float | None = None,
-) -> SimulatedTrade | None:
-    """Simulate a long trade beginning at the first session after the signal.
-
-    Stops gap through at the next observable open. Favorable target gaps fill at
-    the target level by default. If stop and target are both touched in one bar,
-    STOP_FIRST is mandatory for the current foundation.
-    """
+) -> PreparedTradeExecution | None:
+    """Prepare one signal's future bars without evaluating any stop or target."""
 
     if not feature.model_0_signal or feature.structural_stop is None:
         return None
-    if assumptions.same_bar_policy != "STOP_FIRST":
-        raise ValueError("only conservative STOP_FIRST same-bar handling is supported")
     if (
         isinstance(history.index, pd.DatetimeIndex)
         and history.index.is_monotonic_increasing
@@ -50,11 +59,42 @@ def simulate_trade(
     valid_future = valid_bar_mask(future)
     if future.empty or not bool(valid_future.iloc[0]):
         return None
-
-    entry_date = pd.Timestamp(future.index[0])
     reference_entry = float(future.iloc[0]["Open"])
     entry = _slipped(reference_entry, assumptions.entry_slippage_bps, "BUY")
-    stop = float(feature.structural_stop)
+    return PreparedTradeExecution(
+        feature=feature,
+        dates=pd.DatetimeIndex(future.index),
+        opens=future["Open"].to_numpy(dtype=float),
+        highs=future["High"].to_numpy(dtype=float),
+        lows=future["Low"].to_numpy(dtype=float),
+        closes=future["Close"].to_numpy(dtype=float),
+        valid=valid_future.to_numpy(dtype=bool),
+        reference_entry=reference_entry,
+        entry=entry,
+        entry_slippage_bps=assumptions.entry_slippage_bps,
+        maximum_holding_sessions=assumptions.maximum_holding_sessions,
+    )
+
+
+def simulate_prepared_trade(
+    prepared: PreparedTradeExecution,
+    assumptions: ExecutionAssumptions,
+    *,
+    target_price: float | None = None,
+    stop_price: float | None = None,
+) -> SimulatedTrade | None:
+    """Apply one stop/target policy to already validated future bars."""
+
+    if assumptions.same_bar_policy != "STOP_FIRST":
+        raise ValueError("only conservative STOP_FIRST same-bar handling is supported")
+    if (
+        assumptions.entry_slippage_bps != prepared.entry_slippage_bps
+        or assumptions.maximum_holding_sessions != prepared.maximum_holding_sessions
+    ):
+        raise ValueError("prepared entry or holding assumptions do not match")
+    feature = prepared.feature
+    entry = prepared.entry
+    stop = float(feature.structural_stop if stop_price is None else stop_price)
     if (
         not all(np.isfinite(value) and value > 0 for value in (entry, stop))
         or stop >= entry
@@ -70,64 +110,70 @@ def simulate_trade(
     if target is not None and (not np.isfinite(target) or target <= entry):
         raise ValueError("target must be finite and above entry")
 
-    reference_exit = float(future.iloc[-1]["Close"])
-    exit_date = pd.Timestamp(future.index[-1])
+    reference_exit = float(prepared.closes[-1])
+    exit_date = pd.Timestamp(prepared.dates[-1])
     exit_reason = "MAX_HOLD"
-    observed = future.iloc[0:0]
-    for position, (bar_date, bar) in enumerate(future.iterrows()):
-        if not bool(valid_future.iloc[position]):
+    observed_count = 0
+    for position in range(len(prepared.dates)):
+        if not prepared.valid[position]:
             break
-        observed = future.iloc[: position + 1]
-        open_price = float(bar["Open"])
-        low = float(bar["Low"])
-        high = float(bar["High"])
+        observed_count = position + 1
+        open_price = float(prepared.opens[position])
+        low = float(prepared.lows[position])
+        high = float(prepared.highs[position])
         if position > 0 and open_price <= stop:
             reference_exit = open_price
-            exit_date = pd.Timestamp(bar_date)
+            exit_date = pd.Timestamp(prepared.dates[position])
             exit_reason = "STOP_GAP"
             break
         if position > 0 and target is not None and open_price >= target:
             reference_exit = (
                 target if assumptions.favorable_gap_fill == "LEVEL" else open_price
             )
-            exit_date = pd.Timestamp(bar_date)
+            exit_date = pd.Timestamp(prepared.dates[position])
             exit_reason = "TARGET_GAP"
             break
         stop_touched = low <= stop
         target_touched = target is not None and high >= target
         if stop_touched and target_touched:
             reference_exit = stop
-            exit_date = pd.Timestamp(bar_date)
+            exit_date = pd.Timestamp(prepared.dates[position])
             exit_reason = "STOP_AND_TARGET_SAME_BAR_CONSERVATIVE"
             break
         if stop_touched:
             reference_exit = stop
-            exit_date = pd.Timestamp(bar_date)
+            exit_date = pd.Timestamp(prepared.dates[position])
             exit_reason = "STOP"
             break
         if target_touched:
             reference_exit = float(target)
-            exit_date = pd.Timestamp(bar_date)
+            exit_date = pd.Timestamp(prepared.dates[position])
             exit_reason = "TARGET"
             break
-    if observed.empty:
+    if observed_count == 0:
         return None
 
     exit_price = _slipped(reference_exit, assumptions.exit_slippage_bps, "SELL")
-    entry_slippage = max(0.0, entry - reference_entry) * shares
+    entry_slippage = max(0.0, entry - prepared.reference_entry) * shares
     exit_slippage = max(0.0, reference_exit - exit_price) * shares
     commissions = assumptions.commission_per_share * shares * 2
     costs = entry_slippage + exit_slippage + commissions
-    gross_pnl = (reference_exit - reference_entry) * shares
+    gross_pnl = (reference_exit - prepared.reference_entry) * shares
     net_pnl = gross_pnl - costs
     initial_risk_dollars = initial_risk_per_share * shares
     realised_r = net_pnl / initial_risk_dollars
-    mfe_r = max(0.0, (float(observed["High"].max()) - entry) / initial_risk_per_share)
-    mae_r = min(0.0, (float(observed["Low"].min()) - entry) / initial_risk_per_share)
+    mfe_r = max(
+        0.0,
+        (float(prepared.highs[:observed_count].max()) - entry) / initial_risk_per_share,
+    )
+    mae_r = min(
+        0.0,
+        (float(prepared.lows[:observed_count].min()) - entry) / initial_risk_per_share,
+    )
     return SimulatedTrade(
         signal_date=feature.signal_date,
         ticker=feature.ticker,
-        entry_date=entry_date.date().isoformat(),
+        entry_date=pd.Timestamp(prepared.dates[0]).date().isoformat(),
         exit_date=exit_date.date().isoformat(),
         entry=round(entry, 6),
         initial_stop=round(stop, 6),
@@ -141,6 +187,32 @@ def simulate_trade(
         realised_r=round(realised_r, 6),
         MFE_R=round(mfe_r, 6),
         MAE_R=round(mae_r, 6),
-        holding_days=len(observed),
+        holding_days=observed_count,
         exit_reason=exit_reason,
+    )
+
+
+def simulate_trade(
+    feature: FeatureRecord,
+    history: pd.DataFrame,
+    assumptions: ExecutionAssumptions,
+    *,
+    target_price: float | None = None,
+    stop_price: float | None = None,
+) -> SimulatedTrade | None:
+    """Simulate a conservative long trade from the first post-signal session.
+
+    Stops gap through at the next observable open. Favorable target gaps fill at
+    the target level by default. If stop and target are both touched in one bar,
+    STOP_FIRST is mandatory for the current foundation.
+    """
+
+    prepared = prepare_trade_execution(feature, history, assumptions)
+    if prepared is None:
+        return None
+    return simulate_prepared_trade(
+        prepared,
+        assumptions,
+        target_price=target_price,
+        stop_price=stop_price,
     )

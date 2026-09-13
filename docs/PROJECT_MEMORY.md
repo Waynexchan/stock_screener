@@ -168,6 +168,14 @@ and seven stopped out. None was an actionable FULL/HALF trade; the sole
 actionable HALF row did not trigger. This is below the 100-mature-plan review
 floor and is not performance evidence.
 
+`EXIT_STOP_GRID_V1` preregistered and reported all 20 combinations of no target,
+2R, 2.5R, and 3R with a fixed signal-date 20-day low, entry minus 0.5/1 ATR, or
+signal-day low minus 0.5/1 ATR. The original no-target/20-day-low baseline was
+strongest at 0.348R expectancy, 1.644 profit factor, and 22.284R maximum
+drawdown. No variant met the discovery shortlist gate. The result reuses the
+survivorship-biased 2017–2023 sample, leaves the 2024–2025 holdout untouched,
+and changes no production rule.
+
 ## Decisions already made
 
 - Production decisions are deterministic; AI cannot override them.

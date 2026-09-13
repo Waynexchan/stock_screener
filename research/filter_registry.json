@@ -265,6 +265,23 @@
       "notes": "Promising discovery only. Requires effective-dated sector classification and independent validation before production review."
     },
     {
+      "id": "initial_stop_and_fixed_r_target_grid",
+      "name": "ATR initial stops and fixed-R profit targets",
+      "category": "trade_exit_research",
+      "status": "RESEARCH_ONLY",
+      "production_effect": "NONE; requested 20-combination research grid only.",
+      "evidence_summary": "All fixed 2R/2.5R/3R targets and ATR-based initial stops underperformed the no-target/20-day-low baseline in survivorship-biased discovery.",
+      "sample_size": 30129,
+      "discovery_result": "The baseline retained 259 capacity-limited trades at 0.348R expectancy, 1.644 profit factor, and 22.284R maximum drawdown. The best non-baseline expectancy was 0.242R; fixed-target variants ranged from -0.082R to 0.062R. No combination met the preregistered shortlist gate.",
+      "validation_result": null,
+      "holdout_result": null,
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-13",
+      "notes": "Keep research-only. All 20 cells reused one current-universe discovery sample; 2024-2025 remains untouched and independent point-in-time validation is unavailable."
+    },
+    {
       "id": "critical_data_freshness",
       "name": "Critical data validity and freshness",
       "category": "operational_safety",
