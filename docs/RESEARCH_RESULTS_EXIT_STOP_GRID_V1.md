@@ -15,7 +15,7 @@ ATR20 is the simple mean of True Range through the signal date, matching product
 target = slipped entry + target multiple x 1R
 ```
 
-The five stops crossed with no target, 2R, 2.5R, and 3R produce 20 preregistered combinations. The 2017–2023 discovery sample contains 30,129 signals. The 2024–2025 holdout was not evaluated.
+The five stops crossed with no target, 2R, 2.5R, and 3R produce 20 preregistered combinations. The 2017–2023 discovery sample contains 30,129 signals. The 2024–2025 period was not evaluated as a holdout. A post-run boundary audit found that late-2023 discovery signals used up to 40 sessions of early-2024 prices for their outcomes, so early 2024 is contaminated for this experiment version and may not be described as untouched. The numerical discovery results are preserved rather than rewritten.
 
 ## Complete results
 

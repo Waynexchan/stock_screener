@@ -279,7 +279,24 @@
       "profit_factor_delta": null,
       "max_drawdown_delta_r": null,
       "last_tested": "2026-09-13",
-      "notes": "Keep research-only. All 20 cells reused one current-universe discovery sample; 2024-2025 remains untouched and independent point-in-time validation is unavailable."
+      "notes": "Keep research-only. All 20 cells reused one current-universe discovery sample. A later boundary audit found early-2024 price use by late-2023 outcomes, so early 2024 is contaminated for this version; independent point-in-time validation is unavailable."
+    },
+    {
+      "id": "earned_exposure_ladder",
+      "name": "Earn the right to expand exposure",
+      "category": "portfolio_allocation_research",
+      "status": "RESEARCH_ONLY",
+      "production_effect": "NONE; requested portfolio-allocation hypothesis only.",
+      "evidence_summary": "Two permanent 2R-start ladders were tested in survivorship-biased discovery and did not keep daily mark-to-market drawdown below 10%.",
+      "sample_size": 29376,
+      "discovery_result": "Both ladders unlocked 4R by 2017-03-03, selected the same 248 trades, returned 81.40%, and reached 16.97% maximum drawdown.",
+      "validation_result": null,
+      "holdout_result": null,
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-13",
+      "notes": "Do not promote. The permanent early-profit unlock did not control later-cycle exposure; a future redesign requires a new preregistered experiment."
     },
     {
       "id": "critical_data_freshness",
@@ -338,16 +355,16 @@
       "category": "operational_safety",
       "status": "CORE_RISK_CONTROL",
       "production_effect": "Blocks new positions once the configured hard cap is reached.",
-      "evidence_summary": "Classified for operational safety, not claimed alpha.",
-      "sample_size": null,
-      "discovery_result": null,
+      "evidence_summary": "A survivorship-biased allocation study found materially different return/drawdown trade-offs across fixed 1R to 4R heat; this calibrates risk but is not validation evidence.",
+      "sample_size": 29376,
+      "discovery_result": "Fixed 4R selected 254 trades, returned 88.24%, and reached 20.31% daily MTM max drawdown. Fixed 2R selected 123 trades, returned 72.96%, and reached 6.97% max drawdown; it missed the 150-trade gate.",
       "validation_result": null,
       "holdout_result": null,
       "expectancy_delta_r": null,
       "profit_factor_delta": null,
       "max_drawdown_delta_r": null,
-      "last_tested": "2026-09-09",
-      "notes": "Current configured default is four."
+      "last_tested": "2026-09-13",
+      "notes": "Remain CORE_RISK_CONTROL. Current configured default is four; the promising fixed-2R discovery requires independent validation and has not changed production."
     },
     {
       "id": "drawdown_risk_modes",
@@ -355,16 +372,16 @@
       "category": "operational_safety",
       "status": "CORE_RISK_CONTROL",
       "production_effect": "Reduces or stops new risk as account drawdown increases.",
-      "evidence_summary": "Classified for operational safety; current calibration is not claimed empirically optimal.",
-      "sample_size": null,
-      "discovery_result": null,
+      "evidence_summary": "Survivorship-biased discovery showed that fixed-R drawdown stops reduced measured drawdown mainly by blocking new risk for most later sessions; current calibration is not empirically validated.",
+      "sample_size": 29376,
+      "discovery_result": "The 2R/4R/6R overlay accepted 27 trades, returned 21.11%, reached 5.41% max drawdown, and blocked new risk for 1,482 sessions. The 3R/6R/9R overlay accepted 52 trades and blocked for 1,331 sessions.",
       "validation_result": null,
       "holdout_result": null,
       "expectancy_delta_r": null,
       "profit_factor_delta": null,
       "max_drawdown_delta_r": null,
-      "last_tested": "2026-09-09",
-      "notes": "Separate correctness of enforcement from empirical calibration."
+      "last_tested": "2026-09-13",
+      "notes": "Remain CORE_RISK_CONTROL. Separate correctness of enforcement from empirical calibration; no tested drawdown overlay passed the complete shortlist gate."
     }
   ]
 }

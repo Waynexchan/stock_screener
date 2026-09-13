@@ -1,0 +1,46 @@
+{
+  "experiment_id": "PORTFOLIO_EXPOSURE_V1",
+  "status": "PREREGISTERED_ENGINEERING_DISCOVERY",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-BIASED RESEARCH",
+  "discovery_price_period": ["2017-01-01", "2023-12-29"],
+  "discovery_signal_period": ["2017-01-01", "2023-11-01"],
+  "outcome_boundary": "All maximum-40-session exits must be on or before 2023-12-29",
+  "validation_status": "UNAVAILABLE_UNTIL_POINT_IN_TIME_DATA",
+  "untouched_holdout_period": [["2024-01-01", "2025-12-31"]],
+  "trade_model": "MODEL_0 signal, next-session open, fixed signal-date 20-session-low stop, no fixed target, 40-session maximum hold",
+  "starting_equity_r": 100.0,
+  "starting_equity_dollars": 58700.0,
+  "standard_r_dollars": 587.0,
+  "drawdown_definition": "Daily mark-to-market equity versus prior high-water equity; percent drawdown divides by that high-water equity",
+  "portfolio_variants": [
+    {"id": "fixed_1r", "type": "FIXED", "maximum_heat_r": 1.0, "risk_per_trade_r": 1.0},
+    {"id": "fixed_2r", "type": "FIXED", "maximum_heat_r": 2.0, "risk_per_trade_r": 1.0},
+    {"id": "fixed_3r", "type": "FIXED", "maximum_heat_r": 3.0, "risk_per_trade_r": 1.0},
+    {"id": "fixed_4r_baseline", "type": "FIXED", "maximum_heat_r": 4.0, "risk_per_trade_r": 1.0},
+    {"id": "earned_2r_unlock_at_1r_2r", "type": "EARNED", "initial_heat_r": 2.0, "unlock_profit_r": [1.0, 2.0], "unlocked_heat_r": [3.0, 4.0], "risk_per_trade_r": 1.0},
+    {"id": "earned_2r_unlock_at_2r_4r", "type": "EARNED", "initial_heat_r": 2.0, "unlock_profit_r": [2.0, 4.0], "unlocked_heat_r": [3.0, 4.0], "risk_per_trade_r": 1.0},
+    {"id": "drawdown_2r_4r_6r", "type": "DRAWDOWN", "normal_heat_r": 3.0, "reduced_at_r": 2.0, "reduced_heat_r": 1.5, "defensive_at_r": 4.0, "defensive_heat_r": 0.5, "stop_at_r": 6.0, "normal_risk_per_trade_r": 1.0, "reduced_risk_per_trade_r": 0.5},
+    {"id": "drawdown_3r_6r_9r", "type": "DRAWDOWN", "normal_heat_r": 4.0, "reduced_at_r": 3.0, "reduced_heat_r": 2.0, "defensive_at_r": 6.0, "defensive_heat_r": 1.0, "stop_at_r": 9.0, "normal_risk_per_trade_r": 1.0, "reduced_risk_per_trade_r": 0.5},
+    {"id": "earned_2r_2r_4r_plus_dd_2r_4r_6r", "type": "EARNED_DRAWDOWN", "initial_heat_r": 2.0, "unlock_profit_r": [2.0, 4.0], "unlocked_heat_r": [3.0, 4.0], "normal_heat_r": 3.0, "reduced_at_r": 2.0, "reduced_heat_r": 1.5, "defensive_at_r": 4.0, "defensive_heat_r": 0.5, "stop_at_r": 6.0, "normal_risk_per_trade_r": 1.0, "reduced_risk_per_trade_r": 0.5}
+  ],
+  "shared_constraints": {
+    "maximum_positions": 4,
+    "same_ticker_overlap": false,
+    "open_trade_heat": "allocated initial R remains charged until exit",
+    "same_day_exit_capacity": "a position exiting during a session still occupies capacity for new entries that session",
+    "ranking": "entry date, signal date, then ticker; never future outcome",
+    "cash_and_notional_model": "Normalized R; no cash or maximum-notional constraint",
+    "missing_mark_policy": "last known close at or before the session; never use a future price"
+  },
+  "primary_metrics": ["maximum_drawdown_pct", "total_return_pct"],
+  "secondary_metrics": ["maximum_drawdown_r", "total_pnl_r", "profit_factor", "expectancy_per_trade_r", "expectancy_per_allocated_r", "accepted_trade_count", "rejection_count", "average_heat_r", "maximum_heat_r"],
+  "shortlist_rule": "Maximum daily mark-to-market drawdown at or below 10%, positive total return, profit factor at least 1.20, at least 150 accepted trades, and no future-informed allocation decision.",
+  "constraints": [
+    "Report every preregistered overlay",
+    "Do not alter signals or trade exits in this experiment",
+    "Do not tune thresholds after inspecting discovery outcomes",
+    "Do not evaluate the untouched 2024-2025 holdout",
+    "Do not change production logic"
+  ]
+}

@@ -5,6 +5,7 @@ import pytest
 
 from research.engine.execution import (
     prepare_trade_execution,
+    prepare_trade_executions,
     simulate_prepared_trade,
     simulate_trade,
 )
@@ -153,6 +154,23 @@ def test_prepared_execution_matches_single_trade_path() -> None:
     assert prepared is not None
     actual = simulate_prepared_trade(prepared, settings)
     assert actual == expected
+
+
+def test_batch_preparation_matches_single_preparation() -> None:
+    history = bars(
+        [
+            ("2026-01-02", 99, 101, 98, 100),
+            ("2026-01-05", 100, 105, 97, 102),
+        ]
+    )
+    settings = assumptions(maximum_holding_sessions=1)
+    single = prepare_trade_execution(signal(), history, settings)
+    batch = prepare_trade_executions([signal()], {"AAA": history}, settings)
+    assert single is not None
+    assert len(batch) == 1
+    assert batch[0].entry == single.entry
+    assert batch[0].dates.equals(single.dates)
+    assert batch[0].opens.tolist() == single.opens.tolist()
 
 
 def test_mfe_and_mae_calculation() -> None:

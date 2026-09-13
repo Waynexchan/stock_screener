@@ -14,7 +14,7 @@ import pandas as pd
 
 from research.engine.baseline import execution_assumptions, load_model_0_config
 from research.engine.data import load_price_csv
-from research.engine.execution import prepare_trade_execution, simulate_prepared_trade
+from research.engine.execution import prepare_trade_executions, simulate_prepared_trade
 from research.engine.features import generate_model_0_features
 from research.engine.metrics import calculate_metrics
 from research.engine.models import ExecutionAssumptions, FeatureRecord, SimulatedTrade
@@ -184,15 +184,20 @@ def main(argv: list[str] | None = None) -> int:
         histories,
         entry_slippage_bps=base_assumptions.entry_slippage_bps,
     )
-    prepared = []
-    for row in discovery.to_dict("records"):
-        feature = _feature(row)
-        history = histories.get(feature.ticker)
-        if history is None:
-            continue
-        execution = prepare_trade_execution(feature, history, base_assumptions)
-        if execution is not None:
-            prepared.append((execution, row))
+    rows_by_key = {
+        (str(row["signal_date"]), str(row["ticker"])): row
+        for row in discovery.to_dict("records")
+    }
+    executions = prepare_trade_executions(
+        [_feature(row) for row in rows_by_key.values()], histories, base_assumptions
+    )
+    prepared = [
+        (
+            execution,
+            rows_by_key[(execution.feature.signal_date, execution.feature.ticker)],
+        )
+        for execution in executions
+    ]
     seed = int(model_config["random_seed"])
     variant_results: list[dict[str, Any]] = []
     for stop_specification in experiment["stop_variants"]:

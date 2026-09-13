@@ -147,8 +147,10 @@ Do not mark these permanently fixed merely because current tests pass. Preserve 
 
 `FILTER_AUDIT_V1` is a preregistered, production-isolated engineering discovery
 using the current 1,840-symbol universe and Yahoo adjusted OHLCV. It is labelled
-`SURVIVORSHIP-BIASED RESEARCH`; it did not evaluate the reserved 2024-2025
-holdout. Across the 2017-2023 discovery period it found 30,129 MODEL_0 Stage 2
+`SURVIVORSHIP-BIASED RESEARCH`; it did not evaluate 2024-2025 as a holdout.
+A later boundary audit found that late-2023 signals used early-2024 prices for
+40-session outcomes, making early 2024 contaminated for that experiment version.
+Across the 2017-2023 discovery period it found 30,129 MODEL_0 Stage 2
 transition signals and 259 capacity-limited baseline trades. Full results and
 dataset hashes are preserved in `docs/RESEARCH_RESULTS_FILTER_AUDIT_V1.md`.
 
@@ -173,8 +175,28 @@ floor and is not performance evidence.
 signal-day low minus 0.5/1 ATR. The original no-target/20-day-low baseline was
 strongest at 0.348R expectancy, 1.644 profit factor, and 22.284R maximum
 drawdown. No variant met the discovery shortlist gate. The result reuses the
-survivorship-biased 2017–2023 sample, leaves the 2024–2025 holdout untouched,
-and changes no production rule.
+survivorship-biased 2017–2023 sample. Its late-2023 outcomes also contaminated
+early 2024; the numerical results are preserved, but that period is not untouched
+for this version. It changes no production rule.
+
+`PORTFOLIO_EXPOSURE_V1` preregistered nine allocation overlays and purged the
+boundary before results: signals end 2023-11-01 and every outcome ends in 2023.
+It uses a 100R starting account and daily open/close mark-to-market drawdown.
+The existing maximum-four-position baseline selected 254 trades, returned
+88.24%, and reached 20.31% maximum drawdown. Fixed 2R heat selected 123 trades,
+returned 72.96%, and reached 6.97% maximum drawdown, making it the most useful
+discovery trade-off but leaving it below the preregistered 150-trade floor.
+Permanent earned-exposure ladders reached 4R quickly and still drew down 16.97%.
+Drawdown modes stayed below 10% by largely shutting down after their stop level,
+accepting only 26–52 trades. No variant passed the complete gate; the decision is
+HOLD, 2024–2025 remains untouched for this experiment, and production is unchanged.
+Focused verification passed 54 research tests plus Ruff, mypy, the expected
+data-readiness gate, and production-file hash isolation. Full verification
+passed 243 pytest tests, 118 legacy unittest tests, all integration/invariant
+checks, the offline dry run, and generated HTML semantic validation. Re-running
+the 20-cell exit/stop grid after batch-execution optimization exactly preserved
+its 0.348480R baseline expectancy, 1.644219 profit factor, and 22.284245R maximum
+closed-trade drawdown.
 
 ## Decisions already made
 

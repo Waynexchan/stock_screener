@@ -1,6 +1,6 @@
 # Project Status
 
-Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-09-13. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
@@ -9,7 +9,9 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
   A Yahoo current-universe engineering archive contains 4,126,702 stock bars
   plus 2,688 SPY bars from 2016-01-04 through 2026-09-11. The preregistered
   2017-2023 discovery produced 30,129 MODEL_0 signals; results remain explicitly
-  survivorship-biased and the 2024-2025 holdout was not evaluated. The forward
+  survivorship-biased and the 2024-2025 period was not evaluated as a holdout.
+  A later boundary audit found that late-2023 signals used early-2024 outcome
+  prices, so early 2024 is contaminated for that experiment version. The forward
   journal froze 208 candidates across four immutable signal dates; zero had a
   mature five-session raw outcome at the data cutoff. Its conservative
   plan-trigger simulator found 40 triggered shadow candidate plans: 33 remain
@@ -19,7 +21,14 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
   production filter changed. `EXIT_STOP_GRID_V1` also tested 20 fixed
   target/initial-stop combinations on the same biased 2017–2023 discovery
   sample. None beat the no-target/20-day-low baseline or met the preregistered
-  shortlist gate; the 2024–2025 holdout remains untouched.
+  shortlist gate. `PORTFOLIO_EXPOSURE_V1` corrected that boundary by ending
+  signals on 2023-11-01 and all outcomes in 2023. Its existing four-position
+  baseline had 20.31% daily mark-to-market maximum drawdown; fixed 2R heat cut
+  this to 6.97% while retaining 72.96% total return, but accepted only 123 trades
+  and missed the preregistered 150-trade floor. Drawdown-stop variants accepted
+  only 26–52 trades and then spent 1,331–1,482 sessions blocking new risk. No
+  variant passed the complete gate, 2024–2025 remains untouched for this new
+  experiment, and production did not change.
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
@@ -44,6 +53,12 @@ Fast handoff as of 2026-09-12. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-portfolio-exposure implementation on 2026-09-13: PASS — Ruff, mypy, 54
+research tests, the expected `BLOCKED_DATA_NOT_READY` baseline gate, and
+production hash isolation passed. Full project verification passed with 243
+pytest tests, 118 legacy unittest tests, all formatting, typing, industry/report
+invariant, offline dry-run, and generated HTML semantic-validation stages.
 
 Post-exit/stop-grid implementation on 2026-09-13: PASS — Ruff, mypy, and 47
 research tests passed; the default MODEL_0 data gate remained the

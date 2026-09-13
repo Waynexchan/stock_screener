@@ -138,3 +138,13 @@ Never lower an active stop without a documented override reason. Record complete
 ## Verification failures and configuration
 
 If verification fails, do not run or email the normal report. Read `logs/verify_project.log`, correct the root cause, rerun the failed stage, then rerun the complete verification script. Change thresholds only in `config.py`, add tests explaining the intended behaviour, and rerun verification.
+
+## Research-only portfolio backtest
+
+The portfolio exposure study is separate from the Daily Watchlist and does not change live decisions. Run it only against an explicitly supplied research archive:
+
+```powershell
+python -m research.run_portfolio_exposure --prices research/output/yahoo_engineering/prices.csv --benchmark research/output/yahoo_engineering/benchmark.csv
+```
+
+It compares fixed 1R–4R heat, two 2R-start earned-exposure ladders, and drawdown-based risk modes. Results are written under `research/output/portfolio_exposure_v1/`; `summary.csv` contains all preregistered variants and each `equity__*.csv` contains the daily mark-to-market curve. These artifacts are research evidence only and cannot alter production sizing or permissions.

@@ -14,7 +14,7 @@ Run date: 2026-09-13. Historical decision: **HOLD**.
 - Benchmark SHA-256: `2f23c2f096c0f712ab102a938b5aa0e04dad78b7345355b525a9b979a08e09f9`.
 - Preregistered engineering discovery period: 2017-01-01 through 2023-12-31.
 - Stage 2 transition signals: 30,129.
-- The 2024–2025 holdout was not evaluated.
+- The 2024–2025 period was not evaluated as a holdout. A post-run boundary audit found that late-2023 discovery signals used up to 40 sessions of early-2024 prices for their outcomes, so early 2024 is contaminated for this experiment version and may not be described as untouched. The numerical discovery results are preserved rather than rewritten.
 - Execution: next-session open, 5 bps entry and exit slippage, signal-date 20-session structural low fixed after entry, stop-first ambiguity policy, 40-session maximum hold, USD 587 normalized initial risk, maximum four simultaneous positions.
 
 The current-universe construction excludes historical failures and delistings. Utilities use today's sector mapping rather than effective-dated classifications. Results may therefore be materially optimistic or distorted and cannot validate, reject, add, or remove a production filter.

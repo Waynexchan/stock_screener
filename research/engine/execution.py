@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from dataclasses import dataclass
 
 import numpy as np
@@ -74,6 +75,63 @@ def prepare_trade_execution(
         entry_slippage_bps=assumptions.entry_slippage_bps,
         maximum_holding_sessions=assumptions.maximum_holding_sessions,
     )
+
+
+def prepare_trade_executions(
+    features: list[FeatureRecord],
+    histories: dict[str, pd.DataFrame],
+    assumptions: ExecutionAssumptions,
+) -> list[PreparedTradeExecution]:
+    """Batch-prepare many signals while validating each ticker history once."""
+
+    grouped: dict[str, list[FeatureRecord]] = defaultdict(list)
+    for feature in features:
+        if feature.model_0_signal and feature.structural_stop is not None:
+            grouped[feature.ticker].append(feature)
+    prepared: list[PreparedTradeExecution] = []
+    for ticker, ticker_features in grouped.items():
+        history = histories.get(ticker)
+        if history is None or history.empty:
+            continue
+        if (
+            isinstance(history.index, pd.DatetimeIndex)
+            and history.index.is_monotonic_increasing
+        ):
+            frame = history
+        else:
+            frame = history.copy()
+            frame.index = pd.to_datetime(frame.index)
+            frame = frame.sort_index()
+        dates = pd.DatetimeIndex(frame.index)
+        opens = frame["Open"].to_numpy(dtype=float)
+        highs = frame["High"].to_numpy(dtype=float)
+        lows = frame["Low"].to_numpy(dtype=float)
+        closes = frame["Close"].to_numpy(dtype=float)
+        valid = valid_bar_mask(frame).to_numpy(dtype=bool)
+        for feature in ticker_features:
+            start = dates.searchsorted(pd.Timestamp(feature.signal_date), side="right")
+            end = min(start + assumptions.maximum_holding_sessions, len(dates))
+            if start >= end or not valid[start]:
+                continue
+            reference_entry = float(opens[start])
+            prepared.append(
+                PreparedTradeExecution(
+                    feature=feature,
+                    dates=dates[start:end],
+                    opens=opens[start:end],
+                    highs=highs[start:end],
+                    lows=lows[start:end],
+                    closes=closes[start:end],
+                    valid=valid[start:end],
+                    reference_entry=reference_entry,
+                    entry=_slipped(
+                        reference_entry, assumptions.entry_slippage_bps, "BUY"
+                    ),
+                    entry_slippage_bps=assumptions.entry_slippage_bps,
+                    maximum_holding_sessions=assumptions.maximum_holding_sessions,
+                )
+            )
+    return prepared
 
 
 def simulate_prepared_trade(
