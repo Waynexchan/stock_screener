@@ -448,3 +448,35 @@ Preregistration commit: `f534cc8`; clean implementation/run commit: `1f65433`.
 Decision: HOLD. The SPY gate is not the richer production market regime, every
 period is reused, and no production or immutable forward-test specification
 changed.
+
+## 2026-09-14 leader and relative-strength robustness
+
+`LEADER_RS_ROBUSTNESS_V1` preregistered 17 fixed variants before outcomes at
+commit `48512fb` and ran from clean implementation commit `d914f77`. It ranked a
+four-quarter, recent-weighted 1-99 RS proxy across the full current-symbol
+archive before Stage 2 filtering, then tested fixed score buckets/thresholds,
+an RS line near its 252-session high, current-industry median RS, 50-session
+up/down volume, a combined technical-leader profile, and that profile with no
+Utilities or beta >=0.8. The proxy is explicitly not MarketSmith's proprietary
+RS Rating.
+
+No variant passed every frozen stage gate. The fixed-2R mandatory-blackout
+baseline reproduced 42.78% return / 9.75% drawdown in boundary-purged
+2017-2023, 9.93% / 3.93% in reused 2024, and 28.01% / 13.07% in reused 2025.
+RS proxy >=80 was the only mixed-support result: 18.77% / 16.87% in
+development, 14.73% / 3.21% in 2024, and 31.48% / 14.62% in 2025. It failed
+development and the 2025 largest-winner rule. Higher thresholds were
+non-monotonic; >=85 lost 1.27% in 2025 while >=90 lost 10.81% in development.
+
+The combined technical profile accepted 78, 6, and 12 trades and returned
+6.33%, 2.72%, and 3.51%. Excluding Utilities improved development return to
+13.45% but left only six 2024 trades and slightly reduced 2025 return. Adding
+beta >=0.8 returned 0.73%, 2.29%, and -0.69% and failed every stage gate. These
+overlays remain personal-mandate candidates only, not validated alpha logic.
+Point-in-time fundamental acceleration remains `BLOCKED_DATA_NOT_READY`.
+
+The audit covered all 51 result rows and 2,490 accepted ledger rows: zero
+earnings-blackout violations, zero missing marks, unique signal keys, valid
+proxy score bounds, and reconciled score buckets. Decision: HOLD. Production
+and the immutable forward journal are unchanged; there is no untouched
+holdout.

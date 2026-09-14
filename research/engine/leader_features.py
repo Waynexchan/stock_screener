@@ -13,7 +13,6 @@ LEADER_FEATURE_COLUMNS = (
     "marketsmith_proxy_delta_21d",
     "rs_line",
     "rs_line_within_2pct_252d_high",
-    "industry",
     "industry_proxy_score",
     "up_down_volume_ratio_50d",
     "price_off_252d_high_pct",

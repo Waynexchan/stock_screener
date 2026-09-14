@@ -47,7 +47,17 @@ Fast handoff as of 2026-09-14. Read `AGENTS.md` before this file and `docs/PROJE
   the market gate excluded the 23.51R RGLD outlier path. The exact SMA20 neighbor
   was unstable, and reused 2024 depended heavily on one 10.22R winner. Decision:
   HOLD; no production or immutable-forward-journal change.
-- Branch: `main`, tracking `origin/main`. The five-commit
+- `LEADER_RS_ROBUSTNESS_V1` tested 17 preregistered MarketSmith-style RS,
+  RS-line, current-industry, up/down-volume, technical-profile, Utilities, and
+  beta variants after the mandatory earnings blackout. No variant passed every
+  frozen stage gate. RS proxy >=80 was the sole mixed-support result: it beat
+  baseline return and return/drawdown in reused 2024 and 2025, but development
+  return fell from 42.78% to 18.77%, development drawdown rose from 9.75% to
+  16.87%, and the 2025 result remained outlier-dependent. The combined profile
+  was too sparse; beta >=0.8 weakened it in every period. Fundamental
+  acceleration remains `BLOCKED_DATA_NOT_READY`. Decision: HOLD; production
+  and the immutable forward journal are unchanged.
+- Branch: `codex/leader-rs-backtest`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
   sourced from `Waynexchan/ai-agent-workflow-template`, `VERSION` 1.1.0 at
@@ -71,6 +81,13 @@ Fast handoff as of 2026-09-14. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-leader-RS-result verification on 2026-09-14: PASS — focused research
+verification passed Ruff, mypy, 95 research tests, the expected
+`BLOCKED_DATA_NOT_READY` baseline gate, and production hash isolation. Full
+project verification passed with 284 pytest tests, 118 legacy unittest tests,
+all formatting, typing, industry/report invariant, offline dry-run, and
+generated HTML semantic-validation stages.
 
 Post-market/trailing-cross implementation on 2026-09-14: PASS — Ruff, mypy,
 90 research tests, the expected `BLOCKED_DATA_NOT_READY` baseline gate, and
@@ -232,8 +249,23 @@ exclusion remained worse than baseline. Decision remains `HOLD`; all post-2023
 evidence is reused/contaminated and production is unchanged. See
 `docs/RESEARCH_RESULTS_EARNINGS_BLACKOUT_FULL_RETEST_V1.md`.
 
+`LEADER_RS_ROBUSTNESS_V1` tested 17 frozen leader-selection variants across
+boundary-purged 2017-2023 and reused 2024/2025. No variant reached the
+cross-stage shortlist. A MarketSmith-style proxy >=80 showed mixed later-period
+support but failed development and outlier controls; higher cutoffs were
+non-monotonic. RS-line, current-industry, and up/down-volume confirmations were
+unstable. The combined technical profile surrendered most baseline return, its
+no-Utilities interaction was too sparse, and beta >=0.8 failed every stage
+gate. The proxy is not MarketSmith's proprietary score, classifications are
+current, and there is no untouched holdout. See
+`docs/RESEARCH_RESULTS_LEADER_RS_ROBUSTNESS_V1.md`.
+
 ## Next recommended task
 
-Acquire and provenance-check point-in-time price, benchmark, universe, and delisted-symbol history. Once the data gate is satisfied, run the predeclared **RECENT RS ABLATION** against MODEL_0 without changing production thresholds.
+Acquire and provenance-check point-in-time universe, delisted-symbol,
+classification, earnings-schedule, and fundamental histories. After the data
+gate is satisfied, preregister one simpler leader model for genuinely unseen
+forward data without changing production thresholds.
 
-Do not run the Recent RS experiment or promote any result without explicit instruction and governance review.
+Do not retune the completed leader experiment or promote any result without
+explicit instruction and governance review.

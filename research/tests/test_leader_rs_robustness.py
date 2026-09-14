@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -57,6 +60,74 @@ def test_leader_features_rank_full_archive_before_signal_filter() -> None:
         > result.at["AAA", "industry_proxy_score"]
     )
     assert bool(result.at["AAA", "is_utility"])
+
+
+def test_leader_features_do_not_change_when_future_bar_is_appended() -> None:
+    histories, spy = _histories()
+    signal_date = histories["AAA"].index[-1].date().isoformat()
+    signals = pd.DataFrame([{"signal_date": signal_date, "ticker": "BBC"}])
+    industries = {ticker: "All" for ticker in histories}
+    before = enrich_leader_features(
+        signals,
+        histories,
+        spy,
+        industries=industries,
+        minimum_industry_members=5,
+    ).iloc[0]
+
+    future_date = histories["AAA"].index[-1] + pd.offsets.BDay(1)
+    extended: dict[str, pd.DataFrame] = {}
+    for ticker, history in histories.items():
+        future = pd.DataFrame(
+            {"Close": [history["Close"].iloc[-1] * 100], "Volume": [1.0]},
+            index=[future_date],
+        )
+        extended[ticker] = pd.concat([history, future])
+    extended_spy = pd.concat(
+        [
+            spy,
+            pd.DataFrame({"Close": [spy["Close"].iloc[-1] / 100]}, index=[future_date]),
+        ]
+    )
+    after = enrich_leader_features(
+        signals,
+        extended,
+        extended_spy,
+        industries=industries,
+        minimum_industry_members=5,
+    ).iloc[0]
+
+    for column in (
+        "marketsmith_proxy_score",
+        "marketsmith_proxy_delta_21d",
+        "rs_line",
+        "rs_line_within_2pct_252d_high",
+        "industry_proxy_score",
+        "up_down_volume_ratio_50d",
+        "price_off_252d_high_pct",
+    ):
+        if pd.isna(before[column]):
+            assert pd.isna(after[column])
+        else:
+            assert after[column] == before[column]
+
+
+def test_preregistered_variant_matrix_is_frozen_and_unique() -> None:
+    root = Path(__file__).resolve().parents[2]
+    experiment = json.loads(
+        (root / "research/experiments/leader_rs_robustness_v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    ids = [item["id"] for item in experiment["variants"]]
+    assert len(ids) == experiment["variant_count"] == 17
+    assert len(ids) == len(set(ids))
+    assert ids[0] == "baseline"
+    assert ids[-3:] == [
+        "technical_leader_profile",
+        "technical_leader_no_utilities",
+        "technical_leader_beta_ge_0_8",
+    ]
 
 
 def test_rule_masks_fail_closed_and_variant_inherits_profile() -> None:
