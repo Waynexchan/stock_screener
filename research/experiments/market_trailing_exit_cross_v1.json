@@ -1,0 +1,166 @@
+{
+  "experiment_id": "MARKET_TRAILING_EXIT_CROSS_V1",
+  "status": "PREREGISTERED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH",
+  "iteration_disclosure": "This design follows inspection of the earlier exit, exposure, earnings-blackout, 2024, and 2025 results. Every period is reused or contaminated for this revision; none is independent validation or an untouched holdout.",
+  "hypothesis": "A point-in-time SPY entry gate and a causal ratcheting 20-session moving-average profit-protection stop, activated only after a trade first reaches 2R or 3R, may reduce portfolio drawdown without destroying the return and expectancy of the fixed-2R, structural-stop, 40-session baseline.",
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "development_stability_split": "2020-12-31",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "reused_2024_signal": ["2024-03-01", "2024-10-31"],
+    "reused_2024_outcome_end": "2024-12-31",
+    "reused_2025_signal": ["2025-01-02", "2025-10-31"],
+    "reused_2025_outcome_end": "2025-12-31"
+  },
+  "starting_equity_r": 100.0,
+  "starting_equity_dollars": 58700.0,
+  "standard_r_dollars": 587.0,
+  "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after the close, followed by the mandatory inclusive ten-calendar-day pre-earnings blackout",
+  "entry": "next available session open plus 5 bps adverse slippage",
+  "fixed_trade_plan": {
+    "initial_stop": "signal-date trailing 20-session low",
+    "maximum_holding_sessions": 40,
+    "fixed_profit_target_r": null,
+    "risk_per_trade_r": 1.0,
+    "base_portfolio_heat_r": 2.0,
+    "maximum_positions": 4,
+    "cash_and_notional_model": "Normalized R; no cash or maximum-notional constraint"
+  },
+  "execution": {
+    "exit_slippage_bps": 5.0,
+    "commission_per_share": 0.0,
+    "same_bar_policy": "Initial stop first; a trailing stop cannot activate until the session after the activation threshold was first observed",
+    "stop_gap_fill": "OPEN",
+    "trailing_indicator_availability": "The stop used in session T is calculated only from completed bars through T-1",
+    "trailing_ratchet": "max(initial stop, every prior active trailing-stop level); the stop never loosens"
+  },
+  "market_gate_variants": [
+    {
+      "id": "no_market_gate",
+      "type": "FIXED_HEAT",
+      "maximum_heat_r": 2.0,
+      "complexity": 0,
+      "definition": "Admit signals regardless of SPY trend when other rules pass."
+    },
+    {
+      "id": "spy_above_sma50",
+      "type": "BINARY_GATE",
+      "allow_when": "SPY signal-date adjusted close > signal-date SMA50",
+      "allowed_heat_r": 2.0,
+      "blocked_heat_r": 0.0,
+      "complexity": 1
+    },
+    {
+      "id": "spy_above_sma200",
+      "type": "BINARY_GATE",
+      "allow_when": "SPY signal-date adjusted close > signal-date SMA200",
+      "allowed_heat_r": 2.0,
+      "blocked_heat_r": 0.0,
+      "complexity": 1
+    },
+    {
+      "id": "spy_three_state_heat",
+      "type": "THREE_STATE_HEAT",
+      "normal_heat_r": 2.0,
+      "normal_when": "SPY signal-date adjusted close > EMA20, SMA50, and SMA200",
+      "reduced_heat_r": 1.0,
+      "reduced_when": "SPY signal-date adjusted close > SMA200 but the normal condition is false",
+      "blocked_heat_r": 0.0,
+      "blocked_when": "SPY signal-date adjusted close <= SMA200",
+      "complexity": 2,
+      "disclosure": "This is a reproducible SPY-only proxy for normal/reduced/blocked exposure. It is not the production market-regime model, which also requires QQQ, breadth, breakout, leadership, and volatility inputs."
+    }
+  ],
+  "trailing_exit_variants": [
+    {
+      "id": "no_trailing_stop",
+      "activation_r": null,
+      "moving_average_sessions": null,
+      "atr_sessions": null,
+      "atr_offset": null,
+      "complexity": 0
+    },
+    {
+      "id": "activate_2r_sma20",
+      "activation_r": 2.0,
+      "moving_average_sessions": 20,
+      "atr_sessions": 20,
+      "atr_offset": 0.0,
+      "complexity": 1
+    },
+    {
+      "id": "activate_2r_sma20_minus_0_5atr20",
+      "activation_r": 2.0,
+      "moving_average_sessions": 20,
+      "atr_sessions": 20,
+      "atr_offset": 0.5,
+      "complexity": 1
+    },
+    {
+      "id": "activate_2r_sma20_minus_1_0atr20",
+      "activation_r": 2.0,
+      "moving_average_sessions": 20,
+      "atr_sessions": 20,
+      "atr_offset": 1.0,
+      "complexity": 1
+    },
+    {
+      "id": "activate_3r_sma20",
+      "activation_r": 3.0,
+      "moving_average_sessions": 20,
+      "atr_sessions": 20,
+      "atr_offset": 0.0,
+      "complexity": 1
+    },
+    {
+      "id": "activate_3r_sma20_minus_0_5atr20",
+      "activation_r": 3.0,
+      "moving_average_sessions": 20,
+      "atr_sessions": 20,
+      "atr_offset": 0.5,
+      "complexity": 1
+    },
+    {
+      "id": "activate_3r_sma20_minus_1_0atr20",
+      "activation_r": 3.0,
+      "moving_average_sessions": 20,
+      "atr_sessions": 20,
+      "atr_offset": 1.0,
+      "complexity": 1
+    }
+  ],
+  "combination_count": 28,
+  "stage_gate": {
+    "development": {
+      "maximum_drawdown_pct_at_most": 10.0,
+      "total_return_pct_above": 0.0,
+      "expectancy_per_trade_r_above": 0.0,
+      "profit_factor_at_least": 1.2,
+      "accepted_trade_count_at_least": 100,
+      "missing_mark_count": 0,
+      "early_period_return_pct_above": 0.0,
+      "late_period_return_pct_above": 0.0
+    },
+    "reused_period": {
+      "maximum_drawdown_pct_at_most": 10.0,
+      "total_return_pct_above": 0.0,
+      "expectancy_per_trade_r_above": 0.0,
+      "profit_factor_at_least": 1.1,
+      "accepted_trade_count_at_least": 8,
+      "missing_mark_count": 0
+    }
+  },
+  "comparison_plan": "For each market gate, compare every trailing variant with the no-trailing variant on the same stage. Also compare every cell with the no-market/no-trailing fixed-2R baseline. Report total return, CAGR, maximum daily open/close mark-to-market drawdown, expectancy, profit factor, win rate, payoff, trade count, heat, holding time, exit reasons, market-state admissions, and deltas. A return-improvement claim requires higher total return than the same-market no-trailing baseline in development, reused 2024, and reused 2025; mixed results must be labelled mixed.",
+  "decision_rule": "Report all 28 cells across all three reused stages. End with HOLD, REVISE, or REJECT; do not advance to a new forward test or production because there is no independent validation or untouched holdout and the archives are biased.",
+  "constraints": [
+    "Apply the earnings blackout before execution and portfolio allocation",
+    "Use market information available on the signal date only",
+    "A market heat reduction blocks new risk above the new limit but never force-closes an existing valid trade",
+    "Do not activate a trailing stop on the same bar that first reaches its activation threshold",
+    "Do not overwrite any earlier experiment or result",
+    "Do not change production or the immutable forward journal"
+  ]
+}
