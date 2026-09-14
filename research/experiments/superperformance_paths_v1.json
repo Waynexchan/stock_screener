@@ -1,0 +1,106 @@
+{
+  "experiment_id": "SUPERPERFORMANCE_PATHS_V1",
+  "status": "PREREGISTERED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-BIASED RESEARCH; NO UNTOUCHED HOLDOUT",
+  "hypothesis": "Separately defined causal breakout, pullback, tight-base, and young-leader paths plus ranking and a blue-sky target exception may retain more superperformance winners than MODEL_0 or an overconstrained all-feature conjunction.",
+  "parity_limit": "Mechanical translation of observable production concepts, not exact production parity; historical manual entry decisions and required point-in-time datasets are unavailable.",
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "development_stability_split": "2020-12-31",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "reused_2024_signal": ["2024-03-01", "2024-10-31"],
+    "reused_2024_outcome_end": "2024-12-31",
+    "reused_2025_signal": ["2025-01-02", "2025-10-31"],
+    "reused_2025_outcome_end": "2025-12-31"
+  },
+  "execution": {
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date trailing 20-session low",
+    "target_r": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "favorable_gap_fill": "LEVEL",
+    "earnings_blackout_calendar_days": 10
+  },
+  "portfolio": {
+    "type": "FIXED",
+    "maximum_heat_r": 2.0,
+    "risk_per_trade_r": 1.0,
+    "maximum_positions": 4,
+    "starting_equity_r": 100.0,
+    "default_candidate_order": "entry_date, signal_date, ticker"
+  },
+  "signal_thresholds": {
+    "mature_minimum_history_sessions": 220,
+    "young_minimum_history_sessions": 90,
+    "young_maximum_history_sessions": 219,
+    "min_price": 10.0,
+    "min_average_volume_50d": 500000.0,
+    "mature_breakout_volume_ratio_min": 0.9,
+    "mature_breakout_close_location_min": 60.0,
+    "mature_breakout_body_pct_min": 25.0,
+    "quality_breakout_volume_ratio_min": 1.5,
+    "quality_breakout_close_location_min": 75.0,
+    "tight_prior_range_10d_pct_max": 8.0,
+    "tight_prior_adr20_to_adr60_max": 0.8,
+    "tight_prior_volume_10_to_40_max": 0.8,
+    "young_near_high_pct_max": 15.0,
+    "young_rs_min": 80.0
+  },
+  "ranking": {
+    "applicable_rs_weight": 0.4,
+    "volume_quality_weight": 0.2,
+    "close_location_weight": 0.15,
+    "inverse_range_weight": 0.15,
+    "blue_sky_weight": 0.1
+  },
+  "variants": [
+    {"id": "baseline", "path": "model_0"},
+    {"id": "mature_breakout", "path": "mature_breakout"},
+    {"id": "mature_breakout_observed_2r", "path": "mature_breakout_observed_2r"},
+    {"id": "mature_breakout_blue_sky", "path": "mature_breakout_blue_sky"},
+    {"id": "mature_breakout_observed_or_blue_sky", "path": "mature_breakout_observed_or_blue_sky", "parent": "mature_breakout_observed_2r"},
+    {"id": "quality_breakout", "path": "quality_breakout"},
+    {"id": "quality_breakout_production_rs", "path": "quality_breakout_production_rs"},
+    {"id": "quality_breakout_ranked_rs", "path": "quality_breakout", "candidate_order": "APPLICABLE_RS"},
+    {"id": "quality_breakout_ranked_superperformance", "path": "quality_breakout", "candidate_order": "SUPERPERFORMANCE"},
+    {"id": "tight_base_breakout", "path": "tight_base_breakout"},
+    {"id": "constructive_pullback", "path": "constructive_pullback"},
+    {"id": "young_leader_breakout", "path": "young_leader_breakout"},
+    {"id": "young_leader_breakout_rs80", "path": "young_leader_breakout_rs80"},
+    {"id": "multi_path_union", "path": "multi_path_union"},
+    {"id": "multi_path_production_rs", "path": "multi_path_production_rs"},
+    {"id": "multi_path_ranked_superperformance", "path": "multi_path_union", "candidate_order": "SUPERPERFORMANCE"},
+    {"id": "blue_sky_2r_sma20_minus_1atr", "path": "mature_breakout_blue_sky", "exit_mode": "ACTIVATE_2R_SMA20_MINUS_1ATR"},
+    {"id": "multi_path_ranked_2r_sma20_minus_1atr", "path": "multi_path_union", "candidate_order": "SUPERPERFORMANCE", "exit_mode": "ACTIVATE_2R_SMA20_MINUS_1ATR"}
+  ],
+  "variant_count": 18,
+  "stage_gates": {
+    "development": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.2, "accepted_trade_count_at_least": 75, "missing_mark_count": 0, "early_period_return_pct_above": 0.0, "late_period_return_pct_above": 0.0},
+    "reused_period": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.1, "accepted_trade_count_at_least": 8, "missing_mark_count": 0}
+  },
+  "cross_stage_shortlist": {
+    "absolute_stage_gate_pass_required": ["development_2017_2023", "reused_2024", "reused_2025"],
+    "total_return_beats_baseline_in_at_least_periods": 2,
+    "return_to_drawdown_beats_baseline_in_at_least_periods": 2,
+    "largest_winner_positive_pnl_contribution_at_most": 0.5
+  },
+  "blocked_components": [
+    "point-in-time fundamentals",
+    "point-in-time universe membership and delistings",
+    "effective-dated classifications",
+    "point-in-time earnings schedule",
+    "historical manual entry decisions"
+  ],
+  "decision_rule": "Report all variants and frozen parent comparisons. With no independent validation or untouched holdout, a numerical pass remains HOLD and cannot authorize production change.",
+  "constraints": [
+    "Preregister before implementation outcomes are inspected",
+    "Use only information observable through signal close",
+    "Apply earnings blackout before selection, ranking, or allocation",
+    "Do not tune thresholds after outcomes",
+    "Do not alter production or immutable forward snapshots"
+  ]
+}
