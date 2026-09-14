@@ -149,17 +149,23 @@ def _stage(
         execution_signals = selected
         execution_map = independent
         if execution_mode == "DELAYED_FOLLOWTHROUGH_3D":
-            execution_signals = delayed_followthrough_signals(
+            confirmation_candidates = delayed_followthrough_signals(
                 selected,
                 histories,
                 maximum_confirmation_sessions=3,
                 signal_period_end=signal_period[1],
             )
-            confirmation_count = len(execution_signals)
+            confirmation_candidates.to_csv(
+                stage_dir / "delayed_confirmation_candidates.csv", index=False
+            )
+            confirmation_count = len(confirmation_candidates)
             execution_signals, confirmation_rejected = (
                 apply_earnings_blackout_to_signals(
-                    execution_signals, blackout, blackout_calendar_days=10
+                    confirmation_candidates, blackout, blackout_calendar_days=10
                 )
+            )
+            execution_signals.to_csv(
+                stage_dir / "delayed_confirmation_earnings_eligible.csv", index=False
             )
             confirmation_rejection_count = len(confirmation_rejected)
             confirmation_rejected.to_csv(
