@@ -55,7 +55,12 @@
     "volume_quality_weight": 0.2,
     "close_location_weight": 0.15,
     "inverse_range_weight": 0.15,
-    "blue_sky_weight": 0.1
+    "blue_sky_weight": 0.1,
+    "applicable_rs_definition": "completed 12-month proxy for mature paths; 60% 63-day plus 40% 20-day cross-sectional 1-99 score for young paths",
+    "volume_quality_definition": "clip(volume_ratio / 2 * 100, 0, 100)",
+    "close_location_definition": "clip(close_location_pct, 0, 100)",
+    "inverse_range_definition": "clip(100 - 5 * prior_10_session_range_pct, 0, 100)",
+    "blue_sky_definition": "100 when blue-sky breakout else 0"
   },
   "variants": [
     {"id": "baseline", "path": "model_0"},

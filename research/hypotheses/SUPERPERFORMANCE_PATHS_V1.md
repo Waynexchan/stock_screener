@@ -63,6 +63,13 @@ The production-style RS gate is frozen as Recent RS at least 70 with an
 acceptable causal trend, or Recent RS 60-69.99 with an Improving/Emerging
 trend. Young-leader RS is a separate 1-99 cross-sectional score of 60% 63-day
 and 40% 20-day return because a 12-month score is structurally unavailable.
+The causal trend labels reproduce the production thresholds: Emerging requires
+Recent RS at least 80, positive 20-day relative return, and acceleration at
+least 0.02 percentage points; Improving requires Recent RS at least 60 and
+positive acceleration; Stable Leader requires Long-Term RS at least 80, Recent
+RS at least 70, and absolute acceleration below 0.02; a mature leader is
+Weakening when Long-Term RS is at least 75 and either acceleration is negative
+or 20-day relative return is non-positive.
 
 ## Frozen ranking
 
@@ -81,6 +88,12 @@ outcomes as:
 The score changes order only; it is not a hard gate. Missing components receive
 zero contribution rather than a plausible imputation, and their count is
 reported.
+
+Applicable RS is the completed 12-month proxy for mature paths and the young-RS
+score for young paths. Volume quality is `clip(volume_ratio / 2 * 100, 0, 100)`;
+close location is clipped to 0-100; inverse-range quality is
+`clip(100 - 5 * prior_10_session_range_pct, 0, 100)`; and the blue-sky
+indicator is either zero or 100.
 
 ## Frozen variants
 
