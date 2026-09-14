@@ -205,6 +205,17 @@ drawdown, but is not independently validated. Decision remains `HOLD`; no
 production or immutable-forward-journal change. See
 `docs/RESEARCH_RESULTS_STAIRCASE_EXPOSURE_ROBUSTNESS_V2.md`.
 
+`EARNINGS_BLACKOUT_FULL_RETEST_V1` now recalculates all 385 earlier settings
+that lacked the user's mandatory zero-to-ten-calendar-day pre-earnings entry
+blackout. The rule is applied before filters, execution, candidate order, and
+portfolio allocation. No 180-cell combination passed. Two of the 168 simple
+cells passed development and reused 2024—20-day-low stop, fixed 2R, and either
+30- or 40-session no-target exits—but both exceeded 12.8% drawdown in reused
+2025. The previous Utilities-exclusion benefit reversed and the low-beta
+exclusion remained worse than baseline. Decision remains `HOLD`; all post-2023
+evidence is reused/contaminated and production is unchanged. See
+`docs/RESEARCH_RESULTS_EARNINGS_BLACKOUT_FULL_RETEST_V1.md`.
+
 ## Next recommended task
 
 Acquire and provenance-check point-in-time price, benchmark, universe, and delisted-symbol history. Once the data gate is satisfied, run the predeclared **RECENT RS ABLATION** against MODEL_0 without changing production thresholds.

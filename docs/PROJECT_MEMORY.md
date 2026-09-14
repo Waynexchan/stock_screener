@@ -389,3 +389,36 @@ Post-result focused verification passed 79 research tests, the expected
 data-readiness gate, and production hash isolation. Full-project verification
 passed 268 pytest tests, 118 legacy unittest tests, industry/report invariants,
 the offline sample dry run, and generated HTML semantic validation.
+
+## 2026-09-14 mandatory-earnings-blackout full retest
+
+The user's real execution rule is now available across every historical
+research runner: reject a signal when a retrospective earnings event is zero
+through ten calendar days later, inclusive. Filtering occurs before filter
+selection, execution, candidate ordering, capacity allocation, and dynamic
+exposure transitions. Hash or coverage failure stops the run. Original results
+are preserved.
+
+`EARNINGS_BLACKOUT_FULL_RETEST_V1` preregistered and recalculated 385 settings:
+8 filter configurations, 20 stop/exit cells, 9 standalone exposure policies,
+180 full-cross cells, and 168 easy-execution cells. The boundary-purged
+development universe lost 3,996 of 29,452 signals. A 163,076-row accepted-ledger
+audit found zero blackout violations and all daily portfolio results had zero
+missing marks.
+
+No 180-cell combination passed. In the 168-cell simple grid, 20-day-low stop,
+fixed 2R, and no-target 30- or 40-session exits passed development and reused
+2024. Both failed reused 2025 at 12.86% and 13.07% maximum drawdown. The
+blackout also reversed the earlier apparent Utilities-exclusion advantage;
+excluding beta below 0.8 remained worse than baseline. Decision: HOLD. The
+2024/2025 samples are `REUSED_CONTAMINATED`, there is no untouched holdout, and
+production plus the immutable forward journal remain unchanged.
+
+Preregistration commit: `a677f75`. The final labelled run used clean commit
+`e933f16`. Generated results are under
+`research/output/earnings_blackout_full_retest_v1/`.
+
+Post-result focused verification passed 81 research tests, the expected
+data-readiness gate, and production hash isolation. Full-project verification
+passed 270 pytest tests, 118 legacy unittest tests, industry/report invariants,
+the offline sample dry run, and generated HTML semantic validation.
