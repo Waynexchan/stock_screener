@@ -11,9 +11,17 @@ import pandas as pd
 LEADER_FEATURE_COLUMNS = (
     "marketsmith_proxy_score",
     "marketsmith_proxy_delta_21d",
+    "marketsmith_proxy_delta_63d",
     "rs_line",
     "rs_line_within_2pct_252d_high",
+    "rs_line_new_252d_high",
+    "price_new_252d_high",
+    "rs_line_leads_price_252d_high",
     "industry_proxy_score",
+    "stock_within_industry_score",
+    "industry_breadth_ge80_pct",
+    "industry_breadth_delta_21d",
+    "industry_breadth_delta_63d",
     "up_down_volume_ratio_50d",
     "price_off_252d_high_pct",
 )
@@ -90,6 +98,7 @@ def leader_feature_panels(
     raw = 0.40 * q1 + 0.20 * q2 + 0.20 * q3 + 0.20 * q4
     proxy_score = _score_1_to_99(raw)
     proxy_delta = proxy_score - proxy_score.shift(21)
+    proxy_delta_63 = proxy_score - proxy_score.shift(63)
 
     spy = pd.to_numeric(benchmark["Close"], errors="coerce").copy()
     spy.index = pd.to_datetime(spy.index)
@@ -97,9 +106,14 @@ def leader_feature_panels(
     rs_line = closes.div(spy, axis=0)
     rs_line_high = rs_line.rolling(252, min_periods=252).max()
     rs_line_near_high = rs_line.ge(rs_line_high * 0.98)
+    rs_line_prior_high = rs_line.shift(1).rolling(251, min_periods=251).max()
+    rs_line_new_high = rs_line.gt(rs_line_prior_high)
 
     price_high = closes.rolling(252, min_periods=252).max()
     price_off_high = (price_high - closes).div(price_high) * 100
+    price_prior_high = closes.shift(1).rolling(251, min_periods=251).max()
+    price_new_high = closes.gt(price_prior_high)
+    rs_line_leads_price = rs_line_new_high & ~price_new_high
 
     changes = closes.pct_change(fill_method=None)
     valid_50 = (
@@ -110,6 +124,10 @@ def leader_feature_panels(
     up_down_ratio = up_volume.div(down_volume).where(valid_50 & down_volume.gt(0))
 
     industry_medians: dict[str, pd.Series] = {}
+    stock_industry_scores = pd.DataFrame(
+        np.nan, index=proxy_score.index, columns=proxy_score.columns
+    )
+    industry_breadth: dict[str, pd.Series] = {}
     for industry in sorted({value for value in industries.values() if value}):
         members = [
             ticker
@@ -123,11 +141,28 @@ def leader_feature_panels(
             member_scores.count(axis=1).ge(minimum_industry_members)
         )
         industry_medians[industry] = median
+        valid_count = member_scores.count(axis=1)
+        breadth = member_scores.ge(80).sum(axis=1).div(valid_count).mul(100)
+        industry_breadth[industry] = breadth.where(
+            valid_count.ge(minimum_industry_members)
+        )
+        ranked_members = _score_1_to_99(member_scores).where(
+            valid_count.ge(minimum_industry_members), axis=0
+        )
+        stock_industry_scores.loc[:, members] = ranked_members
     industry_raw = pd.DataFrame(industry_medians, index=proxy_score.index)
     industry_scores = _score_1_to_99(industry_raw)
-    stock_industry_scores = pd.DataFrame(
+    stock_industry_proxy_scores = pd.DataFrame(
         {
             ticker: industry_scores.get(industries.get(str(ticker), ""))
+            for ticker in proxy_score.columns
+        },
+        index=proxy_score.index,
+    )
+    industry_breadth_frame = pd.DataFrame(industry_breadth, index=proxy_score.index)
+    stock_industry_breadth = pd.DataFrame(
+        {
+            ticker: industry_breadth_frame.get(industries.get(str(ticker), ""))
             for ticker in proxy_score.columns
         },
         index=proxy_score.index,
@@ -136,9 +171,19 @@ def leader_feature_panels(
     return {
         "marketsmith_proxy_score": proxy_score,
         "marketsmith_proxy_delta_21d": proxy_delta,
+        "marketsmith_proxy_delta_63d": proxy_delta_63,
         "rs_line": rs_line,
         "rs_line_within_2pct_252d_high": rs_line_near_high,
-        "industry_proxy_score": stock_industry_scores,
+        "rs_line_new_252d_high": rs_line_new_high,
+        "price_new_252d_high": price_new_high,
+        "rs_line_leads_price_252d_high": rs_line_leads_price,
+        "industry_proxy_score": stock_industry_proxy_scores,
+        "stock_within_industry_score": stock_industry_scores,
+        "industry_breadth_ge80_pct": stock_industry_breadth,
+        "industry_breadth_delta_21d": stock_industry_breadth
+        - stock_industry_breadth.shift(21),
+        "industry_breadth_delta_63d": stock_industry_breadth
+        - stock_industry_breadth.shift(63),
         "up_down_volume_ratio_50d": up_down_ratio,
         "price_off_252d_high_pct": price_off_high,
     }
@@ -170,9 +215,13 @@ def enrich_leader_features(
     )
     for column, panel in panels.items():
         result[column] = _lookup(panel, result)
-    result["rs_line_within_2pct_252d_high"] = (
-        result["rs_line_within_2pct_252d_high"].fillna(False).astype(bool)
-    )
+    for column in (
+        "rs_line_within_2pct_252d_high",
+        "rs_line_new_252d_high",
+        "price_new_252d_high",
+        "rs_line_leads_price_252d_high",
+    ):
+        result[column] = result[column].fillna(False).astype(bool)
     result["sector"] = result["ticker"].map(sector_map).fillna("")
     result["industry"] = result["ticker"].map(industry_map).fillna("")
     result["is_utility"] = result["sector"].str.casefold().eq("utilities")

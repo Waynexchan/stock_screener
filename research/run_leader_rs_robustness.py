@@ -53,11 +53,21 @@ def parser() -> argparse.ArgumentParser:
 def rule_mask(frame: pd.DataFrame, rule: dict[str, Any]) -> pd.Series:
     """Evaluate one preregistered rule and fail closed on missing values."""
 
-    values = frame[rule["column"]]
     operator = str(rule["operator"])
+    if operator == "any":
+        nested = rule.get("rules")
+        if not isinstance(nested, list) or not nested:
+            raise ValueError("any rule requires a non-empty rules list")
+        mask = pd.Series(False, index=frame.index, dtype=bool)
+        for child in nested:
+            mask |= rule_mask(frame, child)
+        return mask
+    values = frame[rule["column"]]
     target = rule.get("value")
     if operator == ">=":
         return pd.to_numeric(values, errors="coerce").ge(float(target)).fillna(False)
+    if operator == ">":
+        return pd.to_numeric(values, errors="coerce").gt(float(target)).fillna(False)
     if operator == "<=":
         return pd.to_numeric(values, errors="coerce").le(float(target)).fillna(False)
     if operator == "between":

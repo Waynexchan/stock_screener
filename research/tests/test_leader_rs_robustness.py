@@ -59,7 +59,29 @@ def test_leader_features_rank_full_archive_before_signal_filter() -> None:
         result.at["BBC", "industry_proxy_score"]
         > result.at["AAA", "industry_proxy_score"]
     )
+    assert result.at["BBC", "stock_within_industry_score"] == 99
+    assert result.at["BBC", "industry_breadth_ge80_pct"] > 0
     assert bool(result.at["AAA", "is_utility"])
+
+
+def test_rs_line_new_high_can_lead_price_high() -> None:
+    histories, spy = _histories()
+    signal_date = histories["BBC"].index[-1].date().isoformat()
+    previous_high = float(histories["BBC"]["Close"].iloc[:-1].max())
+    histories["BBC"].iloc[-1, histories["BBC"].columns.get_loc("Close")] = (
+        previous_high * 0.99
+    )
+    spy.iloc[-1, spy.columns.get_loc("Close")] = float(spy["Close"].iloc[-2]) * 0.01
+    result = enrich_leader_features(
+        pd.DataFrame([{"signal_date": signal_date, "ticker": "BBC"}]),
+        histories,
+        spy,
+        industries={ticker: "All" for ticker in histories},
+        minimum_industry_members=5,
+    ).iloc[0]
+    assert bool(result["rs_line_new_252d_high"])
+    assert not bool(result["price_new_252d_high"])
+    assert bool(result["rs_line_leads_price_252d_high"])
 
 
 def test_leader_features_do_not_change_when_future_bar_is_appended() -> None:
@@ -100,9 +122,17 @@ def test_leader_features_do_not_change_when_future_bar_is_appended() -> None:
     for column in (
         "marketsmith_proxy_score",
         "marketsmith_proxy_delta_21d",
+        "marketsmith_proxy_delta_63d",
         "rs_line",
         "rs_line_within_2pct_252d_high",
+        "rs_line_new_252d_high",
+        "price_new_252d_high",
+        "rs_line_leads_price_252d_high",
         "industry_proxy_score",
+        "stock_within_industry_score",
+        "industry_breadth_ge80_pct",
+        "industry_breadth_delta_21d",
+        "industry_breadth_delta_63d",
         "up_down_volume_ratio_50d",
         "price_off_252d_high_pct",
     ):
@@ -141,6 +171,19 @@ def test_rule_masks_fail_closed_and_variant_inherits_profile() -> None:
     assert rule_mask(
         frame, {"column": "score", "operator": ">=", "value": 85}
     ).tolist() == [True, False, False]
+    assert rule_mask(
+        frame, {"column": "score", "operator": ">", "value": 75}
+    ).tolist() == [True, False, False]
+    assert rule_mask(
+        frame,
+        {
+            "operator": "any",
+            "rules": [
+                {"column": "score", "operator": ">=", "value": 85},
+                {"column": "utility", "operator": "is_true"},
+            ],
+        },
+    ).tolist() == [True, False, True]
     variants = [
         {
             "id": "profile",

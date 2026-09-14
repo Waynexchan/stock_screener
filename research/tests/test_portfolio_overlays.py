@@ -190,6 +190,60 @@ def test_fixed_heat_rejects_excess_same_session_candidates() -> None:
     assert metrics["payoff_ratio"] == 2.0
 
 
+def test_candidate_priority_controls_same_session_capacity() -> None:
+    trades = [trade("AAA"), trade("BBB"), trade("CCC")]
+    prices = {
+        ticker: history(
+            [
+                ("2026-01-05", 100.0, 100.0),
+                ("2026-01-06", 100.0, 100.0),
+                ("2026-01-07", 100.0, 100.0),
+            ]
+        )
+        for ticker in ("AAA", "BBB", "CCC")
+    }
+    priorities = {
+        ("2026-01-02", "AAA"): (3.0,),
+        ("2026-01-02", "BBB"): (2.0,),
+        ("2026-01-02", "CCC"): (1.0,),
+    }
+    _, ledger, _ = simulate_portfolio_overlay(
+        trades,
+        prices,
+        pd.bdate_range("2026-01-05", "2026-01-07"),
+        fixed_policy(2.0),
+        candidate_priority_by_signal_ticker=priorities,
+    )
+    assert ledger["ticker"].tolist() == ["CCC", "BBB"]
+
+
+def test_per_candidate_half_risk_allows_four_positions_inside_two_r_heat() -> None:
+    tickers = ("AAA", "BBB", "CCC", "DDD", "EEE")
+    trades = [trade(ticker) for ticker in tickers]
+    prices = {
+        ticker: history(
+            [
+                ("2026-01-05", 100.0, 100.0),
+                ("2026-01-06", 100.0, 100.0),
+                ("2026-01-07", 100.0, 100.0),
+            ]
+        )
+        for ticker in tickers
+    }
+    risks = {("2026-01-02", ticker): 0.5 for ticker in tickers}
+    metrics, ledger, _ = simulate_portfolio_overlay(
+        trades,
+        prices,
+        pd.bdate_range("2026-01-05", "2026-01-07"),
+        fixed_policy(2.0),
+        risk_per_trade_by_signal_ticker=risks,
+    )
+    assert ledger["ticker"].tolist() == ["AAA", "BBB", "CCC", "DDD"]
+    assert ledger["allocated_r"].tolist() == [0.5, 0.5, 0.5, 0.5]
+    assert metrics["maximum_heat_r"] == 2.0
+    assert metrics["rejection_reasons"] == {"MAX_POSITIONS": 1}
+
+
 def test_last_exit_batch_win_expands_and_loss_contracts_next_session() -> None:
     policy = {
         "type": "LAST_EXIT_BATCH",

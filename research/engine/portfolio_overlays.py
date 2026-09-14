@@ -149,15 +149,64 @@ def simulate_portfolio_overlay(
     maximum_positions: int = 4,
     entry_heat_limit_by_signal_date: Mapping[str, float] | None = None,
     market_state_by_signal_date: Mapping[str, str] | None = None,
+    candidate_priority_by_signal_ticker: Mapping[tuple[str, str], tuple[float, ...]]
+    | None = None,
+    risk_per_trade_by_signal_ticker: Mapping[tuple[str, str], float] | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
     """Allocate trades and calculate a daily mark-to-market equity curve."""
 
     if starting_equity_r <= 0 or maximum_positions <= 0:
         raise ValueError("starting equity and maximum positions must be positive")
+
+    def trade_key(trade: SimulatedTrade) -> tuple[str, str]:
+        return trade.signal_date, trade.ticker
+
+    if candidate_priority_by_signal_ticker is not None:
+        missing_priorities = sorted(
+            trade_key(trade)
+            for trade in trades
+            if trade_key(trade) not in candidate_priority_by_signal_ticker
+        )
+        if missing_priorities:
+            raise ValueError(
+                "candidate priority missing for signal/ticker keys: "
+                + ", ".join(
+                    f"{date}/{ticker}" for date, ticker in missing_priorities[:5]
+                )
+            )
+    if risk_per_trade_by_signal_ticker is not None:
+        missing_risk = sorted(
+            trade_key(trade)
+            for trade in trades
+            if trade_key(trade) not in risk_per_trade_by_signal_ticker
+        )
+        if missing_risk:
+            raise ValueError(
+                "trade risk missing for signal/ticker keys: "
+                + ", ".join(f"{date}/{ticker}" for date, ticker in missing_risk[:5])
+            )
+        invalid_risk = sorted(
+            trade_key(trade)
+            for trade in trades
+            if not np.isfinite(risk_per_trade_by_signal_ticker[trade_key(trade)])
+            or float(risk_per_trade_by_signal_ticker[trade_key(trade)]) <= 0
+        )
+        if invalid_risk:
+            raise ValueError(
+                "trade risk is invalid for signal/ticker keys: "
+                + ", ".join(f"{date}/{ticker}" for date, ticker in invalid_risk[:5])
+            )
+
+    def sort_key(trade: SimulatedTrade) -> tuple[Any, ...]:
+        priority = (
+            candidate_priority_by_signal_ticker[trade_key(trade)]
+            if candidate_priority_by_signal_ticker is not None
+            else ()
+        )
+        return (trade.entry_date, *priority, trade.signal_date, trade.ticker)
+
     candidates: dict[pd.Timestamp, list[SimulatedTrade]] = defaultdict(list)
-    for trade in sorted(
-        trades, key=lambda item: (item.entry_date, item.signal_date, item.ticker)
-    ):
+    for trade in sorted(trades, key=sort_key):
         candidates[pd.Timestamp(trade.entry_date)].append(trade)
     if entry_heat_limit_by_signal_date is not None:
         missing_dates = sorted(
@@ -244,8 +293,16 @@ def simulate_portfolio_overlay(
             dynamic_heat_r=dynamic_heat_r,
         )
         for trade in candidates.get(pd.Timestamp(session), []):
+            trade_risk_r = (
+                min(
+                    risk_per_trade_r,
+                    float(risk_per_trade_by_signal_ticker[trade_key(trade)]),
+                )
+                if risk_per_trade_by_signal_ticker is not None
+                else risk_per_trade_r
+            )
             current_heat = sum(item.allocated_r for item in open_trades)
-            if risk_per_trade_r <= 0:
+            if trade_risk_r <= 0:
                 rejection_reasons["STOP_NEW_RISK"] += 1
                 continue
             entry_heat_limit = (
@@ -265,14 +322,14 @@ def simulate_portfolio_overlay(
             if len(open_trades) >= maximum_positions:
                 rejection_reasons["MAX_POSITIONS"] += 1
                 continue
-            if current_heat + risk_per_trade_r > entry_heat_limit + 1e-12:
+            if current_heat + trade_risk_r > entry_heat_limit + 1e-12:
                 rejection_reasons[
                     "MAX_HEAT"
                     if entry_heat_limit_by_signal_date is None
                     else "MARKET_HEAT"
                 ] += 1
                 continue
-            allocated = AllocatedTrade(trade=trade, allocated_r=risk_per_trade_r)
+            allocated = AllocatedTrade(trade=trade, allocated_r=trade_risk_r)
             open_trades.append(allocated)
             accepted.append(allocated)
         peak_heat_r = sum(item.allocated_r for item in open_trades)
