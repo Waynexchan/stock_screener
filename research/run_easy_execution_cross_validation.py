@@ -517,7 +517,14 @@ def main(argv: list[str] | None = None) -> int:
     validation_results: list[dict[str, Any]] = []
     validation_baseline: dict[str, Any] | None = None
     if selected:
-        print("Discovery selection frozen; beginning 2024 validation", flush=True)
+        print(
+            (
+                "Discovery selection frozen; beginning reused 2024 robustness"
+                if blackout_context is not None
+                else "Discovery selection frozen; beginning 2024 validation"
+            ),
+            flush=True,
+        )
         validation_signals = _stage_signals(
             histories, model_config, *periods["validation_signal"]
         )
@@ -561,13 +568,24 @@ def main(argv: list[str] | None = None) -> int:
                 maximum_positions=maximum_positions,
                 output_dir=validation_dir,
             )
-            result["role"] = (
-                "SELECTED_AND_BASELINE"
-                if cell_id in selected_ids and cell_id == baseline_cell_id
-                else "SELECTED"
-                if cell_id in selected_ids
-                else "BASELINE"
-            )
+            if blackout_context is not None:
+                result["stage"] = "REUSED_2024_ROBUSTNESS"
+            if blackout_context is not None:
+                result["role"] = (
+                    "REUSED_SELECTED_AND_BASELINE"
+                    if cell_id in selected_ids and cell_id == baseline_cell_id
+                    else "REUSED_SELECTED"
+                    if cell_id in selected_ids
+                    else "REUSED_BASELINE"
+                )
+            else:
+                result["role"] = (
+                    "SELECTED_AND_BASELINE"
+                    if cell_id in selected_ids and cell_id == baseline_cell_id
+                    else "SELECTED"
+                    if cell_id in selected_ids
+                    else "BASELINE"
+                )
             result["passes_gate"] = (
                 meets_validation_gate(result, experiment["validation_gate"])
                 if cell_id in selected_ids
@@ -580,7 +598,17 @@ def main(argv: list[str] | None = None) -> int:
         _add_baseline_deltas(validation_results, validation_baseline)
     validation_payload = {
         "calculated_after_discovery_selection_was_written": True,
-        "evaluated": bool(selected),
+        "evaluated_as_independent_validation": bool(selected)
+        and blackout_context is None,
+        "calculated_as_reused_robustness": bool(selected)
+        and blackout_context is not None,
+        "sample_status": (
+            "REUSED_CONTAMINATED"
+            if blackout_context is not None
+            else "EVALUATED_ONCE"
+            if selected
+            else "NOT_EVALUATED"
+        ),
         "selected_candidate_count": len(selected),
         "results": validation_results,
         "pre_blackout_signal_count": (validation_pre_blackout_count if selected else 0),
@@ -596,13 +624,26 @@ def main(argv: list[str] | None = None) -> int:
     validation_passes = [
         row
         for row in validation_results
-        if row.get("role") in {"SELECTED", "SELECTED_AND_BASELINE"}
+        if row.get("role")
+        in {
+            "SELECTED",
+            "SELECTED_AND_BASELINE",
+            "REUSED_SELECTED",
+            "REUSED_SELECTED_AND_BASELINE",
+        }
         and row.get("passes_gate") is True
     ]
     holdout_results: list[dict[str, Any]] = []
     holdout_evaluated = bool(validation_passes)
     if holdout_evaluated:
-        print("2024 gate passed; beginning one-time 2025 holdout", flush=True)
+        print(
+            (
+                "Reused 2024 gate passed; beginning reused 2025 robustness"
+                if blackout_context is not None
+                else "2024 gate passed; beginning one-time 2025 holdout"
+            ),
+            flush=True,
+        )
         holdout_signals = _stage_signals(
             histories, model_config, *periods["holdout_signal"]
         )
@@ -636,13 +677,26 @@ def main(argv: list[str] | None = None) -> int:
                 maximum_positions=maximum_positions,
                 output_dir=holdout_dir,
             )
-            result["role"] = (
-                "VALIDATED_AND_BASELINE"
-                if cell_id in passing_ids and cell_id == validation_baseline["cell_id"]
-                else "VALIDATED_CANDIDATE"
-                if cell_id in passing_ids
-                else "BASELINE"
-            )
+            if blackout_context is not None:
+                result["stage"] = "REUSED_2025_ROBUSTNESS"
+            if blackout_context is not None:
+                result["role"] = (
+                    "REUSED_CANDIDATE_AND_BASELINE"
+                    if cell_id in passing_ids
+                    and cell_id == validation_baseline["cell_id"]
+                    else "REUSED_CANDIDATE"
+                    if cell_id in passing_ids
+                    else "REUSED_BASELINE"
+                )
+            else:
+                result["role"] = (
+                    "VALIDATED_AND_BASELINE"
+                    if cell_id in passing_ids
+                    and cell_id == validation_baseline["cell_id"]
+                    else "VALIDATED_CANDIDATE"
+                    if cell_id in passing_ids
+                    else "BASELINE"
+                )
             result["passes_gate"] = meets_validation_gate(
                 result, experiment["validation_gate"]
             )
@@ -652,9 +706,21 @@ def main(argv: list[str] | None = None) -> int:
         )
         _add_baseline_deltas(holdout_results, holdout_baseline)
     holdout_payload = {
-        "evaluated": holdout_evaluated,
+        "evaluated_as_untouched_holdout": holdout_evaluated
+        and blackout_context is None,
+        "calculated_as_reused_robustness": holdout_evaluated
+        and blackout_context is not None,
+        "sample_status": (
+            "REUSED_CONTAMINATED"
+            if blackout_context is not None and holdout_evaluated
+            else "EVALUATED_ONCE"
+            if holdout_evaluated
+            else "NOT_EVALUATED"
+        ),
         "reason": (
-            "At least one candidate passed the frozen 2024 validation gate."
+            "At least one candidate passed the reused 2024 numeric gate."
+            if blackout_context is not None and holdout_evaluated
+            else "At least one candidate passed the frozen 2024 validation gate."
             if holdout_evaluated
             else "No selected candidate passed the frozen 2024 validation gate."
         ),
@@ -713,9 +779,10 @@ def main(argv: list[str] | None = None) -> int:
         "discovery_gate_passes": len(gate_passes),
         "selected_candidates": len(selected),
         "validation_passes": len(validation_passes),
-        "holdout_evaluated": holdout_evaluated,
+        "holdout_evaluated": holdout_evaluated and blackout_context is None,
+        "reused_2025_calculated": holdout_evaluated and blackout_context is not None,
         "holdout_candidate_count": len(
-            [row for row in holdout_results if row["role"] != "BASELINE"]
+            [row for row in holdout_results if "BASELINE" not in row["role"]]
         ),
         "limitations": [
             "Current-symbol Yahoo archive creates survivorship bias.",
@@ -737,8 +804,16 @@ def main(argv: list[str] | None = None) -> int:
         f"Discovery earnings-blackout exclusions: {discovery_blackout_count}",
         f"Discovery gate passes: {len(gate_passes)}",
         f"Frozen selected candidates: {len(selected)}",
-        f"2024 validation passes: {len(validation_passes)}",
-        f"2025 holdout evaluated: {holdout_evaluated}",
+        (
+            f"Reused 2024 numeric-gate passes: {len(validation_passes)}"
+            if blackout_context is not None
+            else f"2024 validation passes: {len(validation_passes)}"
+        ),
+        (
+            f"Reused 2025 calculated: {holdout_evaluated}"
+            if blackout_context is not None
+            else f"2025 holdout evaluated: {holdout_evaluated}"
+        ),
         "Historical decision: **HOLD**",
         "",
         "## Frozen discovery selections",
@@ -770,8 +845,12 @@ def main(argv: list[str] | None = None) -> int:
     (output_dir / "report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
     print(f"Completed staged experiment: {output_dir}")
     print(f"Discovery gate passes: {len(gate_passes)}; selected: {len(selected)}")
-    print(f"Validation passes: {len(validation_passes)}")
-    print(f"Holdout evaluated: {holdout_evaluated}")
+    if blackout_context is not None:
+        print(f"Reused 2024 numeric-gate passes: {len(validation_passes)}")
+        print(f"Reused 2025 calculated: {holdout_evaluated}")
+    else:
+        print(f"Validation passes: {len(validation_passes)}")
+        print(f"Holdout evaluated: {holdout_evaluated}")
     return 0
 
 
