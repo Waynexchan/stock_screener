@@ -1,6 +1,6 @@
 # Project Status
 
-Fast handoff as of 2026-09-13. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-09-14. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
@@ -37,6 +37,16 @@ Fast handoff as of 2026-09-13. Read `AGENTS.md` before this file and `docs/PROJE
   MTM maximum drawdown. It was an isolated, complex optimum: the same policy at
   2.5R/3R targets accepted only 31/43 trades and made no later-period gain. The
   decision remains HOLD; no new forward test or production change was made.
+- `MARKET_TRAILING_EXIT_CROSS_V1` crossed four signal-date SPY entry/heat
+  policies with seven causal 2R/3R-activated SMA20/ATR20 profit-protection exits.
+  Seven of 28 cells passed all three reused numeric stage gates. Only SPY above
+  SMA50 plus a 2R-activated SMA20-minus-1ATR20 ratchet improved its matching
+  no-trailing return in all three periods: 65.63% return / 7.54% drawdown in
+  reused 2017–2023, 11.41% / 4.54% in reused 2024, and 8.81% / 3.98% in reused
+  2025. It did not beat the unrestricted 2025 baseline's 28.01% return because
+  the market gate excluded the 23.51R RGLD outlier path. The exact SMA20 neighbor
+  was unstable, and reused 2024 depended heavily on one 10.22R winner. Decision:
+  HOLD; no production or immutable-forward-journal change.
 - Branch: `main`, tracking `origin/main`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
@@ -61,6 +71,12 @@ Fast handoff as of 2026-09-13. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-market/trailing-cross implementation on 2026-09-14: PASS — Ruff, mypy,
+90 research tests, the expected `BLOCKED_DATA_NOT_READY` baseline gate, and
+production hash isolation passed. Full project verification passed with 279
+pytest tests, 118 legacy unittest tests, all formatting, typing, industry/report
+invariant, offline dry-run, and generated HTML semantic-validation stages.
 
 Post-combined-grid implementation on 2026-09-13: PASS — Ruff, mypy, 58
 research tests, the expected `BLOCKED_DATA_NOT_READY` baseline gate, and

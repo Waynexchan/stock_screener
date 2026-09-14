@@ -422,3 +422,29 @@ Post-result focused verification passed 81 research tests, the expected
 data-readiness gate, and production hash isolation. Full-project verification
 passed 270 pytest tests, 118 legacy unittest tests, industry/report invariants,
 the offline sample dry run, and generated HTML semantic validation.
+
+## 2026-09-14 market gate and trailing-profit cross
+
+`MARKET_TRAILING_EXIT_CROSS_V1` preregistered four signal-date SPY entry/heat
+policies crossed with no trailing exit or 2R/3R-activated SMA20 minus 0/0.5/1
+ATR20 ratchets. The stop becomes active only on the session after the activation
+threshold, uses indicators through the prior close, never loosens, and fills a
+gap through at the open. All 28 cells ran on boundary-purged 2017–2023 and reused
+2024/2025 periods after the mandatory ten-calendar-day earnings blackout.
+
+Seven cells passed every frozen numeric stage gate. Only SPY above SMA50 plus a
+2R-activated SMA20-minus-1ATR20 ratchet improved same-market no-trailing return
+in all periods: 65.63% return / 7.54% max drawdown / 104 trades in 2017–2023,
+11.41% / 4.54% / 13 in reused 2024, and 8.81% / 3.98% / 12 in reused 2025.
+Against the unrestricted baseline, it reduced 2025 drawdown by 9.08 points but
+also reduced return by 19.21 points because the SMA50 gate excluded the 23.51R
+RGLD outlier path. Reused 2024 derived 10.22R of 11.41R from ATEN, and the exact
+SMA20 neighbor was unstable at 0.43% return / 11.99% development drawdown.
+
+The unrestricted/no-trailing baseline reproduced the prior result exactly. An
+audit of 84 result rows and 4,007 accepted ledger rows found zero earnings
+blackout violations, zero market-blocked admissions, and zero missing marks.
+Preregistration commit: `f534cc8`; clean implementation/run commit: `1f65433`.
+Decision: HOLD. The SPY gate is not the richer production market regime, every
+period is reused, and no production or immutable forward-test specification
+changed.
