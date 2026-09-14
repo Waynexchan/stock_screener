@@ -26,6 +26,16 @@ class ExecutionAssumptions:
 
 
 @dataclass(frozen=True)
+class MovingAverageTrailingStop:
+    """Causal profit-protection stop evaluated from prior-session indicators."""
+
+    activation_r: float
+    moving_average_sessions: int = 20
+    atr_sessions: int = 20
+    atr_offset: float = 0.0
+
+
+@dataclass(frozen=True)
 class FeatureRecord:
     """Information observable at or before the signal date only."""
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -146,6 +147,8 @@ def simulate_portfolio_overlay(
     *,
     starting_equity_r: float = 100.0,
     maximum_positions: int = 4,
+    entry_heat_limit_by_signal_date: Mapping[str, float] | None = None,
+    market_state_by_signal_date: Mapping[str, str] | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
     """Allocate trades and calculate a daily mark-to-market equity curve."""
 
@@ -156,6 +159,45 @@ def simulate_portfolio_overlay(
         trades, key=lambda item: (item.entry_date, item.signal_date, item.ticker)
     ):
         candidates[pd.Timestamp(trade.entry_date)].append(trade)
+    if entry_heat_limit_by_signal_date is not None:
+        missing_dates = sorted(
+            {
+                trade.signal_date
+                for trade in trades
+                if trade.signal_date not in entry_heat_limit_by_signal_date
+            }
+        )
+        if missing_dates:
+            raise ValueError(
+                "market heat limit missing for signal dates: "
+                + ", ".join(missing_dates[:5])
+            )
+        invalid_dates = sorted(
+            {
+                trade.signal_date
+                for trade in trades
+                if not np.isfinite(entry_heat_limit_by_signal_date[trade.signal_date])
+                or float(entry_heat_limit_by_signal_date[trade.signal_date]) < 0
+            }
+        )
+        if invalid_dates:
+            raise ValueError(
+                "market heat limit is invalid for signal dates: "
+                + ", ".join(invalid_dates[:5])
+            )
+    if market_state_by_signal_date is not None:
+        missing_states = sorted(
+            {
+                trade.signal_date
+                for trade in trades
+                if trade.signal_date not in market_state_by_signal_date
+            }
+        )
+        if missing_states:
+            raise ValueError(
+                "market state missing for signal dates: "
+                + ", ".join(missing_states[:5])
+            )
     if not candidates:
         return ({"accepted_trade_count": 0}, pd.DataFrame(), pd.DataFrame())
     first_entry = min(candidates)
@@ -206,14 +248,29 @@ def simulate_portfolio_overlay(
             if risk_per_trade_r <= 0:
                 rejection_reasons["STOP_NEW_RISK"] += 1
                 continue
+            entry_heat_limit = (
+                maximum_heat_r
+                if entry_heat_limit_by_signal_date is None
+                else min(
+                    maximum_heat_r,
+                    float(entry_heat_limit_by_signal_date[trade.signal_date]),
+                )
+            )
+            if entry_heat_limit <= 0:
+                rejection_reasons["MARKET_GATE"] += 1
+                continue
             if any(item.trade.ticker == trade.ticker for item in open_trades):
                 rejection_reasons["SAME_TICKER"] += 1
                 continue
             if len(open_trades) >= maximum_positions:
                 rejection_reasons["MAX_POSITIONS"] += 1
                 continue
-            if current_heat + risk_per_trade_r > maximum_heat_r + 1e-12:
-                rejection_reasons["MAX_HEAT"] += 1
+            if current_heat + risk_per_trade_r > entry_heat_limit + 1e-12:
+                rejection_reasons[
+                    "MAX_HEAT"
+                    if entry_heat_limit_by_signal_date is None
+                    else "MARKET_HEAT"
+                ] += 1
                 continue
             allocated = AllocatedTrade(trade=trade, allocated_r=risk_per_trade_r)
             open_trades.append(allocated)
@@ -274,16 +331,23 @@ def simulate_portfolio_overlay(
             }
         )
     curve = pd.DataFrame(curve_rows)
-    ledger = pd.DataFrame(
-        [
-            {
-                **item.trade.to_dict(),
-                "allocated_r": item.allocated_r,
-                "portfolio_realised_r": item.trade.realised_r * item.allocated_r,
-            }
-            for item in accepted
-        ]
-    )
+    ledger_rows: list[dict[str, Any]] = []
+    for item in accepted:
+        row = {
+            **item.trade.to_dict(),
+            "allocated_r": item.allocated_r,
+            "portfolio_realised_r": item.trade.realised_r * item.allocated_r,
+        }
+        if entry_heat_limit_by_signal_date is not None:
+            row["market_heat_limit_r"] = float(
+                entry_heat_limit_by_signal_date[item.trade.signal_date]
+            )
+        if market_state_by_signal_date is not None:
+            row["market_state"] = str(
+                market_state_by_signal_date[item.trade.signal_date]
+            )
+        ledger_rows.append(row)
+    ledger = pd.DataFrame(ledger_rows)
     if ledger.empty:
         metrics = {
             "candidate_trade_count": len(trades),

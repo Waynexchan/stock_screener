@@ -10,14 +10,15 @@ from research.engine.execution import (
     simulate_trade,
 )
 from research.engine.models import ExecutionAssumptions, FeatureRecord
+from research.engine.models import MovingAverageTrailingStop
 
 
-def signal(stop: float = 95.0) -> FeatureRecord:
+def signal(stop: float = 95.0, signal_date: str = "2026-01-02") -> FeatureRecord:
     return FeatureRecord(
-        signal_date="2026-01-02",
+        signal_date=signal_date,
         ticker="AAA",
         universe_version="fixture",
-        data_as_of="2026-01-02",
+        data_as_of=signal_date,
         price=100.0,
         volume=1_000_000.0,
         dollar_volume=100_000_000.0,
@@ -222,3 +223,46 @@ def test_unsupported_favourable_same_bar_policy_is_rejected() -> None:
     history = bars([("2026-01-05", 100, 105, 97, 102)])
     with pytest.raises(ValueError, match="STOP_FIRST"):
         simulate_trade(signal(), history, assumptions(same_bar_policy="TARGET_FIRST"))
+
+
+def test_trailing_stop_activates_next_session_from_prior_indicators() -> None:
+    dates = pd.bdate_range(end="2026-01-30", periods=25)
+    history = bars(
+        [(date.date().isoformat(), 100, 101, 99, 100) for date in dates]
+        + [
+            ("2026-02-02", 100, 110, 99, 105),
+            ("2026-02-03", 101, 102, 99, 100),
+        ]
+    )
+    settings = assumptions(maximum_holding_sessions=2)
+    trade = simulate_trade(
+        signal(signal_date="2026-01-30"),
+        history,
+        settings,
+        trailing_stop=MovingAverageTrailingStop(activation_r=2.0),
+    )
+    assert trade is not None
+    assert trade.exit_date == "2026-02-03"
+    assert trade.exit_reason == "TRAILING_STOP"
+    assert trade.exit == pytest.approx(100.25)
+    assert trade.MFE_R == pytest.approx(2.0)
+
+
+def test_trailing_stop_gap_fills_at_open_after_activation() -> None:
+    dates = pd.bdate_range(end="2026-01-30", periods=25)
+    history = bars(
+        [(date.date().isoformat(), 100, 101, 99, 100) for date in dates]
+        + [
+            ("2026-02-02", 100, 110, 99, 105),
+            ("2026-02-03", 98, 99, 97, 98),
+        ]
+    )
+    trade = simulate_trade(
+        signal(signal_date="2026-01-30"),
+        history,
+        assumptions(maximum_holding_sessions=2),
+        trailing_stop=MovingAverageTrailingStop(activation_r=2.0),
+    )
+    assert trade is not None
+    assert trade.exit_reason == "TRAILING_STOP_GAP"
+    assert trade.exit == 98.0

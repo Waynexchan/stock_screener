@@ -10,7 +10,12 @@ import numpy as np
 import pandas as pd
 
 from .data import valid_bar_mask
-from .models import ExecutionAssumptions, FeatureRecord, SimulatedTrade
+from .models import (
+    ExecutionAssumptions,
+    FeatureRecord,
+    MovingAverageTrailingStop,
+    SimulatedTrade,
+)
 
 
 @dataclass(frozen=True)
@@ -24,10 +29,33 @@ class PreparedTradeExecution:
     lows: np.ndarray
     closes: np.ndarray
     valid: np.ndarray
+    prior_sma20: np.ndarray
+    prior_atr20: np.ndarray
     reference_entry: float
     entry: float
     entry_slippage_bps: float
     maximum_holding_sessions: int
+
+
+def _prior_sma20_atr20(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Return indicators known before each row opens."""
+
+    high = pd.to_numeric(frame["High"], errors="coerce")
+    low = pd.to_numeric(frame["Low"], errors="coerce")
+    close = pd.to_numeric(frame["Close"], errors="coerce")
+    previous_close = close.shift(1)
+    true_range = pd.concat(
+        [
+            high - low,
+            (high - previous_close).abs(),
+            (low - previous_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    return (
+        close.rolling(20, min_periods=20).mean().shift(1).to_numpy(dtype=float),
+        true_range.rolling(20, min_periods=20).mean().shift(1).to_numpy(dtype=float),
+    )
 
 
 def _slipped(price: float, basis_points: float, direction: str) -> float:
@@ -57,6 +85,7 @@ def prepare_trade_execution(
         frame = frame.sort_index()
     start = frame.index.searchsorted(pd.Timestamp(feature.signal_date), side="right")
     future = frame.iloc[start : start + assumptions.maximum_holding_sessions]
+    prior_sma20, prior_atr20 = _prior_sma20_atr20(frame)
     valid_future = valid_bar_mask(future)
     if future.empty or not bool(valid_future.iloc[0]):
         return None
@@ -70,6 +99,8 @@ def prepare_trade_execution(
         lows=future["Low"].to_numpy(dtype=float),
         closes=future["Close"].to_numpy(dtype=float),
         valid=valid_future.to_numpy(dtype=bool),
+        prior_sma20=prior_sma20[start : start + len(future)],
+        prior_atr20=prior_atr20[start : start + len(future)],
         reference_entry=reference_entry,
         entry=entry,
         entry_slippage_bps=assumptions.entry_slippage_bps,
@@ -108,6 +139,7 @@ def prepare_trade_executions(
         lows = frame["Low"].to_numpy(dtype=float)
         closes = frame["Close"].to_numpy(dtype=float)
         valid = valid_bar_mask(frame).to_numpy(dtype=bool)
+        prior_sma20, prior_atr20 = _prior_sma20_atr20(frame)
         for feature in ticker_features:
             start = dates.searchsorted(pd.Timestamp(feature.signal_date), side="right")
             end = min(start + assumptions.maximum_holding_sessions, len(dates))
@@ -123,6 +155,8 @@ def prepare_trade_executions(
                     lows=lows[start:end],
                     closes=closes[start:end],
                     valid=valid[start:end],
+                    prior_sma20=prior_sma20[start:end],
+                    prior_atr20=prior_atr20[start:end],
                     reference_entry=reference_entry,
                     entry=_slipped(
                         reference_entry, assumptions.entry_slippage_bps, "BUY"
@@ -140,6 +174,7 @@ def simulate_prepared_trade(
     *,
     target_price: float | None = None,
     stop_price: float | None = None,
+    trailing_stop: MovingAverageTrailingStop | None = None,
 ) -> SimulatedTrade | None:
     """Apply one stop/target policy to already validated future bars."""
 
@@ -159,6 +194,8 @@ def simulate_prepared_trade(
     lows = prepared.lows[:holding_limit]
     closes = prepared.closes[:holding_limit]
     valid = prepared.valid[:holding_limit]
+    prior_sma20 = prepared.prior_sma20[:holding_limit]
+    prior_atr20 = prepared.prior_atr20[:holding_limit]
     feature = prepared.feature
     entry = prepared.entry
     stop = float(feature.structural_stop if stop_price is None else stop_price)
@@ -176,11 +213,28 @@ def simulate_prepared_trade(
         target = entry + assumptions.target_r * initial_risk_per_share
     if target is not None and (not np.isfinite(target) or target <= entry):
         raise ValueError("target must be finite and above entry")
+    if trailing_stop is not None:
+        if (
+            not np.isfinite(trailing_stop.activation_r)
+            or trailing_stop.activation_r <= 0
+            or trailing_stop.moving_average_sessions != 20
+            or trailing_stop.atr_sessions != 20
+            or not np.isfinite(trailing_stop.atr_offset)
+            or trailing_stop.atr_offset < 0
+        ):
+            raise ValueError("unsupported moving-average trailing-stop specification")
 
     reference_exit = float(closes[-1])
     exit_date = pd.Timestamp(dates[-1])
     exit_reason = "MAX_HOLD"
     observed_count = 0
+    active_stop = stop
+    trailing_armed = False
+    activation_price = (
+        None
+        if trailing_stop is None
+        else entry + trailing_stop.activation_r * initial_risk_per_share
+    )
     for position in range(len(dates)):
         if not valid[position]:
             break
@@ -188,10 +242,22 @@ def simulate_prepared_trade(
         open_price = float(opens[position])
         low = float(lows[position])
         high = float(highs[position])
-        if position > 0 and open_price <= stop:
+        trailing_active = False
+        if trailing_armed:
+            sma = float(prior_sma20[position])
+            atr = float(prior_atr20[position])
+            if not all(np.isfinite(value) and value > 0 for value in (sma, atr)):
+                raise ValueError(
+                    "active trailing stop has unavailable prior indicators"
+                )
+            assert trailing_stop is not None
+            candidate_stop = sma - trailing_stop.atr_offset * atr
+            active_stop = max(active_stop, candidate_stop)
+            trailing_active = active_stop > stop + 1e-12
+        if position > 0 and open_price <= active_stop:
             reference_exit = open_price
             exit_date = pd.Timestamp(dates[position])
-            exit_reason = "STOP_GAP"
+            exit_reason = "TRAILING_STOP_GAP" if trailing_active else "STOP_GAP"
             break
         if position > 0 and target is not None and open_price >= target:
             reference_exit = (
@@ -200,23 +266,25 @@ def simulate_prepared_trade(
             exit_date = pd.Timestamp(dates[position])
             exit_reason = "TARGET_GAP"
             break
-        stop_touched = low <= stop
+        stop_touched = low <= active_stop
         target_touched = target is not None and high >= target
         if stop_touched and target_touched:
-            reference_exit = stop
+            reference_exit = active_stop
             exit_date = pd.Timestamp(dates[position])
             exit_reason = "STOP_AND_TARGET_SAME_BAR_CONSERVATIVE"
             break
         if stop_touched:
-            reference_exit = stop
+            reference_exit = active_stop
             exit_date = pd.Timestamp(dates[position])
-            exit_reason = "STOP"
+            exit_reason = "TRAILING_STOP" if trailing_active else "STOP"
             break
         if target_touched:
             reference_exit = float(target)
             exit_date = pd.Timestamp(dates[position])
             exit_reason = "TARGET"
             break
+        if activation_price is not None and high >= activation_price:
+            trailing_armed = True
     if observed_count == 0:
         return None
 
@@ -266,6 +334,7 @@ def simulate_trade(
     *,
     target_price: float | None = None,
     stop_price: float | None = None,
+    trailing_stop: MovingAverageTrailingStop | None = None,
 ) -> SimulatedTrade | None:
     """Simulate a conservative long trade from the first post-signal session.
 
@@ -282,4 +351,5 @@ def simulate_trade(
         assumptions,
         target_price=target_price,
         stop_price=stop_price,
+        trailing_stop=trailing_stop,
     )

@@ -323,3 +323,64 @@ def test_missing_benchmark_sessions_fail_closed() -> None:
             pd.DatetimeIndex([pd.Timestamp("2025-01-02")]),
             fixed_policy(1.0),
         )
+
+
+def test_market_heat_gate_blocks_before_capacity_allocation() -> None:
+    trades = [trade("AAA"), trade("BBB")]
+    prices = {
+        ticker: history(
+            [
+                ("2026-01-05", 100.0, 100.0),
+                ("2026-01-06", 100.0, 100.0),
+                ("2026-01-07", 100.0, 100.0),
+            ]
+        )
+        for ticker in ("AAA", "BBB")
+    }
+    metrics, ledger, _ = simulate_portfolio_overlay(
+        trades,
+        prices,
+        pd.bdate_range("2026-01-05", "2026-01-07"),
+        fixed_policy(2.0),
+        entry_heat_limit_by_signal_date={"2026-01-02": 0.0},
+        market_state_by_signal_date={"2026-01-02": "BLOCKED"},
+    )
+    assert ledger.empty
+    assert metrics["rejection_reasons"] == {"MARKET_GATE": 2}
+
+
+def test_reduced_market_heat_accepts_only_one_risk_unit() -> None:
+    trades = [trade("AAA"), trade("BBB")]
+    prices = {
+        ticker: history(
+            [
+                ("2026-01-05", 100.0, 100.0),
+                ("2026-01-06", 100.0, 100.0),
+                ("2026-01-07", 100.0, 100.0),
+            ]
+        )
+        for ticker in ("AAA", "BBB")
+    }
+    metrics, ledger, _ = simulate_portfolio_overlay(
+        trades,
+        prices,
+        pd.bdate_range("2026-01-05", "2026-01-07"),
+        fixed_policy(2.0),
+        entry_heat_limit_by_signal_date={"2026-01-02": 1.0},
+        market_state_by_signal_date={"2026-01-02": "REDUCED"},
+    )
+    assert ledger["ticker"].tolist() == ["AAA"]
+    assert ledger.iloc[0]["market_heat_limit_r"] == 1.0
+    assert ledger.iloc[0]["market_state"] == "REDUCED"
+    assert metrics["rejection_reasons"] == {"MARKET_HEAT": 1}
+
+
+def test_market_heat_map_missing_signal_date_fails_closed() -> None:
+    with pytest.raises(ValueError, match="market heat limit missing"):
+        simulate_portfolio_overlay(
+            [trade("AAA")],
+            {"AAA": history([("2026-01-05", 100.0, 100.0)])},
+            pd.DatetimeIndex([pd.Timestamp("2026-01-05")]),
+            fixed_policy(2.0),
+            entry_heat_limit_by_signal_date={},
+        )
