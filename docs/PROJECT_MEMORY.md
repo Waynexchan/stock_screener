@@ -480,3 +480,36 @@ earnings-blackout violations, zero missing marks, unique signal keys, valid
 proxy score bounds, and reconciled score buckets. Decision: HOLD. Production
 and the immutable forward journal are unchanged; there is no untouched
 holdout.
+
+## 2026-09-14 completed leader-selection robustness V2
+
+The user requested that missing observable leader features be completed before
+another backtest. `LEADER_COMPLETENESS_V2` was preregistered at `b34c90b`,
+implemented at `896da6f`, and rerun from clean audit-complete commit `b33241a`.
+Exit and exposure stayed frozen at the 20-session-low stop, no target,
+40-session maximum hold, and fixed 2R heat. Fundamental acceleration remained
+`BLOCKED_DATA_NOT_READY` rather than using restated/current values.
+
+V2 added one- and three-month RS changes, exact RS-line-before-price highs,
+stock-within-industry rank, current-industry breadth and acceleration, five
+industry policy roles, base duration/depth, three-block contraction, volume
+dry-up, pivot supply, shakeout/reclaim, breakout quality, a mechanical
+base-stage proxy, and a causal three-session delayed follow-through entry.
+
+No one of 24 variants beat both baseline return and return/drawdown in at least
+two reused periods. Pivot-supply-clear alone passed all absolute stage gates:
+39.12% return / 9.35% drawdown in 2017-2023, 6.71% / 3.90% in 2024, and 6.33% /
+3.41% in 2025, but every return and return/drawdown result was below baseline.
+Contraction plus dry-up returned 66.94% in 2025 but had 51.71% development
+drawdown and was outlier-dependent. Secondary industry half-risk improved 2024
+but failed development. Delayed follow-through returned 16.03% / 3.87% on 55
+development trades, lost 2.44% in 2024, and returned 6.25% on nine 2025 trades.
+
+Complete base quality selected only 87, 8, and 1 signals after the earnings
+blackout. The full technical-leader conjunction selected zero. The final run
+contained all 72 result rows and 3,360 accepted ledger rows, with zero missing
+marks, earnings-blackout, boundary, heat, position, or risk violations. All 155
+delayed confirmations were one to three sessions after the original signal;
+two were correctly rejected by the confirmation-date earnings recheck.
+Historical decision: REJECT. Production and the immutable forward journal are
+unchanged; all periods are reused and no untouched holdout exists.

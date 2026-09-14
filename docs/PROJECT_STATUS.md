@@ -57,7 +57,16 @@ Fast handoff as of 2026-09-14. Read `AGENTS.md` before this file and `docs/PROJE
   was too sparse; beta >=0.8 weakened it in every period. Fundamental
   acceleration remains `BLOCKED_DATA_NOT_READY`. Decision: HOLD; production
   and the immutable forward journal are unchanged.
-- Branch: `codex/leader-rs-backtest`. The five-commit
+- `LEADER_COMPLETENESS_V2` completed the missing causal RS, industry-policy,
+  base/pivot, and delayed follow-through features before evaluating 24 frozen
+  variants. No variant improved both return and return/drawdown versus baseline
+  in two periods; shortlist and mixed-support counts were zero. Pivot supply
+  clear passed all absolute stage gates but underperformed baseline
+  return/drawdown in every period. Contraction plus dry-up made an isolated
+  66.94% in reused 2025 after 51.71% development drawdown. The complete leader
+  conjunction selected zero eligible signals. Decision: REJECT; fundamentals
+  remain `BLOCKED_DATA_NOT_READY`, and production is unchanged.
+- Branch: `codex/leader-complete-backtest`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
   sourced from `Waynexchan/ai-agent-workflow-template`, `VERSION` 1.1.0 at
@@ -82,10 +91,10 @@ Fast handoff as of 2026-09-14. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Last verification result
 
-Post-leader-RS-result verification on 2026-09-14: PASS — focused research
-verification passed Ruff, mypy, 95 research tests, the expected
+Post-completed-leader-V2 result verification on 2026-09-14: PASS — focused
+research verification passed Ruff, mypy, 103 research tests, the expected
 `BLOCKED_DATA_NOT_READY` baseline gate, and production hash isolation. Full
-project verification passed with 284 pytest tests, 118 legacy unittest tests,
+project verification passed with 292 pytest tests, 118 legacy unittest tests,
 all formatting, typing, industry/report invariant, offline dry-run, and
 generated HTML semantic-validation stages.
 
@@ -259,6 +268,16 @@ no-Utilities interaction was too sparse, and beta >=0.8 failed every stage
 gate. The proxy is not MarketSmith's proprietary score, classifications are
 current, and there is no untouched holdout. See
 `docs/RESEARCH_RESULTS_LEADER_RS_ROBUSTNESS_V1.md`.
+
+`LEADER_COMPLETENESS_V2` added 21-/63-session RS changes, exact RS-line lead,
+stock-within-industry rank, breadth acceleration, five industry policy roles,
+mechanical base/pivot quality, and a causal delayed follow-through entry. The
+24-variant run produced no shortlist or mixed-support result. Pivot-supply-clear
+was positive and below 10% drawdown in all three reused periods, but had lower
+return and return/drawdown than baseline every time. Other promising-looking
+single periods reversed elsewhere; the completed composite was unusably sparse.
+Decision: REJECT. See
+`docs/RESEARCH_RESULTS_LEADER_COMPLETENESS_V2.md`.
 
 ## Next recommended task
 
