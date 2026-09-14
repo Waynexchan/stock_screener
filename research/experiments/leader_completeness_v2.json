@@ -1,0 +1,105 @@
+{
+  "experiment_id": "LEADER_COMPLETENESS_V2",
+  "status": "PREREGISTERED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-AND-CLASSIFICATION-BIASED RESEARCH",
+  "hypothesis": "Completed causal RS, industry-policy, and base/pivot features may improve expectancy, MFE, payoff, and return-to-drawdown over the earnings-eligible MODEL_0 baseline.",
+  "iteration_disclosure": "All 2017-2025 periods and V1 leader results have already been inspected. Every stage is reused adaptive robustness and none is independent validation or an untouched holdout.",
+  "blocked_component": {
+    "id": "fundamental_acceleration",
+    "status": "BLOCKED_DATA_NOT_READY",
+    "reason": "No point-in-time EPS, sales, margin, estimates, surprise, ownership, sponsorship, or cash-flow archive is available."
+  },
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "development_stability_split": "2020-12-31",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "reused_2024_signal": ["2024-03-01", "2024-10-31"],
+    "reused_2024_outcome_end": "2024-12-31",
+    "reused_2025_signal": ["2025-01-02", "2025-10-31"],
+    "reused_2025_outcome_end": "2025-12-31"
+  },
+  "execution": {
+    "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after close",
+    "earnings_blackout_calendar_days": 10,
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date trailing 20-session low",
+    "target_r": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "stop_gap_fill": "OPEN"
+  },
+  "portfolio": {
+    "type": "FIXED",
+    "maximum_heat_r": 2.0,
+    "risk_per_trade_r": 1.0,
+    "maximum_positions": 4,
+    "starting_equity_r": 100.0,
+    "default_candidate_order": "entry_date, signal_date, ticker",
+    "ranked_candidate_order": "entry_date, descending industry score, descending stock-within-industry score, descending market RS score, signal_date, ticker",
+    "cash_and_notional_model": "Normalized R; no cash or maximum-notional constraint"
+  },
+  "feature_thresholds": {
+    "industry_score_strong": 80,
+    "exceptional_market_rs": 95,
+    "stock_within_industry_strong": 80,
+    "industry_breadth_min_pct": 20.0,
+    "base_duration_sessions": [15, 65],
+    "base_depth_pct": [3.0, 35.0],
+    "near_pivot_pct": [-5.0, 2.0],
+    "volume_dryup_ratio_max": 0.8,
+    "pivot_supply_days_max": 1,
+    "early_base_stage_proxy_max": 2,
+    "breakout_volume_ratio_min": 1.5,
+    "breakout_close_location_pct_min": 75.0
+  },
+  "variants": [
+    {"id": "baseline", "rules": []},
+    {"id": "ms_proxy_1_69", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [1, 69]}]},
+    {"id": "ms_proxy_70_79", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [70, 79]}]},
+    {"id": "ms_proxy_80_89", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [80, 89]}]},
+    {"id": "ms_proxy_90_94", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [90, 94]}]},
+    {"id": "ms_proxy_95_99", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [95, 99]}]},
+    {"id": "rs_rising_1m_and_3m", "rules": [{"column": "marketsmith_proxy_delta_21d", "operator": ">", "value": 0}, {"column": "marketsmith_proxy_delta_63d", "operator": ">", "value": 0}]},
+    {"id": "rs_line_leads_price_high", "rules": [{"column": "rs_line_leads_price_252d_high", "operator": "is_true"}]},
+    {"id": "stock_within_industry_ge_80", "rules": [{"column": "stock_within_industry_score", "operator": ">=", "value": 80}]},
+    {"id": "industry_secondary_half", "rules": [], "risk_mode": "INDUSTRY_SECONDARY_HALF"},
+    {"id": "industry_hard_gate", "rules": [{"column": "industry_proxy_score", "operator": ">=", "value": 80}]},
+    {"id": "industry_rank_only", "rules": [], "candidate_order": "INDUSTRY_THEN_STOCK"},
+    {"id": "industry_exceptional_stock_override", "rules": [{"operator": "any", "rules": [{"column": "industry_proxy_score", "operator": ">=", "value": 80}, {"column": "marketsmith_proxy_score", "operator": ">=", "value": 95}]}]},
+    {"id": "industry_breadth_accelerating", "rules": [{"column": "industry_breadth_ge80_pct", "operator": ">=", "value": 20}, {"column": "industry_breadth_delta_21d", "operator": ">", "value": 0}, {"column": "industry_breadth_delta_63d", "operator": ">=", "value": 0}]},
+    {"id": "base_duration_depth", "rules": [{"column": "base_duration_sessions", "operator": "between", "value": [15, 65]}, {"column": "base_depth_pct", "operator": "between", "value": [3, 35]}]},
+    {"id": "contraction_and_dryup", "rules": [{"column": "contraction_count_3x20d", "operator": ">=", "value": 1}, {"column": "volume_dryup_ratio_10v40", "operator": "<=", "value": 0.8}]},
+    {"id": "pivot_supply_clear", "rules": [{"column": "distance_from_pivot_pct", "operator": "between", "value": [-5, 2]}, {"column": "pivot_supply_days_10d", "operator": "<=", "value": 1}]},
+    {"id": "shakeout_reclaim_10d", "rules": [{"column": "shakeout_reclaim_10d", "operator": "is_true"}]},
+    {"id": "breakout_quality", "rules": [{"column": "breakout_quality", "operator": "is_true"}]},
+    {"id": "early_base_stage_proxy", "rules": [{"column": "base_stage_proxy", "operator": "<=", "value": 2}]},
+    {"id": "complete_base_quality", "rules": [{"column": "complete_base_quality", "operator": "is_true"}]},
+    {"id": "complete_technical_leader", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 80}, {"column": "marketsmith_proxy_delta_21d", "operator": ">", "value": 0}, {"column": "marketsmith_proxy_delta_63d", "operator": ">", "value": 0}, {"column": "stock_within_industry_score", "operator": ">=", "value": 80}, {"column": "complete_base_quality", "operator": "is_true"}]},
+    {"id": "complete_technical_leader_ranked", "base_variant": "complete_technical_leader", "rules": [], "candidate_order": "INDUSTRY_THEN_STOCK"},
+    {"id": "delayed_breakout_followthrough", "rules": [{"column": "breakout_quality", "operator": "is_true"}], "execution_mode": "DELAYED_FOLLOWTHROUGH_3D"}
+  ],
+  "variant_count": 24,
+  "stage_gates": {
+    "development": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.2, "accepted_trade_count_at_least": 75, "missing_mark_count": 0, "early_period_return_pct_above": 0.0, "late_period_return_pct_above": 0.0},
+    "reused_period": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.1, "accepted_trade_count_at_least": 8, "missing_mark_count": 0}
+  },
+  "cross_stage_shortlist": {
+    "absolute_stage_gate_pass_required": ["development", "reused_2024", "reused_2025"],
+    "total_return_beats_baseline_in_at_least_periods": 2,
+    "return_to_drawdown_beats_baseline_in_at_least_periods": 2,
+    "largest_winner_positive_pnl_contribution_at_most": 0.5
+  },
+  "decision_rule": "Report all variants. With no independent validation or untouched holdout, a numeric pass remains HOLD and cannot authorize a forward specification or production change.",
+  "constraints": [
+    "Preregister before implementation outcomes are inspected",
+    "Apply the verified earnings blackout before filters, execution, ordering, or capacity allocation and reapply it to a delayed confirmation date",
+    "Use only features observable through the applicable signal or confirmation date",
+    "Do not optimize thresholds after inspecting outcomes",
+    "Do not use unavailable fundamentals or silently substitute current values",
+    "Do not overwrite V1 or earlier results",
+    "Do not change production or the immutable forward journal"
+  ]
+}
