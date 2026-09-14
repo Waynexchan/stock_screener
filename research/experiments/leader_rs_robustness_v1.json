@@ -1,0 +1,98 @@
+{
+  "experiment_id": "LEADER_RS_ROBUSTNESS_V1",
+  "status": "PREREGISTERED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-AND-EARNINGS-SCHEDULE-AND-CLASSIFICATION-BIASED RESEARCH",
+  "hypothesis": "A market-wide twelve-month MarketSmith-style RS proxy plus causal RS-line, industry, price, and volume leadership may improve the return-to-drawdown and expectancy of earnings-eligible MODEL_0 signals.",
+  "iteration_disclosure": "All 2017-2025 price periods and related filter results have already been inspected. Every stage is reused adaptive robustness; none is independent validation or an untouched holdout.",
+  "blocked_component": {
+    "id": "fundamental_acceleration",
+    "status": "BLOCKED_DATA_NOT_READY",
+    "reason": "No point-in-time EPS, sales, margin, estimates, ownership, or institutional-sponsorship archive is available."
+  },
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "development_stability_split": "2020-12-31",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "reused_2024_signal": ["2024-03-01", "2024-10-31"],
+    "reused_2024_outcome_end": "2024-12-31",
+    "reused_2025_signal": ["2025-01-02", "2025-10-31"],
+    "reused_2025_outcome_end": "2025-12-31"
+  },
+  "market_smith_proxy": {
+    "claim": "RESEARCH_PROXY_NOT_PROPRIETARY_MARKETSMITH_RS",
+    "minimum_history_sessions": 253,
+    "quarter_sessions": 63,
+    "weights": {"q1_recent": 0.4, "q2": 0.2, "q3": 0.2, "q4_oldest": 0.2},
+    "ranking_universe": "Every current-archive symbol with complete signal-date and 63/126/189/252-session closes, before Stage 2 or candidate filters",
+    "score_scale": "integer 1-99 daily cross-sectional percentile"
+  },
+  "feature_definitions": {
+    "rs_line": "signal-date adjusted stock close divided by adjusted SPY close",
+    "rs_line_within_2pct_252d_high": "RS line is at least 98% of its trailing 252-session maximum through the signal date",
+    "industry_proxy_score": "1-99 daily rank of current-classification industry median proxy score; at least five valid members",
+    "up_down_volume_ratio_50d": "sum volume on positive close-change sessions divided by sum volume on negative close-change sessions; zero denominator is missing",
+    "price_off_252d_high_pct": "percentage below trailing 252-session adjusted closing high through the signal date",
+    "rolling_beta_126": "126-session signal-date stock/SPY covariance divided by SPY variance, minimum 100 observations"
+  },
+  "variants": [
+    {"id": "baseline", "rules": []},
+    {"id": "ms_proxy_1_69", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [1, 69]}]},
+    {"id": "ms_proxy_70_79", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [70, 79]}]},
+    {"id": "ms_proxy_80_89", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [80, 89]}]},
+    {"id": "ms_proxy_90_94", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [90, 94]}]},
+    {"id": "ms_proxy_95_99", "rules": [{"column": "marketsmith_proxy_score", "operator": "between", "value": [95, 99]}]},
+    {"id": "ms_proxy_ge_80", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 80}]},
+    {"id": "ms_proxy_ge_85", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 85}]},
+    {"id": "ms_proxy_ge_90", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 90}]},
+    {"id": "rs_line_near_252d_high", "rules": [{"column": "rs_line_within_2pct_252d_high", "operator": "is_true"}]},
+    {"id": "industry_proxy_ge_80", "rules": [{"column": "industry_proxy_score", "operator": ">=", "value": 80}]},
+    {"id": "up_down_volume_ge_1_25", "rules": [{"column": "up_down_volume_ratio_50d", "operator": ">=", "value": 1.25}]},
+    {"id": "ms85_rs_line_near_high", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 85}, {"column": "rs_line_within_2pct_252d_high", "operator": "is_true"}]},
+    {"id": "ms85_industry80", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 85}, {"column": "industry_proxy_score", "operator": ">=", "value": 80}]},
+    {"id": "technical_leader_profile", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 85}, {"column": "marketsmith_proxy_delta_21d", "operator": ">=", "value": 0}, {"column": "rs_line_within_2pct_252d_high", "operator": "is_true"}, {"column": "industry_proxy_score", "operator": ">=", "value": 80}, {"column": "price_off_252d_high_pct", "operator": "<=", "value": 15}, {"column": "up_down_volume_ratio_50d", "operator": ">=", "value": 1.0}]},
+    {"id": "technical_leader_no_utilities", "base_variant": "technical_leader_profile", "rules": [{"column": "is_utility", "operator": "is_false"}]},
+    {"id": "technical_leader_beta_ge_0_8", "base_variant": "technical_leader_profile", "rules": [{"column": "rolling_beta_126", "operator": ">=", "value": 0.8}]}
+  ],
+  "variant_count": 17,
+  "execution": {
+    "signal": "MODEL_0 false-to-true Stage 2 eligibility transition after close",
+    "earnings_blackout_calendar_days": 10,
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date trailing 20-session low",
+    "target_r": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "stop_gap_fill": "OPEN"
+  },
+  "portfolio": {
+    "type": "FIXED",
+    "maximum_heat_r": 2.0,
+    "risk_per_trade_r": 1.0,
+    "maximum_positions": 4,
+    "starting_equity_r": 100.0,
+    "candidate_order": "entry_date, signal_date, ticker",
+    "cash_and_notional_model": "Normalized R; no cash or maximum-notional constraint"
+  },
+  "stage_gates": {
+    "development": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.2, "accepted_trade_count_at_least": 75, "missing_mark_count": 0, "early_period_return_pct_above": 0.0, "late_period_return_pct_above": 0.0},
+    "reused_period": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.1, "accepted_trade_count_at_least": 8, "missing_mark_count": 0}
+  },
+  "cross_stage_shortlist": {
+    "absolute_stage_gate_pass_required": ["development", "reused_2024", "reused_2025"],
+    "total_return_beats_baseline_in_at_least_periods": 2,
+    "return_to_drawdown_beats_baseline_in_at_least_periods": 2,
+    "largest_winner_positive_pnl_contribution_at_most": 0.5
+  },
+  "decision_rule": "Report all variants. With no independent validation or untouched holdout, a numeric pass remains HOLD and cannot authorize a forward specification or production change.",
+  "constraints": [
+    "Apply the verified earnings blackout before filters, execution, ordering, or capacity allocation",
+    "Use only features observable through the signal date",
+    "Do not optimize thresholds after inspecting outcomes",
+    "Do not use unavailable fundamentals or silently substitute current values",
+    "Do not overwrite earlier experiments or results",
+    "Do not change production or the immutable forward journal"
+  ]
+}
