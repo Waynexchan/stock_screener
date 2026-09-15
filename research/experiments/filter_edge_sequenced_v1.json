@@ -1,0 +1,92 @@
+{
+  "experiment_id": "FILTER_EDGE_SEQUENCED_V1",
+  "status": "PREREGISTERED_ADAPTIVE_DIAGNOSTIC_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-, EARNINGS-SCHEDULE-, AND CLASSIFICATION-BIASED ADAPTIVE RESEARCH; NO UNTOUCHED HOLDOUT",
+  "preregistration_commit": "PENDING",
+  "variant_source": "research/experiments/filter_combination_audit_v1.json",
+  "variant_count": 80,
+  "periods": {
+    "development_2017_2023": {
+      "signal": ["2017-01-01", "2023-11-01"],
+      "outcome_end": "2023-12-29"
+    },
+    "reused_2024": {
+      "signal": ["2024-03-01", "2024-10-31"],
+      "outcome_end": "2024-12-31"
+    },
+    "reused_2025": {
+      "signal": ["2025-01-02", "2025-10-31"],
+      "outcome_end": "2025-12-31"
+    }
+  },
+  "execution": {
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date trailing 20-session low",
+    "target_r": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "earnings_blackout_calendar_days": 10
+  },
+  "opportunity_construction": {
+    "cross_stock_capacity": "NONE",
+    "same_ticker_overlap": "REJECT_WHILE_PRIOR_ACCEPTED_TRADE_OPEN",
+    "reentry_rule": "entry_date strictly after prior accepted exit_date",
+    "order": "ticker, entry_date, signal_date",
+    "bootstrap_unit": "calendar entry month",
+    "bootstrap_samples": 2000,
+    "bootstrap_confidence": 0.95,
+    "bootstrap_seed": 20260915
+  },
+  "classification_gates": {
+    "development_episode_count_at_least": 500,
+    "reused_episode_count_at_least": 50,
+    "expectancy_positive_every_period": true,
+    "alpha_expectancy_delta_at_least_r": 0.05,
+    "alpha_expectancy_improvement_periods_at_least": 2,
+    "alpha_development_bootstrap_delta_low_above_r": 0.0,
+    "alpha_profit_factor_improvement_periods_at_least": 2,
+    "alpha_mfe_improvement_periods_at_least": 2,
+    "retention_vs_baseline_at_least_pct": 5.0,
+    "risk_expectancy_delta_not_below_r": -0.02,
+    "risk_mae_improvement_periods_at_least": 2,
+    "risk_profit_factor_improvement_periods_at_least": 2,
+    "negative_expectancy_periods_at_least": 2
+  },
+  "combination_gate": {
+    "maximum_component_count": 3,
+    "each_component_expectancy_improvement_periods_at_least": 2,
+    "accepted_labels": ["ALPHA_SUPPORT", "RISK_QUALITY_SUPPORT"],
+    "promotion_excluded_filter_ids": [
+      "rs_dual",
+      "beta_ge_0_8",
+      "early_base_stage",
+      "breakout_demand"
+    ]
+  },
+  "portfolio_cross_check": {
+    "source": "research/output/filter_combination_audit_v1/combination_decisions.csv",
+    "required_prior_decision_field": "decision_shortlist",
+    "required_prior_value": true
+  },
+  "industry_concentration": {
+    "eligibility": "NON_MISSING_CURRENT_INDUSTRY_ONLY",
+    "maximum_heat_r": 2.0,
+    "maximum_positions": 4,
+    "maximum_positions_per_industry": 2,
+    "risk_per_trade_variants_r": [1.0, 0.5],
+    "candidate_order": "entry_date, signal_date, ticker"
+  },
+  "sample_status": {
+    "development_2017_2023": "REUSED_CONTAMINATED",
+    "reused_2024": "REUSED_CONTAMINATED",
+    "reused_2025": "REUSED_CONTAMINATED",
+    "untouched_holdout": "UNAVAILABLE"
+  },
+  "historical_decision": {
+    "hold_only_if_sequential_and_prior_portfolio_support": true,
+    "otherwise": "REJECT",
+    "maximum_possible_evidence": "HOLD"
+  }
+}
