@@ -4,6 +4,16 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
+- `FILTER_COMBINATION_AUDIT_V1` froze 80 variants: every subset of six core
+  filter components plus 16 supplemental individual filters. The baseline had
+  25,413 executable development candidates but admitted only 124; 25,200 were
+  rejected for fixed-2R maximum heat. Seven combinations passed all absolute
+  stage gates, but none passed the relative-performance, largest-winner, and
+  leave-one-out shortlist rules. The full six-filter funnel retained only
+  7 / 0 / 0 signals across development / reused 2024 / reused 2025. Historical
+  decision: `REJECT`; production is unchanged. The successful clean run at
+  `9fce57e` produced 240 result rows, 8,079 ledger rows, and 166,543 equity rows
+  with zero audit violation.
 - `YOUNG_LEADER_ADDITIVE_V1` followed the only mixed V1 lead without retuning
   its signal. Young-first priority improved development to 58.70% return / 8.92%
   drawdown and reused 2024 to 12.30% / 3.92%, but reused 2025 returned 27.00%
@@ -88,7 +98,7 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
   66.94% in reused 2025 after 51.71% development drawdown. The complete leader
   conjunction selected zero eligible signals. Decision: REJECT; fundamentals
   remain `BLOCKED_DATA_NOT_READY`, and production is unchanged.
-- Branch: `codex/leader-complete-backtest`. The five-commit
+- Branch: `codex/superperformance-paths-backtest`. The five-commit
   `fix/production-risk-boundaries` series was merged through `432be57`.
 - Agent workflow: the project-adapted optional `research-experiment` skill is
   sourced from `Waynexchan/ai-agent-workflow-template`, `VERSION` 1.1.0 at
@@ -112,6 +122,13 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-filter-combination-audit result verification on 2026-09-15: PASS — focused
+research verification passed Ruff, mypy, 120 research tests, the expected
+`BLOCKED_DATA_NOT_READY` baseline gate, and production hash isolation. Full
+project verification passed with 309 pytest tests, 118 legacy unittest tests,
+all formatting, typing, industry/report invariant, offline dry-run, and
+generated HTML semantic-validation stages.
 
 Post-completed-leader-V2 result verification on 2026-09-14: PASS — focused
 research verification passed Ruff, mypy, 103 research tests, the expected
@@ -301,13 +318,24 @@ single periods reversed elsewhere; the completed composite was unusably sparse.
 Decision: REJECT. See
 `docs/RESEARCH_RESULTS_LEADER_COMPLETENESS_V2.md`.
 
+`FILTER_COMBINATION_AUDIT_V1` tested the complete 64-subset cross of six
+mechanism filters plus 16 supplemental single filters. The scarcity funnel
+showed that fixed 2R heat, not raw signal availability, is the binding
+transaction constraint: only about 0.3%–0.5% of executable candidates entered.
+No combination met the preregistered relative, outlier, and leave-one-out
+shortlist. Decision: REJECT the exact hard-filter matrix. See
+`docs/RESEARCH_RESULTS_FILTER_COMBINATION_AUDIT_V1.md`.
+
 ## Next recommended task
 
 Acquire and provenance-check point-in-time universe and listing history,
 delisted symbols, classifications, earnings schedules, and fundamental
-histories before any broader leader-model research. Preserve the frozen
-short-history cohort only as a labelled observation list for newly arriving
-data; do not retune it on the reused history.
+histories. On genuinely new data, prioritize a small preregistered
+candidate-ordering experiment over additional hard filters: the present
+fixed-2R portfolio admits roughly 0.3%–0.5% of executable candidates, while its
+default tie-break is ticker order. Preserve the frozen short-history cohort only
+as a labelled observation list; do not retune it or the filter matrix on reused
+history.
 
 Do not retune the completed V1 paths or promote any result without explicit
 instruction and governance review.

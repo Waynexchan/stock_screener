@@ -418,6 +418,23 @@
       "notes": "Reject this exact weight formula and candidate-order rule. Do not retune it on the same reused periods."
     },
     {
+      "id": "filter_combination_audit_v1",
+      "name": "Bounded individual-filter and six-component combination audit",
+      "category": "strategy_filter_research",
+      "status": "REJECTED",
+      "production_effect": "NONE; 80-variant adaptive diagnostic only.",
+      "evidence_summary": "No one of 64 complete factorial subsets plus 16 supplemental individual filters met the frozen cross-stage, outlier, and leave-one-out shortlist rule.",
+      "sample_size": 25456,
+      "discovery_result": "MODEL_0 had 25,413 executable candidates but accepted only 124 under fixed 2R heat. Seven variants passed all absolute stage gates, but none showed the required relative and component-level incremental value.",
+      "validation_result": "Reused/contaminated only. The cumulative six-filter conjunction retained 7, 0, and 0 signals across development, 2024, and 2025. The shortlist count was zero.",
+      "holdout_result": null,
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-15",
+      "notes": "Reject the exact hard-filter matrix. Current low trade count is mainly a 2R-capacity constraint, so future research should test preregistered candidate ordering on genuinely new point-in-time data rather than mine more hard-filter thresholds on the reused archive."
+    },
+    {
       "id": "fundamental_acceleration",
       "name": "Point-in-time fundamental acceleration",
       "category": "fundamental_research",

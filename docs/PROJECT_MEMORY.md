@@ -578,3 +578,39 @@ verification passed 114 research tests, the expected data-readiness block, and
 production hash isolation. Full verification passed 303 pytest tests, 118
 legacy unittest tests, industry/report invariants, the offline dry run, and
 generated HTML semantic validation.
+
+## 2026-09-15 bounded filter and combination audit
+
+`FILTER_COMBINATION_AUDIT_V1` froze a complete 64-subset factorial over dual RS,
+extension, strong industry, pivot/supply, breakout demand, and signal-close SPY
+above SMA50, plus 16 supplemental single-filter variants. Preregistration was
+recorded at `3f8d0a6`; the successful clean run used
+`9fce57ee3c2e5d902037edcdeb3e1933f124b109`. All three periods remain
+reused/contaminated and no untouched holdout exists.
+
+The scarcity audit separated signal availability from portfolio admission. In
+development, 29,452 raw MODEL_0 signals became 25,456 after the earnings
+blackout and 25,413 executable candidates, but fixed 2R heat admitted only 124
+(0.49%); 25,200 were rejected for maximum heat. Reused 2024/2025 admitted only
+12/13 of 3,755/3,757 candidates. With 1R per trade, the 2R heat limit—not the
+four-position setting—normally caps the portfolio at two simultaneous trades.
+
+No variant entered the frozen shortlist. Seven combinations passed every
+absolute stage gate, but none also achieved the required two-period baseline
+improvements, largest-winner control, and component-level leave-one-out support.
+SPY/SMA50 controlled 2025 drawdown but surrendered most of the baseline return;
+pivot/supply passed absolute gates but had lower return and return/drawdown in
+every period. MarketSmith-style proxy >=80 improved headline return and
+return/drawdown in both reused periods but failed development, 2025 drawdown,
+and outlier controls. Dual RS, beta >=0.8, early-base, and the current breakout
+conjunction provided no hard-gate support. Excluding Utilities was mixed, not a
+validated alpha rule. The cumulative six-filter stack retained 7 / 0 / 0
+signals.
+
+The audit reconciled 240 result rows, 8,079 accepted-ledger rows, and 166,543
+equity rows with zero boundary, next-session-entry, earnings-blackout,
+duplicate, risk, heat, position, or missing-value violations. Baseline metrics
+matched `LEADER_COMPLETENESS_V2`. Historical decision: REJECT. Production and
+the immutable forward journal remain unchanged. The next useful hypothesis is
+candidate ordering on genuinely new point-in-time data, not further hard-filter
+threshold mining on this reused archive.
