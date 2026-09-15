@@ -22,6 +22,8 @@ PATH_COLUMNS = (
     "constructive_pullback",
     "young_leader_breakout",
     "young_leader_breakout_rs80",
+    "young_leader_breakout_additive_eligible",
+    "model_0_or_young",
     "multi_path_union",
     "multi_path_production_rs",
 )
@@ -207,6 +209,9 @@ def _signal_frame(
             "tight_base_breakout": tight_base_breakout,
             "constructive_pullback": constructive_pullback,
             "young_leader_breakout": young_leader_breakout,
+            "archive_first_valid_date": (
+                str(frame.index[valid][0].date()) if valid.any() else None
+            ),
         },
         index=frame.index,
     )
@@ -236,6 +241,17 @@ def generate_superperformance_path_features(
     if not frames:
         return pd.DataFrame()
     result = pd.concat(frames, ignore_index=True)
+    first_dates = pd.to_datetime(result["archive_first_valid_date"], errors="coerce")
+    global_archive_start = first_dates.min()
+    result["archive_left_censored_history"] = first_dates.eq(global_archive_start)
+    result["young_leader_breakout_additive_eligible"] = result[
+        "young_leader_breakout"
+    ].fillna(False).astype(bool) & ~result["archive_left_censored_history"].fillna(
+        True
+    ).astype(bool)
+    result["model_0_or_young"] = result["model_0_path"].fillna(False).astype(
+        bool
+    ) | result["young_leader_breakout_additive_eligible"].fillna(False).astype(bool)
     if result.duplicated(["signal_date", "ticker"]).any():
         raise AssertionError("superperformance signal keys are not unique")
     return result.sort_values(["signal_date", "ticker"]).reset_index(drop=True)

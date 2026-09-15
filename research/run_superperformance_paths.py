@@ -57,6 +57,11 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--earnings", type=Path, required=True)
     command.add_argument("--earnings-metadata", type=Path, required=True)
     command.add_argument(
+        "--experiment-config",
+        type=Path,
+        default=Path("research/experiments/superperformance_paths_v1.json"),
+    )
+    command.add_argument(
         "--output-dir",
         type=Path,
         default=Path("research/output/superperformance_paths_v1"),
@@ -109,6 +114,18 @@ def _priority_map(
 ) -> dict[tuple[str, str], tuple[float, ...]] | None:
     if mode is None:
         return None
+    if mode in {"YOUNG_FIRST", "MODEL0_FIRST"}:
+        path_priorities: dict[tuple[str, str], tuple[float, ...]] = {}
+        for row in selected[
+            ["signal_date", "ticker", "young_leader_breakout", "model_0_path"]
+        ].itertuples(index=False):
+            is_young = bool(row.young_leader_breakout)
+            is_model_0 = bool(row.model_0_path)
+            preferred = is_young if mode == "YOUNG_FIRST" else is_model_0
+            path_priorities[(str(row.signal_date), str(row.ticker))] = (
+                0.0 if preferred else 1.0,
+            )
+        return path_priorities
     column = {
         "APPLICABLE_RS": "applicable_rs_score",
         "SUPERPERFORMANCE": "superperformance_rank_score",
@@ -122,6 +139,54 @@ def _priority_map(
             -float(value) if pd.notna(value) else float("inf"),
         )
     return result
+
+
+def _apply_primary_additive_gate(
+    summary: list[dict[str, Any]],
+    rows: list[dict[str, Any]],
+    stage_order: list[str],
+    experiment: dict[str, Any],
+) -> bool | None:
+    """Apply the extra preregistered additive-sleeve decision conditions."""
+
+    primary_id = experiment.get("primary_candidate_id")
+    if primary_id is None:
+        return None
+    by_summary = {str(row["variant_id"]): row for row in summary}
+    by_result = {(str(row["stage"]), str(row["variant_id"])): row for row in rows}
+    primary = by_summary[str(primary_id)]
+    ex_largest_positive = all(
+        float(
+            by_result[(stage, str(primary_id))].get(
+                "total_pnl_ex_largest_winner_r", float("-inf")
+            )
+        )
+        > 0
+        for stage in stage_order
+    )
+    neighbor_ids = ("additive_default", "additive_model0_first")
+    neighbor_support_count = sum(
+        int(by_summary[neighbor]["return_improvement_period_count"]) >= 2
+        and int(by_summary[neighbor]["return_to_drawdown_improvement_period_count"])
+        >= 2
+        for neighbor in neighbor_ids
+    )
+    primary_pass = bool(
+        primary["cross_stage_shortlist"]
+        and ex_largest_positive
+        and neighbor_support_count >= 1
+    )
+    for item in summary:
+        is_primary = str(item["variant_id"]) == str(primary_id)
+        item["decision_eligible"] = is_primary
+        item["positive_pnl_ex_largest_winner_all_periods"] = (
+            ex_largest_positive if is_primary else None
+        )
+        item["neighbor_direction_support_count"] = (
+            neighbor_support_count if is_primary else None
+        )
+        item["primary_additive_gate_pass"] = primary_pass if is_primary else False
+    return primary_pass
 
 
 def _parent_deltas(
@@ -265,6 +330,26 @@ def _stage(
             metrics, gate, development=development
         )
         safe = str(variant["id"]).replace(".", "_")
+        provenance_columns = [
+            "signal_date",
+            "ticker",
+            "archive_first_valid_date",
+            "history_age_sessions",
+            "archive_left_censored_history",
+            "young_leader_breakout",
+            "young_leader_breakout_additive_eligible",
+            "model_0_path",
+        ]
+        available_provenance = [
+            column for column in provenance_columns if column in selected.columns
+        ]
+        if available_provenance and not ledger.empty:
+            ledger = ledger.merge(
+                selected[available_provenance],
+                on=["signal_date", "ticker"],
+                how="left",
+                validate="one_to_one",
+            )
         ledger.to_csv(stage_dir / f"ledger__{safe}.csv", index=False)
         curve.to_csv(stage_dir / f"equity__{safe}.csv", index=False)
         rows.append(metrics)
@@ -284,9 +369,10 @@ def main(argv: list[str] | None = None) -> int:
     project_root = Path(__file__).resolve().parents[1]
     output_dir = ensure_research_output_path(project_root, args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    experiment_path = (
-        project_root / "research/experiments/superperformance_paths_v1.json"
-    )
+    experiment_path = args.experiment_config
+    if not experiment_path.is_absolute():
+        experiment_path = project_root / experiment_path
+    experiment_path = experiment_path.resolve()
     model_path = project_root / "research/config/model_0.json"
     experiment = json.loads(experiment_path.read_text(encoding="utf-8"))
     variants = experiment["variants"]
@@ -370,9 +456,20 @@ def main(argv: list[str] | None = None) -> int:
     add_baseline_deltas(rows)
     stage_order = [item[0] for item in stage_specs]
     summary = cross_stage_summary(rows, stage_order, experiment)
+    primary_additive_pass = _apply_primary_additive_gate(
+        summary, rows, stage_order, experiment
+    )
     parent_comparisons = _parent_deltas(rows, experiment)
     shortlist = [row for row in summary if row["cross_stage_shortlist"]]
-    decision = "HOLD" if shortlist else "REJECT"
+    decision = (
+        "HOLD"
+        if (
+            primary_additive_pass
+            if primary_additive_pass is not None
+            else bool(shortlist)
+        )
+        else "REJECT"
+    )
     pd.DataFrame(rows).to_csv(output_dir / "all_stage_results.csv", index=False)
     pd.DataFrame(summary).to_csv(output_dir / "cross_stage_summary.csv", index=False)
     pd.DataFrame(parent_comparisons).to_csv(
@@ -385,13 +482,18 @@ def main(argv: list[str] | None = None) -> int:
         "execution_status": "COMPLETED_ADAPTIVE_ROBUSTNESS_NO_UNTOUCHED_HOLDOUT",
         "research_label": experiment["research_label"],
         "historical_decision": decision,
-        "preregistration_commit": PREREGISTRATION_COMMIT,
-        "preregistration_clarification_commit": PREREGISTRATION_CLARIFICATION_COMMIT,
+        "preregistration_commit": experiment.get(
+            "preregistration_commit", PREREGISTRATION_COMMIT
+        ),
+        "preregistration_clarification_commit": experiment.get(
+            "preregistration_schema_commit", PREREGISTRATION_CLARIFICATION_COMMIT
+        ),
         "run_git_commit": git_commit,
         "run_git_dirty": git_dirty,
         "production_effect": "NONE",
         "untouched_holdout_evaluated": False,
         "shortlist_count": len(shortlist),
+        "primary_additive_gate_pass": primary_additive_pass,
         "price_sha256": sha256_file(args.prices),
         "benchmark_sha256": sha256_file(args.benchmark),
         "earnings_sha256": sha256_file(args.earnings),
@@ -414,7 +516,7 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
     )
     report = [
-        "# SUPERPERFORMANCE_PATHS_V1",
+        f"# {experiment['experiment_id']}",
         "",
         "> **SURVIVORSHIP- AND EARNINGS-SCHEDULE-BIASED RESEARCH — NO UNTOUCHED HOLDOUT**",
         "",
@@ -424,6 +526,11 @@ def main(argv: list[str] | None = None) -> int:
         "Point-in-time fundamentals: **BLOCKED_DATA_NOT_READY**",
         "",
     ]
+    if primary_additive_pass is not None:
+        report += [
+            f"Primary additive gate pass: **{'YES' if primary_additive_pass else 'NO'}**",
+            "",
+        ]
     for stage_id in stage_order:
         report += [
             f"## {stage_id}",

@@ -12,6 +12,7 @@ from research.engine.superperformance_features import (
     generate_superperformance_path_features,
 )
 from research.run_superperformance_paths import PATH_COLUMN_ALIASES, _priority_map
+from research.run_superperformance_paths import _apply_primary_additive_gate
 
 
 def _history(periods: int, growth: float = 1.001) -> pd.DataFrame:
@@ -44,6 +45,26 @@ def test_preregistered_superperformance_matrix_is_frozen() -> None:
     assert ids[0] == "baseline"
     assert ids[-1] == "multi_path_ranked_2r_sma20_minus_1atr"
     assert PATH_COLUMN_ALIASES[experiment["variants"][0]["path"]] == "model_0_path"
+
+
+def test_preregistered_young_additive_matrix_is_frozen() -> None:
+    root = Path(__file__).resolve().parents[2]
+    experiment = json.loads(
+        (root / "research/experiments/young_leader_additive_v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    ids = [item["id"] for item in experiment["variants"]]
+    assert ids == [
+        "baseline",
+        "young_standalone",
+        "additive_default",
+        "additive_young_first",
+        "additive_model0_first",
+    ]
+    assert experiment["variant_count"] == 5
+    assert experiment["primary_candidate_id"] == "additive_young_first"
+    assert experiment["preregistration_commit"] == "bd96629"
 
 
 def test_mature_blue_sky_breakout_is_causal_and_not_observed_resistance() -> None:
@@ -93,6 +114,23 @@ def test_young_leader_path_does_not_require_ma200() -> None:
     assert row["history_age_sessions"] == 150
     assert bool(row["young_leader_breakout"])
     assert not bool(row["stage2_pass"])
+
+
+def test_additive_young_path_excludes_global_archive_left_censor() -> None:
+    left_censored = _history(150, growth=1.003)
+    later = _history(150, growth=1.003)
+    later.index = later.index + pd.offsets.BDay(20)
+    rows = generate_superperformance_path_features(
+        {"OLD": left_censored, "NEW": later}, "test"
+    )
+    final = (
+        rows.sort_values("signal_date").groupby("ticker").tail(1).set_index("ticker")
+    )
+    assert bool(final.at["OLD", "young_leader_breakout"])
+    assert bool(final.at["OLD", "archive_left_censored_history"])
+    assert not bool(final.at["OLD", "young_leader_breakout_additive_eligible"])
+    assert bool(final.at["NEW", "young_leader_breakout_additive_eligible"])
+    assert bool(final.at["NEW", "model_0_or_young"])
 
 
 def test_model_0_path_keys_match_canonical_research_feature_generator() -> None:
@@ -150,6 +188,75 @@ def test_superperformance_rank_and_priority_are_descending() -> None:
     priorities = _priority_map(ranked.reset_index(), "SUPERPERFORMANCE")
     assert priorities is not None
     assert priorities[(signal_date, "FAST")] < priorities[(signal_date, "SLOW")]
+
+
+def test_additive_path_priorities_are_causal_and_reversed_neighbors() -> None:
+    selected = pd.DataFrame(
+        [
+            {
+                "signal_date": "2024-01-02",
+                "ticker": "YNG",
+                "young_leader_breakout": True,
+                "model_0_path": False,
+            },
+            {
+                "signal_date": "2024-01-02",
+                "ticker": "OLD",
+                "young_leader_breakout": False,
+                "model_0_path": True,
+            },
+        ]
+    )
+    young_first = _priority_map(selected, "YOUNG_FIRST")
+    model_first = _priority_map(selected, "MODEL0_FIRST")
+    assert young_first is not None and model_first is not None
+    assert young_first[("2024-01-02", "YNG")] < young_first[("2024-01-02", "OLD")]
+    assert model_first[("2024-01-02", "OLD")] < model_first[("2024-01-02", "YNG")]
+
+
+def test_primary_additive_gate_cannot_be_replaced_by_neighbor() -> None:
+    experiment = {"primary_candidate_id": "additive_young_first"}
+    summaries = [
+        {
+            "variant_id": variant,
+            "cross_stage_shortlist": variant != "additive_young_first",
+            "return_improvement_period_count": 2,
+            "return_to_drawdown_improvement_period_count": 2,
+        }
+        for variant in (
+            "baseline",
+            "young_standalone",
+            "additive_default",
+            "additive_young_first",
+            "additive_model0_first",
+        )
+    ]
+    results = [
+        {
+            "stage": stage,
+            "variant_id": variant,
+            "total_pnl_ex_largest_winner_r": 1.0,
+        }
+        for stage in ("development", "reused_2024", "reused_2025")
+        for variant in (
+            "baseline",
+            "young_standalone",
+            "additive_default",
+            "additive_young_first",
+            "additive_model0_first",
+        )
+    ]
+    assert not _apply_primary_additive_gate(
+        summaries,
+        results,
+        ["development", "reused_2024", "reused_2025"],
+        experiment,
+    )
+    primary = next(
+        row for row in summaries if row["variant_id"] == "additive_young_first"
+    )
+    assert primary["decision_eligible"]
+    assert not primary["primary_additive_gate_pass"]
 
 
 def test_missing_rank_components_receive_zero_and_are_counted() -> None:
