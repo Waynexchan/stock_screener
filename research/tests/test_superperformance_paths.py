@@ -11,7 +11,7 @@ from research.engine.superperformance_features import (
     enrich_superperformance_ranks,
     generate_superperformance_path_features,
 )
-from research.run_superperformance_paths import _priority_map
+from research.run_superperformance_paths import PATH_COLUMN_ALIASES, _priority_map
 
 
 def _history(periods: int, growth: float = 1.001) -> pd.DataFrame:
@@ -43,6 +43,7 @@ def test_preregistered_superperformance_matrix_is_frozen() -> None:
     assert len(ids) == len(set(ids))
     assert ids[0] == "baseline"
     assert ids[-1] == "multi_path_ranked_2r_sma20_minus_1atr"
+    assert PATH_COLUMN_ALIASES[experiment["variants"][0]["path"]] == "model_0_path"
 
 
 def test_mature_blue_sky_breakout_is_causal_and_not_observed_resistance() -> None:

@@ -47,6 +47,7 @@ from research.run_leader_rs_robustness import (
 
 PREREGISTRATION_COMMIT = "f6b9741"
 PREREGISTRATION_CLARIFICATION_COMMIT = "4ab979a"
+PATH_COLUMN_ALIASES = {"model_0": "model_0_path"}
 
 
 def parser() -> argparse.ArgumentParser:
@@ -189,9 +190,10 @@ def _stage(
     rows: list[dict[str, Any]] = []
     for variant in experiment["variants"]:
         path = str(variant["path"])
-        if path not in signals:
+        path_column = PATH_COLUMN_ALIASES.get(path, path)
+        if path_column not in signals:
             raise ValueError(f"unknown superperformance path: {path}")
-        selected = signals[signals[path].fillna(False).astype(bool)].copy()
+        selected = signals[signals[path_column].fillna(False).astype(bool)].copy()
         exit_mode = variant.get("exit_mode")
         cache_key = (path, exit_mode)
         if cache_key not in cache:
