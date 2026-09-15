@@ -54,26 +54,28 @@
   "variant_count": 5,
   "stage_gates": {
     "development": {
-      "minimum_trades": 75,
-      "minimum_expectancy_per_trade_r": 0.0,
-      "minimum_profit_factor": 1.2,
-      "maximum_drawdown_pct": 10.0,
-      "minimum_total_return_pct": 0.0,
-      "require_positive_early_and_late_returns": true
+      "maximum_drawdown_pct_at_most": 10.0,
+      "total_return_pct_above": 0.0,
+      "expectancy_per_trade_r_above": 0.0,
+      "profit_factor_at_least": 1.2,
+      "accepted_trade_count_at_least": 75,
+      "missing_mark_count": 0,
+      "early_period_return_pct_above": 0.0,
+      "late_period_return_pct_above": 0.0
     },
     "reused_period": {
-      "minimum_trades": 8,
-      "minimum_expectancy_per_trade_r": 0.0,
-      "minimum_profit_factor": 1.1,
-      "maximum_drawdown_pct": 10.0,
-      "minimum_total_return_pct": 0.0,
-      "require_positive_early_and_late_returns": false
+      "maximum_drawdown_pct_at_most": 10.0,
+      "total_return_pct_above": 0.0,
+      "expectancy_per_trade_r_above": 0.0,
+      "profit_factor_at_least": 1.1,
+      "accepted_trade_count_at_least": 8,
+      "missing_mark_count": 0
     }
   },
-  "cross_stage_gate": {
-    "minimum_return_improvement_periods": 2,
-    "minimum_return_to_drawdown_improvement_periods": 2,
-    "maximum_largest_winner_share_of_positive_pnl": 0.5,
+  "cross_stage_shortlist": {
+    "total_return_beats_baseline_in_at_least_periods": 2,
+    "return_to_drawdown_beats_baseline_in_at_least_periods": 2,
+    "largest_winner_positive_pnl_contribution_at_most": 0.5,
     "require_positive_total_pnl_ex_largest_winner_all_periods": true,
     "require_all_stage_gates": true,
     "require_neighbor_direction_not_both_contradictory": true
