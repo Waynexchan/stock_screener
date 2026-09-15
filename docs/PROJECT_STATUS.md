@@ -12,7 +12,9 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
   accepted development trades were young; most uplift came from downstream
   capacity reshuffling into mature winners. Historical decision: `REJECT`.
   The clean run at `065dcfe` reconciled 15 results, 655 ledger rows, and 10,981
-  equity rows with zero audit violation. Production remains unchanged.
+  equity rows with zero audit violation. Post-result focused verification passed
+  114 research tests; full verification passed 303 pytest and 118 legacy tests
+  plus all isolation/invariant stages. Production remains unchanged.
 - `SUPERPERFORMANCE_PATHS_V1` froze 18 causal mechanical breakout, blue-sky,
   quality, tight-base, pullback, short-history leader, RS/ranking, union, and
   trailing variants. No variant entered the cross-stage shortlist; historical

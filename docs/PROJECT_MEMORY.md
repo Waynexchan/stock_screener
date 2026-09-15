@@ -573,4 +573,8 @@ The audit reconciled 15 result rows, 655 ledger rows, and 10,981 equity rows
 with zero boundary, entry-timing, duplicate, blackout, risk, heat, position,
 left-censor, or missing-mark violations. Baseline and standalone-young metrics
 matched V1 within serialization precision. Production and the immutable forward
-journal remain unchanged; do not retune on reused history.
+journal remain unchanged; do not retune on reused history. Post-result focused
+verification passed 114 research tests, the expected data-readiness block, and
+production hash isolation. Full verification passed 303 pytest tests, 118
+legacy unittest tests, industry/report invariants, the offline dry run, and
+generated HTML semantic validation.
