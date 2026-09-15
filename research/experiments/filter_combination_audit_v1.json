@@ -3,7 +3,7 @@
   "status": "PREREGISTERED_ADAPTIVE_DIAGNOSTIC_NO_UNTOUCHED_HOLDOUT",
   "production_effect": "NONE",
   "research_label": "SURVIVORSHIP-, EARNINGS-SCHEDULE-, AND CLASSIFICATION-BIASED ADAPTIVE RESEARCH; NO UNTOUCHED HOLDOUT",
-  "preregistration_commit": "TO_BE_REPLACED_BEFORE_IMPLEMENTATION",
+  "preregistration_commit": "3f8d0a6",
   "periods": {
     "development_signal": ["2017-01-01", "2023-11-01"],
     "development_outcome_end": "2023-12-29",
