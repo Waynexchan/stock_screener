@@ -614,3 +614,47 @@ matched `LEADER_COMPLETENESS_V2`. Historical decision: REJECT. Production and
 the immutable forward journal remain unchanged. The next useful hypothesis is
 candidate ordering on genuinely new point-in-time data, not further hard-filter
 threshold mining on this reused archive.
+
+## 2026-09-15 opportunity-first filter and concentration audit
+
+`FILTER_EDGE_SEQUENCED_V1` answered whether the earlier low transaction count
+was caused by the sample or by portfolio constraints. It reused the exact 80
+preregistered variants without retuning, but removed all cross-stock heat,
+position, and industry limits while measuring trade quality. One open episode
+per ticker was allowed. The preregistration commit was `42ea515`, provenance was
+recorded at `f924b78`, implementation at `596bacd`, and the corrected clean run
+used `c8f1692bfd5edfbecd12c384730967e226dae844`.
+
+The development sample contained 25,413 executable signals and 14,083
+non-overlapping ticker episodes, versus 124 accepted trades in the earlier
+fixed-2R portfolio. Reused 2024/2025 contained 2,101/2,295 episodes versus 12/13
+portfolio trades. Portfolio heat, not raw signal scarcity, caused the very low
+transaction count.
+
+No individual filter or combination achieved `ALPHA_SUPPORT`; every
+development calendar-month block-bootstrap lower bound failed to clear zero.
+Strong industry and pivot/supply were the only individual
+`RISK_QUALITY_SUPPORT` results. Five variants also passed the bounded
+leave-one-factor-out rule, but none had prior fixed-2R portfolio shortlist
+support. Recent RS >=70, long-term RS >=75, dual RS, MarketSmith-style proxy
+>=80, beta >=0.8, Utilities exclusion, early-base, and breakout demand therefore
+received no hard-gate support. Historical decision: `REJECT`; continuous
+features may still be preregistered as rankings on genuinely new data.
+
+The concentration audit compared cap two with no cap on the same known-current-
+industry subset. Coverage was only 66.12% / 62.97% / 62.25%. At 1R per trade
+under fixed 2R heat, cap two was exactly redundant in every stage. At 0.5R per
+trade it rejected three development candidates, changed the later path, reduced
+return from 61.73% to 53.27%, left drawdown at 7.63%, and had no effect in reused
+2024/2025. It remains a diversification control, not alpha evidence. If only
+two total positions are permitted and both must not share an industry, cap one
+is the effective rule.
+
+The clean audit produced 240 opportunity rows, 80 decisions, 22 individual
+summaries, 12 concentration rows, and 240 episode ledgers. Counts reconciled;
+there were zero same-ticker overlap, period-boundary, earnings-blackout, heat,
+position, industry-cap, or missing-mark violations. Production and the
+immutable forward journal remained unchanged. Post-result research verification
+passed 128 tests plus the data-readiness and production-isolation gates; full
+verification passed 317 pytest and 118 legacy unittest tests plus every
+integration, invariant, dry-run, and semantic-validation stage.

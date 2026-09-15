@@ -236,7 +236,7 @@
       "category": "relative_strength_research",
       "status": "RESEARCH_ONLY",
       "production_effect": "NONE; adaptive robustness variants only.",
-      "evidence_summary": "Two preregistered studies found no stable monotonic relationship between the completed 1-99 proxy and portfolio outcomes; no bucket or threshold entered a cross-stage shortlist.",
+      "evidence_summary": "Three preregistered diagnostics found no stable hard-threshold value. The opportunity-first audit found proxy >=80 expectancy deltas of -0.105R, -0.084R, and +0.071R across the three reused stages.",
       "sample_size": 25456,
       "discovery_result": "Proxy >=80 accepted 142 trades: 18.77% return, 16.87% maximum drawdown, 0.132R expectancy, and 1.197 profit factor versus baseline 42.78%, 9.75%, 0.345R, and 1.691. Proxy >=90 lost 10.81%.",
       "validation_result": "Reused/contaminated only. V2 fixed buckets all returned less than baseline in 2024 and 2025. Requiring positive one- and three-month score changes returned 7.32% in 2024 and 28.58% with 13.23% drawdown in 2025 after losing 6.71% in development.",
@@ -244,8 +244,8 @@
       "expectancy_delta_r": -0.212825,
       "profit_factor_delta": -0.493775,
       "max_drawdown_delta_r": null,
-      "last_tested": "2026-09-14",
-      "notes": "This is a declared four-quarter proxy with 21- and 63-session changes, not MarketSmith's proprietary RS Rating. Current-survivor ranking and lack of untouched data prohibit promotion."
+      "last_tested": "2026-09-15",
+      "notes": "This is a declared four-quarter proxy with 21- and 63-session changes, not MarketSmith's proprietary RS Rating. Reject the tested hard cutoff; retain the continuous score only as a prospective ranking hypothesis."
     },
     {
       "id": "rs_line_near_high",
@@ -270,7 +270,7 @@
       "category": "industry_research",
       "status": "RESEARCH_ONLY",
       "production_effect": "NONE; adaptive robustness only.",
-      "evidence_summary": "Static hard gates, secondary half-risk, rank-only, exceptional-stock override, breadth acceleration, and stock-within-industry rank all failed the frozen cross-stage improvement rule.",
+      "evidence_summary": "Static hard gates and policy variants failed prior portfolio gates. Opportunity-first strong-industry filtering received only risk/quality support, not alpha support, and had no matching prior portfolio shortlist.",
       "sample_size": 25456,
       "discovery_result": "136 trades; 14.75% return, 16.85% maximum drawdown, 0.108R expectancy, and 1.184 profit factor.",
       "validation_result": "Reused/contaminated only. Secondary half-risk returned 14.69% / 2.74% drawdown in 2024 but 15.64% / 7.63% in 2025 after failing development. Rank-only returned 2.83% and 15.61%; breadth acceleration lost 1.22% in 2025.",
@@ -278,8 +278,8 @@
       "expectancy_delta_r": -0.236531,
       "profit_factor_delta": -0.507707,
       "max_drawdown_delta_r": null,
-      "last_tested": "2026-09-14",
-      "notes": "Classifications are current, not effective-dated. V2 tested five explicit policy roles plus stock-within-industry rank; none advanced. Do not infer validation for the distinct production industry model."
+      "last_tested": "2026-09-15",
+      "notes": "Classifications are current, not effective-dated; only 62%-66% of signals had usable labels in the concentration audit. Keep industry strength as a prospective ranking hypothesis, not a validated hard gate."
     },
     {
       "id": "up_down_volume_ratio_50d",
@@ -321,7 +321,7 @@
       "category": "setup_quality_research",
       "status": "REJECTED",
       "production_effect": "NONE; frozen V2 research proxies only.",
-      "evidence_summary": "Duration/depth, contraction and dry-up, pivot supply, shakeout, breakout quality, base-stage, and full-base variants produced no cross-stage improvement over MODEL_0.",
+      "evidence_summary": "Most base variants remained mixed. Opportunity-first pivot/supply filtering improved profit factor and MAE in all three reused stages but had no development bootstrap alpha support or matching prior portfolio shortlist.",
       "sample_size": 25456,
       "discovery_result": "Pivot-supply-clear was the only all-stage absolute gate pass: 121 trades, 39.12% return, 9.35% drawdown, and 0.323R expectancy versus baseline 42.78%, 9.75%, and 0.345R. Complete base quality selected only 87 signals and 47 trades.",
       "validation_result": "Reused/contaminated only. Pivot-supply-clear returned 6.71% / 3.90% drawdown in 2024 and 6.33% / 3.41% in 2025, below baseline return and return/drawdown in both. Contraction/dry-up made an isolated 66.94% in 2025 after 51.71% development drawdown.",
@@ -329,8 +329,8 @@
       "expectancy_delta_r": -0.021695,
       "profit_factor_delta": -0.063271,
       "max_drawdown_delta_r": null,
-      "last_tested": "2026-09-14",
-      "notes": "The exact V2 proxies are REJECTED as alpha additions. Pivot-supply-clear may describe a lower-opportunity risk preference, but the simpler baseline had better return/drawdown in every reused period."
+      "last_tested": "2026-09-15",
+      "notes": "The exact V2 hard-gate stack remains REJECTED as alpha. Pivot/supply may be tested prospectively as a continuous ranking feature; do not promote or retune it on reused history."
     },
     {
       "id": "delayed_breakout_followthrough_v2",
@@ -433,6 +433,23 @@
       "max_drawdown_delta_r": null,
       "last_tested": "2026-09-15",
       "notes": "Reject the exact hard-filter matrix. Current low trade count is mainly a 2R-capacity constraint, so future research should test preregistered candidate ordering on genuinely new point-in-time data rather than mine more hard-filter thresholds on the reused archive."
+    },
+    {
+      "id": "filter_edge_sequenced_v1",
+      "name": "Opportunity-first filter and industry-concentration audit",
+      "category": "strategy_filter_research",
+      "status": "REJECTED",
+      "production_effect": "NONE; opportunity, combination, and concentration diagnostic only.",
+      "evidence_summary": "No one of 80 variants achieved alpha support. Two individual filters received risk/quality support, five bounded combinations passed leave-one-out, and none also had prior fixed-2R portfolio support.",
+      "sample_size": 14083,
+      "discovery_result": "The 25,413 executable development signals became 14,083 non-overlapping ticker episodes before portfolio constraints. Strong industry and pivot/supply received risk/quality support, but every development block-bootstrap alpha lower bound failed to clear zero.",
+      "validation_result": "Reused/contaminated only. Baseline opportunity counts were 2,101 and 2,295 in 2024/2025. Sequential-plus-prior-portfolio support count was zero.",
+      "holdout_result": null,
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-15",
+      "notes": "Reject the exact legacy hard-filter matrix. Preserve industry, pivot/setup, RS, and volume only as preregistered ranking hypotheses on genuinely new data."
     },
     {
       "id": "fundamental_acceleration",
@@ -644,10 +661,10 @@
       "category": "operational_safety",
       "status": "CORE_RISK_CONTROL",
       "production_effect": "Missing, stale, anomalous, or incomplete critical data blocks actionability or publication.",
-      "evidence_summary": "Classified for operational safety, not claimed alpha.",
-      "sample_size": null,
-      "discovery_result": null,
-      "validation_result": null,
+      "evidence_summary": "Classified for operational safety, not claimed alpha. A cap of two positions per industry was explicitly isolated from filter selection.",
+      "sample_size": 16832,
+      "discovery_result": "At fixed 2R heat and 1R per trade, cap two was exactly redundant in every reused stage. At 0.5R per trade it rejected three development candidates, did not reduce drawdown, and had no effect in 2024/2025.",
+      "validation_result": "Reused/contaminated only; current-industry coverage was 62%-66% and was not effective-dated.",
       "holdout_result": null,
       "expectancy_delta_r": null,
       "profit_factor_delta": null,
@@ -686,8 +703,8 @@
       "expectancy_delta_r": null,
       "profit_factor_delta": null,
       "max_drawdown_delta_r": null,
-      "last_tested": "2026-09-09",
-      "notes": "Covered by decision and production-integrity tests."
+      "last_tested": "2026-09-15",
+      "notes": "Remain CORE_RISK_CONTROL. Cap two matters only when total capacity can exceed two positions; with two total positions, cap one is required to prevent both holdings sharing an industry."
     },
     {
       "id": "maximum_open_positions",

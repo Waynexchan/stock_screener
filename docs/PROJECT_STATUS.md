@@ -4,6 +4,16 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
+- `FILTER_EDGE_SEQUENCED_V1` separated filter quality from fixed-2R portfolio
+  scarcity. Development contained 25,413 executable signals and 14,083
+  non-overlapping ticker episodes before cross-stock constraints, versus only
+  124 trades in the earlier fixed-2R path. No one of 80 variants achieved alpha
+  support. Strong industry and pivot/supply received risk/quality support, and
+  five combinations passed leave-one-out, but none had matching prior portfolio
+  support. A two-position industry cap was exactly redundant at 1R/trade under
+  2R heat; at 0.5R/trade it bound only three times in development, did not
+  reduce drawdown, and had no 2024/2025 effect. Historical decision: `REJECT`;
+  production is unchanged. The corrected clean run was `c8f1692`.
 - `FILTER_COMBINATION_AUDIT_V1` froze 80 variants: every subset of six core
   filter components plus 16 supplemental individual filters. The baseline had
   25,413 executable development candidates but admitted only 124; 25,200 were
@@ -122,6 +132,13 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-sequenced-filter-audit verification on 2026-09-15: PASS — focused
+research verification passed Ruff, mypy, 128 research tests, the expected
+`BLOCKED_DATA_NOT_READY` baseline gate, and production hash isolation. Full
+project verification passed with 317 pytest tests, 118 legacy unittest tests,
+all formatting, typing, industry/report invariant, offline dry-run, and
+generated HTML semantic-validation stages.
 
 Post-filter-combination-audit result verification on 2026-09-15: PASS — focused
 research verification passed Ruff, mypy, 120 research tests, the expected
@@ -326,16 +343,28 @@ No combination met the preregistered relative, outlier, and leave-one-out
 shortlist. Decision: REJECT the exact hard-filter matrix. See
 `docs/RESEARCH_RESULTS_FILTER_COMBINATION_AUDIT_V1.md`.
 
+`FILTER_EDGE_SEQUENCED_V1` then removed cross-stock capacity while assessing
+each frozen filter and combination, retaining only one open episode per ticker.
+The baseline contained 14,083 / 2,101 / 2,295 opportunity episodes across the
+three reused stages. No variant met the alpha gate; strong industry and
+pivot/supply were the only individual risk/quality supports. Five bounded
+combinations passed leave-one-out but none agreed with the earlier fixed-2R
+portfolio shortlist. The separate industry-cap audit showed that cap two is
+redundant when 2R heat already allows only two 1R positions. At 0.5R/trade it
+did not improve drawdown and had no reused-2024/2025 effect. Decision: REJECT.
+See `docs/RESEARCH_RESULTS_FILTER_EDGE_SEQUENCED_V1.md`.
+
 ## Next recommended task
 
 Acquire and provenance-check point-in-time universe and listing history,
 delisted symbols, classifications, earnings schedules, and fundamental
-histories. On genuinely new data, prioritize a small preregistered
-candidate-ordering experiment over additional hard filters: the present
-fixed-2R portfolio admits roughly 0.3%–0.5% of executable candidates, while its
-default tie-break is ticker order. Preserve the frozen short-history cohort only
-as a labelled observation list; do not retune it or the filter matrix on reused
-history.
+histories. On genuinely new data, prioritize a small preregistered one-factor
+candidate-order experiment—MarketSmith-style proxy, industry strength,
+setup/pivot quality, and volume quality—followed by one frozen composite and
+leave-one-factor-out neighbors. Apply fixed heat and the declared industry cap
+only after the ranking comparison. The current fixed-2R portfolio admits
+roughly 0.3%–0.5% of executable candidates and its default tie-break is ticker
+order. Do not retune filters or ranking weights on reused 2017-2025 history.
 
 Do not retune the completed V1 paths or promote any result without explicit
 instruction and governance review.
