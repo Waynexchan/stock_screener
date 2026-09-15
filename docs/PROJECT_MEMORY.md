@@ -545,3 +545,32 @@ equity rows with zero signal/outcome-boundary, next-session-entry, duplicate,
 earnings-blackout, risk, heat, position, or missing-mark violations. MODEL_0
 matched `LEADER_COMPLETENESS_V2` exactly on the six audited metrics in every
 period. Production and the immutable forward journal are unchanged.
+
+## 2026-09-15 young-leader additive follow-up
+
+`YOUNG_LEADER_ADDITIVE_V1` froze its five-variant additive test at `bd96629`,
+clarified the existing gate-key schema at `1d30326`, recorded final
+preregistration provenance at `83d36a9`, and ran from clean implementation
+commit `065dcfe094d86c5051a0149d570d2f44279ec322`. It reused the exact V1 young
+signal with no threshold change and compared baseline, standalone young,
+default-order union, primary young-first union, and MODEL_0-first union.
+
+Young-first improved development from 42.78% / 9.75% drawdown to 58.70% / 8.92%
+and reused 2024 from 9.93% / 3.93% to 12.30% / 3.92%. It failed reused 2025 at
+27.00% return / 13.07% drawdown, with 74.39% of positive P&L from RGLD. The
+primary improved return and return/drawdown in two periods and remained positive
+after its largest winner, but it failed the all-stage and outlier gates. Neither
+ordering neighbor supported the improvement direction. Decision: `REJECT`.
+
+Only three newly accepted development trades were direct young signals. Their
+priority changed the later capacity path, producing 27 additions and 31 removals
+and fortuitously admitting mature ESI +5.81R and ADM +7.20R trades. Reused 2025
+admitted young SARO at -1.00R; standalone winner SNDK was not admitted by the
+additive portfolio. The apparent uplift is therefore path-dependent rather than
+clean young-cohort alpha.
+
+The audit reconciled 15 result rows, 655 ledger rows, and 10,981 equity rows
+with zero boundary, entry-timing, duplicate, blackout, risk, heat, position,
+left-censor, or missing-mark violations. Baseline and standalone-young metrics
+matched V1 within serialization precision. Production and the immutable forward
+journal remain unchanged; do not retune on reused history.

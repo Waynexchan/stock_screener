@@ -372,7 +372,7 @@
       "category": "new_leader_research",
       "status": "RESEARCH_ONLY",
       "production_effect": "NONE; frozen research path only.",
-      "evidence_summary": "The path had positive expectancy, profit factor, and return with low drawdown in all three reused periods, but was underpowered and outlier-dependent.",
+      "evidence_summary": "The standalone path had positive expectancy, profit factor, and return with low drawdown in all reused periods, but was underpowered and outlier-dependent; prioritizing it inside MODEL_0 failed the complete additive gate.",
       "sample_size": 197,
       "discovery_result": "156 selected signals and 48 accepted trades; 15.21% return, 4.66% drawdown, 0.317R expectancy, and 2.335 profit factor. It failed the 75-trade floor.",
       "validation_result": "Reused/contaminated only. Eight trades returned 6.07% with 1.28% drawdown in 2024; seven returned 13.16% with 5.46% drawdown in 2025. SNDK supplied 77.25% of 2025 positive P&L.",
@@ -381,7 +381,24 @@
       "profit_factor_delta": null,
       "max_drawdown_delta_r": null,
       "last_tested": "2026-09-15",
-      "notes": "This is 90-219 valid sessions in the available archive, not verified IPO age. Preserve for one preregistered additive-sleeve test and newly arriving forward observation; do not promote."
+      "notes": "This is 90-219 valid sessions in the available archive, not verified IPO age. The frozen additive follow-up was rejected. Do not retune on reused history or promote; only newly arriving point-in-time observation could add evidence."
+    },
+    {
+      "id": "young_leader_additive_sleeve_v1",
+      "name": "Young-leader priority inside MODEL_0",
+      "category": "portfolio_entry_priority_research",
+      "status": "REJECTED",
+      "production_effect": "NONE; five-variant adaptive follow-up only.",
+      "evidence_summary": "Young-first priority improved development and reused-2024 return/drawdown but failed reused-2025 risk and outlier gates; both declared ordering neighbors provided no directional support.",
+      "sample_size": 33176,
+      "discovery_result": "120 accepted trades; 58.70% return, 8.92% drawdown, 0.489R expectancy, and 1.984 profit factor versus baseline 42.78%, 9.75%, 0.345R, and 1.691.",
+      "validation_result": "Reused/contaminated only. Young-first returned 12.30% / 3.92% drawdown in 2024, then 27.00% / 13.07% in 2025. The largest winner supplied 74.39% of 2025 positive P&L. Default and MODEL_0-first ordering did not improve the baseline.",
+      "holdout_result": null,
+      "expectancy_delta_r": 0.144156,
+      "profit_factor_delta": 0.292864,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-15",
+      "notes": "REJECT the exact priority sleeve. Only three newly accepted development trades were young signals; downstream capacity reshuffling admitted large mature winners, demonstrating strong portfolio-path dependence."
     },
     {
       "id": "superperformance_rank_v1",

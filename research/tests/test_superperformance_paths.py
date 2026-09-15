@@ -259,6 +259,45 @@ def test_primary_additive_gate_cannot_be_replaced_by_neighbor() -> None:
     assert not primary["primary_additive_gate_pass"]
 
 
+def test_primary_additive_gate_handles_no_positive_trade_sample() -> None:
+    summaries = [
+        {
+            "variant_id": variant,
+            "cross_stage_shortlist": True,
+            "return_improvement_period_count": 2,
+            "return_to_drawdown_improvement_period_count": 2,
+        }
+        for variant in (
+            "additive_default",
+            "additive_young_first",
+            "additive_model0_first",
+        )
+    ]
+    results = [
+        {
+            "stage": stage,
+            "variant_id": variant,
+            "total_pnl_ex_largest_winner_r": (
+                None
+                if stage == "reused_2025" and variant == "additive_young_first"
+                else 1.0
+            ),
+        }
+        for stage in ("development", "reused_2024", "reused_2025")
+        for variant in (
+            "additive_default",
+            "additive_young_first",
+            "additive_model0_first",
+        )
+    ]
+    assert not _apply_primary_additive_gate(
+        summaries,
+        results,
+        ["development", "reused_2024", "reused_2025"],
+        {"primary_candidate_id": "additive_young_first"},
+    )
+
+
 def test_missing_rank_components_receive_zero_and_are_counted() -> None:
     dates = pd.bdate_range("2024-01-02", periods=100)
     histories = {"AAA": pd.DataFrame({"Close": np.linspace(20, 30, 100)}, index=dates)}

@@ -155,14 +155,13 @@ def _apply_primary_additive_gate(
     by_summary = {str(row["variant_id"]): row for row in summary}
     by_result = {(str(row["stage"]), str(row["variant_id"])): row for row in rows}
     primary = by_summary[str(primary_id)]
-    ex_largest_positive = all(
-        float(
-            by_result[(stage, str(primary_id))].get(
-                "total_pnl_ex_largest_winner_r", float("-inf")
-            )
-        )
-        > 0
+    ex_largest_values = [
+        by_result[(stage, str(primary_id))].get("total_pnl_ex_largest_winner_r")
         for stage in stage_order
+    ]
+    ex_largest_positive = all(
+        value is not None and pd.notna(value) and float(value) > 0
+        for value in ex_largest_values
     )
     neighbor_ids = ("additive_default", "additive_model0_first")
     neighbor_support_count = sum(
@@ -518,7 +517,7 @@ def main(argv: list[str] | None = None) -> int:
     report = [
         f"# {experiment['experiment_id']}",
         "",
-        "> **SURVIVORSHIP- AND EARNINGS-SCHEDULE-BIASED RESEARCH — NO UNTOUCHED HOLDOUT**",
+        f"> **{experiment['research_label']}**",
         "",
         f"Historical decision: **{decision}**",
         f"Cross-stage shortlist count: {len(shortlist)}",

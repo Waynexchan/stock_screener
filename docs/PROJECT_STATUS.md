@@ -4,6 +4,15 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
+- `YOUNG_LEADER_ADDITIVE_V1` followed the only mixed V1 lead without retuning
+  its signal. Young-first priority improved development to 58.70% return / 8.92%
+  drawdown and reused 2024 to 12.30% / 3.92%, but reused 2025 returned 27.00%
+  with 13.07% drawdown and 74.39% of positive P&L from one winner. Default and
+  MODEL_0-first ordering did not support the direction. Only three newly
+  accepted development trades were young; most uplift came from downstream
+  capacity reshuffling into mature winners. Historical decision: `REJECT`.
+  The clean run at `065dcfe` reconciled 15 results, 655 ledger rows, and 10,981
+  equity rows with zero audit violation. Production remains unchanged.
 - `SUPERPERFORMANCE_PATHS_V1` froze 18 causal mechanical breakout, blue-sky,
   quality, tight-base, pullback, short-history leader, RS/ranking, union, and
   trailing variants. No variant entered the cross-stage shortlist; historical
@@ -292,11 +301,11 @@ Decision: REJECT. See
 
 ## Next recommended task
 
-Complete the already-authorised, preregistered narrow MODEL_0 plus frozen
-short-history-leader additive-sleeve test. After that, acquire and
-provenance-check point-in-time universe, delisted-symbol, classification,
-earnings-schedule, and fundamental histories before any broader leader-model
-research.
+Acquire and provenance-check point-in-time universe and listing history,
+delisted symbols, classifications, earnings schedules, and fundamental
+histories before any broader leader-model research. Preserve the frozen
+short-history cohort only as a labelled observation list for newly arriving
+data; do not retune it on the reused history.
 
 Do not retune the completed V1 paths or promote any result without explicit
 instruction and governance review.
