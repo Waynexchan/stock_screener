@@ -1,0 +1,90 @@
+{
+  "experiment_id": "FILTER_COMBINATION_AUDIT_V1",
+  "status": "PREREGISTERED_ADAPTIVE_DIAGNOSTIC_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP-, EARNINGS-SCHEDULE-, AND CLASSIFICATION-BIASED ADAPTIVE RESEARCH; NO UNTOUCHED HOLDOUT",
+  "preregistration_commit": "TO_BE_REPLACED_BEFORE_IMPLEMENTATION",
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "development_stability_split": "2020-12-31",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "reused_2024_signal": ["2024-03-01", "2024-10-31"],
+    "reused_2024_outcome_end": "2024-12-31",
+    "reused_2025_signal": ["2025-01-02", "2025-10-31"],
+    "reused_2025_outcome_end": "2025-12-31"
+  },
+  "execution": {
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date trailing 20-session low",
+    "target_r": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "earnings_blackout_calendar_days": 10
+  },
+  "portfolio": {
+    "type": "FIXED",
+    "maximum_heat_r": 2.0,
+    "risk_per_trade_r": 1.0,
+    "maximum_positions": 4,
+    "starting_equity_r": 100.0,
+    "candidate_order": "entry_date, signal_date, ticker"
+  },
+  "factorial_components": [
+    {"id": "rs_dual", "rules": [{"column": "recent_rs_score", "operator": ">=", "value": 70}, {"column": "long_term_rs_score", "operator": ">=", "value": 75}]},
+    {"id": "extension", "rules": [{"column": "within_extension_limits", "operator": "is_true"}]},
+    {"id": "industry_strong", "rules": [{"column": "industry_proxy_score", "operator": ">=", "value": 80}]},
+    {"id": "pivot_supply", "rules": [{"column": "distance_from_pivot_pct", "operator": "between", "value": [-5, 2]}, {"column": "pivot_supply_days_10d", "operator": "<=", "value": 1}]},
+    {"id": "breakout_demand", "rules": [{"column": "breakout_quality", "operator": "is_true"}]},
+    {"id": "market_sma50", "rules": [{"column": "spy_above_sma50", "operator": "is_true"}]}
+  ],
+  "supplemental_individual_filters": [
+    {"id": "recent_rs_ge70", "rules": [{"column": "recent_rs_score", "operator": ">=", "value": 70}]},
+    {"id": "long_term_rs_ge75", "rules": [{"column": "long_term_rs_score", "operator": ">=", "value": 75}]},
+    {"id": "volume_ratio_ge_0_3", "rules": [{"column": "volume_ratio", "operator": ">=", "value": 0.3}]},
+    {"id": "adr_1_to_10", "rules": [{"column": "adr_pct", "operator": "between", "value": [1, 10]}]},
+    {"id": "beta_ge_0_8", "rules": [{"column": "rolling_beta_126", "operator": ">=", "value": 0.8}]},
+    {"id": "no_utilities", "rules": [{"column": "is_utility", "operator": "is_false"}]},
+    {"id": "marketsmith_proxy_ge80", "rules": [{"column": "marketsmith_proxy_score", "operator": ">=", "value": 80}]},
+    {"id": "rs_rising_1m_3m", "rules": [{"column": "marketsmith_proxy_delta_21d", "operator": ">", "value": 0}, {"column": "marketsmith_proxy_delta_63d", "operator": ">", "value": 0}]},
+    {"id": "rs_line_leads_price", "rules": [{"column": "rs_line_leads_price_252d_high", "operator": "is_true"}]},
+    {"id": "stock_within_industry_ge80", "rules": [{"column": "stock_within_industry_score", "operator": ">=", "value": 80}]},
+    {"id": "industry_breadth_accelerating", "rules": [{"column": "industry_breadth_ge80_pct", "operator": ">=", "value": 20}, {"column": "industry_breadth_delta_21d", "operator": ">", "value": 0}, {"column": "industry_breadth_delta_63d", "operator": ">=", "value": 0}]},
+    {"id": "up_down_volume_ge_1_25", "rules": [{"column": "up_down_volume_ratio_50d", "operator": ">=", "value": 1.25}]},
+    {"id": "base_duration_depth", "rules": [{"column": "base_duration_sessions", "operator": "between", "value": [15, 65]}, {"column": "base_depth_pct", "operator": "between", "value": [3, 35]}]},
+    {"id": "contraction_and_dryup", "rules": [{"column": "contraction_count_3x20d", "operator": ">=", "value": 1}, {"column": "volume_dryup_ratio_10v40", "operator": "<=", "value": 0.8}]},
+    {"id": "shakeout_reclaim_10d", "rules": [{"column": "shakeout_reclaim_10d", "operator": "is_true"}]},
+    {"id": "early_base_stage", "rules": [{"column": "base_stage_proxy", "operator": "<=", "value": 2}]}
+  ],
+  "factorial_subset_count": 64,
+  "supplemental_variant_count": 16,
+  "variant_count": 80,
+  "cumulative_funnel_order": ["rs_dual", "extension", "industry_strong", "pivot_supply", "breakout_demand", "market_sma50"],
+  "stage_gates": {
+    "development": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.2, "accepted_trade_count_at_least": 75, "missing_mark_count": 0, "early_period_return_pct_above": 0.0, "late_period_return_pct_above": 0.0},
+    "reused_period": {"maximum_drawdown_pct_at_most": 10.0, "total_return_pct_above": 0.0, "expectancy_per_trade_r_above": 0.0, "profit_factor_at_least": 1.1, "accepted_trade_count_at_least": 8, "missing_mark_count": 0}
+  },
+  "cross_stage_shortlist": {
+    "absolute_stage_gate_pass_required": ["development_2017_2023", "reused_2024", "reused_2025"],
+    "total_return_beats_baseline_in_at_least_periods": 2,
+    "return_to_drawdown_beats_baseline_in_at_least_periods": 2,
+    "largest_winner_positive_pnl_contribution_at_most": 0.5,
+    "maximum_component_count": 3,
+    "each_component_leave_one_out_return_improvement_periods_at_least": 2,
+    "each_component_leave_one_out_return_to_drawdown_improvement_periods_at_least": 2
+  },
+  "sample_status": {
+    "development_2017_2023": "REUSED_CONTAMINATED",
+    "reused_2024": "REUSED_CONTAMINATED",
+    "reused_2025": "REUSED_CONTAMINATED",
+    "untouched_holdout": "UNAVAILABLE"
+  },
+  "unavailable_exact_components": [
+    "point_in_time_fundamental_acceleration",
+    "historical_sister_confirmation",
+    "effective_dated_industry_membership",
+    "manual_setup_integrity",
+    "chart_confirmed_structural_reward_risk"
+  ]
+}
