@@ -4,6 +4,7 @@
   "production_effect": "NONE",
   "research_label": "SURVIVORSHIP- AND EARNINGS-SCHEDULE-BIASED ADAPTIVE RESEARCH; NO UNTOUCHED HOLDOUT",
   "preregistration_commit": "bd96629",
+  "preregistration_schema_commit": "1d30326",
   "primary_candidate_id": "additive_young_first",
   "hypothesis": "The unchanged short-history leader path, prioritized ahead of same-date MODEL_0-only candidates, may add emerging leaders and improve return plus return/drawdown without violating risk, sample, or outlier gates.",
   "periods": {
