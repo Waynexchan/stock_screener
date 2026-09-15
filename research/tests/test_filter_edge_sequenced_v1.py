@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from research.engine.models import SimulatedTrade
 from research.run_filter_combination_audit_v1 import generate_variants
 from research.run_filter_edge_sequenced_v1 import (
     classify_variant,
+    known_industry_mask,
     monthly_block_delta_interval,
     select_nonoverlapping_ticker_episodes,
 )
@@ -60,6 +62,11 @@ def test_preregistered_variant_source_remains_exactly_eighty() -> None:
     )
     assert len(generate_variants(source)) == experiment["variant_count"] == 80
     assert experiment["preregistration_commit"] == "42ea515"
+
+
+def test_known_industry_mask_rejects_null_empty_and_whitespace() -> None:
+    frame = pd.DataFrame({"industry": ["Software", None, "", "  ", "Semiconductors"]})
+    assert known_industry_mask(frame).tolist() == [True, False, False, False, True]
 
 
 def test_ticker_episode_selection_rejects_entries_through_exit_session() -> None:

@@ -484,6 +484,14 @@ def _signals_for_stage(
     return eligible, len(rejected)
 
 
+def known_industry_mask(signals: pd.DataFrame) -> pd.Series:
+    """Identify rows with a non-null, non-blank current industry label."""
+
+    return signals["industry"].notna() & signals["industry"].astype(str).str.strip().ne(
+        ""
+    )
+
+
 def concentration_stage(
     *,
     stage: str,
@@ -494,9 +502,7 @@ def concentration_stage(
     experiment: dict[str, Any],
     output_dir: Path,
 ) -> list[dict[str, Any]]:
-    known_mask = signals["industry"].notna() & signals["industry"].astype(
-        str
-    ).str.strip().ne("")
+    known_mask = known_industry_mask(signals)
     known = signals[known_mask].copy()
     trades = [
         independent[key]
@@ -710,7 +716,7 @@ def main(argv: list[str] | None = None) -> int:
             "earnings_blackout_rejection_count": blackout_rejections,
             "independent_execution_count": len(independent),
             "missing_current_industry_signal_count": int(
-                stage_signals["industry"].isna().sum()
+                (~known_industry_mask(stage_signals)).sum()
             ),
         }
         print(f"Completed {stage}: {len(variants)} variants", flush=True)
