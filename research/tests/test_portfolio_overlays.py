@@ -52,6 +52,23 @@ def fixed_policy(heat_r: float) -> dict[str, float | str]:
     return {"type": "FIXED", "maximum_heat_r": heat_r, "risk_per_trade_r": 1.0}
 
 
+def test_empty_candidate_result_preserves_count_schema() -> None:
+    metrics, ledger, curve = simulate_portfolio_overlay(
+        [],
+        {},
+        pd.bdate_range("2026-01-02", periods=3),
+        fixed_policy(2.0),
+    )
+    assert metrics == {
+        "candidate_trade_count": 0,
+        "accepted_trade_count": 0,
+        "rejection_count": 0,
+        "rejection_reasons": {},
+    }
+    assert ledger.empty
+    assert curve.empty
+
+
 def test_earned_policy_unlocks_only_from_realised_profit_high_water() -> None:
     policy = {
         "type": "EARNED",

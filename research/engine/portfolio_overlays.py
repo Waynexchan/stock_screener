@@ -248,7 +248,16 @@ def simulate_portfolio_overlay(
                 + ", ".join(missing_states[:5])
             )
     if not candidates:
-        return ({"accepted_trade_count": 0}, pd.DataFrame(), pd.DataFrame())
+        return (
+            {
+                "candidate_trade_count": 0,
+                "accepted_trade_count": 0,
+                "rejection_count": 0,
+                "rejection_reasons": {},
+            },
+            pd.DataFrame(),
+            pd.DataFrame(),
+        )
     first_entry = min(candidates)
     final_exit = max(pd.Timestamp(trade.exit_date) for trade in trades)
     calendar = sessions[(sessions >= first_entry) & (sessions <= final_exit)]
