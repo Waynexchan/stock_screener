@@ -1,9 +1,20 @@
 # Project Status
 
-Fast handoff as of 2026-09-14. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
+- `SUPERPERFORMANCE_PATHS_V1` froze 18 causal mechanical breakout, blue-sky,
+  quality, tight-base, pullback, short-history leader, RS/ranking, union, and
+  trailing variants. No variant entered the cross-stage shortlist; historical
+  decision: `REJECT`. The observed-2R resistance proxy selected only 7/1/5
+  signals, while the blue-sky exception restored opportunity without stable
+  edge. The short-history leader path was positive with low drawdown in all
+  three reused periods, but accepted only 48/8/7 trades and depended on SNDK for
+  77.25% of reused-2025 positive P&L. It remains `RESEARCH_ONLY` for one narrow
+  additive-sleeve follow-up, not production. The clean run at `fddb565` audited
+  54 result rows, 1,984 ledger rows, and 38,141 equity rows with zero boundary,
+  blackout, risk, heat, position, or missing-mark violations.
 - Research update on 2026-09-13: `FILTER_AUDIT_V1` and
   `FORWARD_FILTER_AUDIT_V1` are implemented as production-isolated workflows.
   A Yahoo current-universe engineering archive contains 4,126,702 stock bars
@@ -281,10 +292,11 @@ Decision: REJECT. See
 
 ## Next recommended task
 
-Acquire and provenance-check point-in-time universe, delisted-symbol,
-classification, earnings-schedule, and fundamental histories. After the data
-gate is satisfied, preregister one simpler leader model for genuinely unseen
-forward data without changing production thresholds.
+Complete the already-authorised, preregistered narrow MODEL_0 plus frozen
+short-history-leader additive-sleeve test. After that, acquire and
+provenance-check point-in-time universe, delisted-symbol, classification,
+earnings-schedule, and fundamental histories before any broader leader-model
+research.
 
-Do not retune the completed leader experiment or promote any result without
-explicit instruction and governance review.
+Do not retune the completed V1 paths or promote any result without explicit
+instruction and governance review.

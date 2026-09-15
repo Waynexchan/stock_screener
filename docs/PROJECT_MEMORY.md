@@ -513,3 +513,35 @@ delayed confirmations were one to three sessions after the original signal;
 two were correctly rejected by the confirmation-date earnings recheck.
 Historical decision: REJECT. Production and the immutable forward journal are
 unchanged; all periods are reused and no untouched holdout exists.
+
+## 2026-09-15 mechanical superperformance entry paths
+
+`SUPERPERFORMANCE_PATHS_V1` preregistered 18 causal mechanical paths and
+comparisons before outcomes at commits `f6b9741`, `6579c5a`, and `4ab979a`.
+The final clean run used implementation commit
+`fddb565f05eda65a6ea641167a5df9c70e6db691`. Signals formed after the close,
+entered next session plus 5 bps, used a 20-session-low stop, no fixed target, a
+40-session maximum hold, mandatory retrospective ten-calendar-day earnings
+blackout, fixed 1R risk, and 2R maximum portfolio heat.
+
+No variant entered the frozen cross-stage shortlist. The observed-2R
+resistance proxy selected only 7, 1, and 5 signals. A blue-sky exception restored
+thousands of candidates but did not provide stable edge. Quality and tight-base
+breakouts failed development, constructive pullbacks failed badly in reused
+2025, production-style RS could not repair the multi-path 2025 loss, and the
+frozen superperformance rank worsened portfolio results. The exact V1
+specification is `REJECTED`.
+
+The short-history leader path was the sole distinct path with positive return,
+expectancy, profit factor, and low drawdown in all three periods: 15.21% / 4.66%
+on 48 development trades, 6.07% / 1.28% on eight reused-2024 trades, and 13.16%
+/ 5.46% on seven reused-2025 trades. It remains underpowered: SNDK supplied
+77.25% of 2025 positive P&L. It measures 90-219 valid archive sessions, not
+verified IPO age. A narrow additive-sleeve follow-up is justified, but all
+historical periods are reused and any result can be no stronger than `HOLD`.
+
+The audit reconciled 54 result rows, 1,984 accepted-ledger rows, and 38,141
+equity rows with zero signal/outcome-boundary, next-session-entry, duplicate,
+earnings-blackout, risk, heat, position, or missing-mark violations. MODEL_0
+matched `LEADER_COMPLETENESS_V2` exactly on the six audited metrics in every
+period. Production and the immutable forward journal are unchanged.
