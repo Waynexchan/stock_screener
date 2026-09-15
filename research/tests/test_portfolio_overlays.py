@@ -261,6 +261,85 @@ def test_per_candidate_half_risk_allows_four_positions_inside_two_r_heat() -> No
     assert metrics["rejection_reasons"] == {"MAX_POSITIONS": 1}
 
 
+def test_industry_cap_blocks_third_same_industry_but_allows_another_group() -> None:
+    tickers = ("AAA", "BBB", "CCC", "DDD")
+    trades = [trade(ticker) for ticker in tickers]
+    prices = {
+        ticker: history(
+            [
+                ("2026-01-05", 100.0, 100.0),
+                ("2026-01-06", 100.0, 100.0),
+                ("2026-01-07", 100.0, 100.0),
+            ]
+        )
+        for ticker in tickers
+    }
+    keys = {("2026-01-02", ticker): 0.5 for ticker in tickers}
+    industries = {
+        ("2026-01-02", "AAA"): "Software",
+        ("2026-01-02", "BBB"): "Software",
+        ("2026-01-02", "CCC"): "Software",
+        ("2026-01-02", "DDD"): "Semiconductors",
+    }
+    metrics, ledger, curve = simulate_portfolio_overlay(
+        trades,
+        prices,
+        pd.bdate_range("2026-01-05", "2026-01-07"),
+        fixed_policy(2.0),
+        risk_per_trade_by_signal_ticker=keys,
+        industry_by_signal_ticker=industries,
+        maximum_positions_per_industry=2,
+    )
+    assert ledger["ticker"].tolist() == ["AAA", "BBB", "DDD"]
+    assert ledger["industry"].tolist() == [
+        "Software",
+        "Software",
+        "Semiconductors",
+    ]
+    assert metrics["rejection_reasons"] == {"MAX_INDUSTRY_POSITIONS": 1}
+    assert metrics["maximum_same_industry_positions"] == 2
+    assert curve["maximum_same_industry_positions"].max() == 2
+
+
+def test_industry_cap_is_redundant_when_two_r_heat_allows_only_two_trades() -> None:
+    tickers = ("AAA", "BBB", "CCC")
+    trades = [trade(ticker) for ticker in tickers]
+    prices = {
+        ticker: history(
+            [
+                ("2026-01-05", 100.0, 100.0),
+                ("2026-01-06", 100.0, 100.0),
+                ("2026-01-07", 100.0, 100.0),
+            ]
+        )
+        for ticker in tickers
+    }
+    industries = {("2026-01-02", ticker): "Software" for ticker in tickers}
+    metrics, ledger, _ = simulate_portfolio_overlay(
+        trades,
+        prices,
+        pd.bdate_range("2026-01-05", "2026-01-07"),
+        fixed_policy(2.0),
+        industry_by_signal_ticker=industries,
+        maximum_positions_per_industry=2,
+    )
+    assert ledger["ticker"].tolist() == ["AAA", "BBB"]
+    assert metrics["rejection_reasons"] == {"MAX_HEAT": 1}
+    assert metrics["maximum_same_industry_positions"] == 2
+
+
+def test_industry_cap_requires_complete_mapping() -> None:
+    with pytest.raises(ValueError, match="industry missing"):
+        simulate_portfolio_overlay(
+            [trade("AAA")],
+            {"AAA": history([("2026-01-05", 100.0, 100.0)])},
+            pd.DatetimeIndex([pd.Timestamp("2026-01-05")]),
+            fixed_policy(2.0),
+            industry_by_signal_ticker={},
+            maximum_positions_per_industry=2,
+        )
+
+
 def test_last_exit_batch_win_expands_and_loss_contracts_next_session() -> None:
     policy = {
         "type": "LAST_EXIT_BATCH",

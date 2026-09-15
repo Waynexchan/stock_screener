@@ -152,6 +152,8 @@ def simulate_portfolio_overlay(
     candidate_priority_by_signal_ticker: Mapping[tuple[str, str], tuple[float, ...]]
     | None = None,
     risk_per_trade_by_signal_ticker: Mapping[tuple[str, str], float] | None = None,
+    industry_by_signal_ticker: Mapping[tuple[str, str], str] | None = None,
+    maximum_positions_per_industry: int | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame, pd.DataFrame]:
     """Allocate trades and calculate a daily mark-to-market equity curve."""
 
@@ -160,6 +162,28 @@ def simulate_portfolio_overlay(
 
     def trade_key(trade: SimulatedTrade) -> tuple[str, str]:
         return trade.signal_date, trade.ticker
+
+    if (industry_by_signal_ticker is None) != (maximum_positions_per_industry is None):
+        raise ValueError(
+            "industry mapping and maximum positions per industry must be supplied together"
+        )
+    if maximum_positions_per_industry is not None:
+        if maximum_positions_per_industry <= 0:
+            raise ValueError("maximum positions per industry must be positive")
+        assert industry_by_signal_ticker is not None
+        missing_industries = sorted(
+            trade_key(trade)
+            for trade in trades
+            if trade_key(trade) not in industry_by_signal_ticker
+            or not str(industry_by_signal_ticker[trade_key(trade)]).strip()
+        )
+        if missing_industries:
+            raise ValueError(
+                "industry missing for signal/ticker keys: "
+                + ", ".join(
+                    f"{date}/{ticker}" for date, ticker in missing_industries[:5]
+                )
+            )
 
     if candidate_priority_by_signal_ticker is not None:
         missing_priorities = sorted(
@@ -338,11 +362,29 @@ def simulate_portfolio_overlay(
                     else "MARKET_HEAT"
                 ] += 1
                 continue
+            if industry_by_signal_ticker is not None:
+                assert maximum_positions_per_industry is not None
+                candidate_industry = str(industry_by_signal_ticker[trade_key(trade)])
+                same_industry_count = sum(
+                    str(industry_by_signal_ticker[trade_key(item.trade)])
+                    == candidate_industry
+                    for item in open_trades
+                )
+                if same_industry_count >= maximum_positions_per_industry:
+                    rejection_reasons["MAX_INDUSTRY_POSITIONS"] += 1
+                    continue
             allocated = AllocatedTrade(trade=trade, allocated_r=trade_risk_r)
             open_trades.append(allocated)
             accepted.append(allocated)
         peak_heat_r = sum(item.allocated_r for item in open_trades)
         peak_positions = len(open_trades)
+        maximum_same_industry_positions = None
+        if industry_by_signal_ticker is not None:
+            industry_counts = Counter(
+                str(industry_by_signal_ticker[trade_key(item.trade)])
+                for item in open_trades
+            )
+            maximum_same_industry_positions = max(industry_counts.values(), default=0)
         exiting = [
             item
             for item in open_trades
@@ -391,6 +433,7 @@ def simulate_portfolio_overlay(
                 "close_drawdown_pct": drawdown_pct,
                 "initial_heat_r": peak_heat_r,
                 "open_positions": peak_positions,
+                "maximum_same_industry_positions": maximum_same_industry_positions,
                 "policy_mode_at_open": mode,
                 "policy_heat_limit_r": maximum_heat_r,
                 "new_trade_risk_r": risk_per_trade_r,
@@ -412,6 +455,8 @@ def simulate_portfolio_overlay(
             row["market_state"] = str(
                 market_state_by_signal_date[item.trade.signal_date]
             )
+        if industry_by_signal_ticker is not None:
+            row["industry"] = str(industry_by_signal_ticker[trade_key(item.trade)])
         ledger_rows.append(row)
     ledger = pd.DataFrame(ledger_rows)
     if ledger.empty:
@@ -441,6 +486,11 @@ def simulate_portfolio_overlay(
             "average_heat_r": float(curve["initial_heat_r"].mean()),
             "maximum_heat_r": float(curve["initial_heat_r"].max()),
             "maximum_positions": int(curve["open_positions"].max()),
+            "maximum_same_industry_positions": (
+                None
+                if industry_by_signal_ticker is None
+                else int(curve["maximum_same_industry_positions"].max())
+            ),
             "stop_new_risk_sessions": int(
                 curve["policy_mode_at_open"].eq("STOP_NEW_RISK").sum()
             ),
@@ -506,6 +556,11 @@ def simulate_portfolio_overlay(
         "average_heat_r": float(curve["initial_heat_r"].mean()),
         "maximum_heat_r": float(curve["initial_heat_r"].max()),
         "maximum_positions": int(curve["open_positions"].max()),
+        "maximum_same_industry_positions": (
+            None
+            if industry_by_signal_ticker is None
+            else int(curve["maximum_same_industry_positions"].max())
+        ),
         "stop_new_risk_sessions": int(
             curve["policy_mode_at_open"].eq("STOP_NEW_RISK").sum()
         ),
