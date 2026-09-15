@@ -9,6 +9,7 @@ import pandas as pd
 from research.run_filter_combination_audit_v1 import (
     _factorial_variant_id,
     _leave_one_out_support,
+    cumulative_funnel,
     enrich_spy_signal_trend,
     generate_variants,
     marginal_pairs,
@@ -122,3 +123,29 @@ def test_leave_one_out_requires_every_component_in_two_periods() -> None:
         required_ratio_periods=2,
     )
     assert not supported
+
+
+def test_cumulative_funnel_reconstructs_candidate_count_from_ledger_outcomes() -> None:
+    diagnostics = {"development": {"pre_blackout_signal_count": 12}}
+    rows = [
+        {
+            "stage": "development",
+            "variant_id": "baseline",
+            "selected_signal_count": 10,
+            "accepted_trade_count": 2,
+            "rejection_count": 7,
+            "rejection_reasons": {"MAX_HEAT": 7},
+        },
+        {
+            "stage": "development",
+            "variant_id": "combo__a",
+            "selected_signal_count": 5,
+            "accepted_trade_count": 2,
+            "rejection_count": 2,
+            "rejection_reasons": {"MAX_HEAT": 2},
+        },
+    ]
+    funnel = cumulative_funnel(rows, diagnostics, ["development"], ["a"])
+    assert funnel[1]["candidate_trade_count"] == 9
+    assert funnel[1]["capacity_acceptance_pct"] == 2 / 9 * 100
+    assert funnel[2]["candidate_trade_count"] == 4

@@ -394,7 +394,19 @@ def cumulative_funnel(
             row = by_key[(stage, variant_id)]
             selected = int(row["selected_signal_count"])
             accepted = int(row["accepted_trade_count"])
-            candidate_count = int(row["candidate_trade_count"])
+            # Older staged-result schemas do not always retain the redundant
+            # candidate count.  Every candidate is admitted or rejected once,
+            # so reconstructing it from those two canonical counts is exact.
+            reconstructed_candidates = accepted + int(row["rejection_count"])
+            reported_candidates = row.get("candidate_trade_count")
+            if (
+                reported_candidates is not None
+                and int(reported_candidates) != reconstructed_candidates
+            ):
+                raise AssertionError(
+                    "candidate count does not reconcile with admissions and rejections"
+                )
+            candidate_count = reconstructed_candidates
             output.append(
                 {
                     "stage": stage,
