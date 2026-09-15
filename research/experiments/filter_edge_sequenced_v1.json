@@ -3,7 +3,7 @@
   "status": "PREREGISTERED_ADAPTIVE_DIAGNOSTIC_NO_UNTOUCHED_HOLDOUT",
   "production_effect": "NONE",
   "research_label": "SURVIVORSHIP-, EARNINGS-SCHEDULE-, AND CLASSIFICATION-BIASED ADAPTIVE RESEARCH; NO UNTOUCHED HOLDOUT",
-  "preregistration_commit": "PENDING",
+  "preregistration_commit": "42ea515",
   "variant_source": "research/experiments/filter_combination_audit_v1.json",
   "variant_count": 80,
   "periods": {
