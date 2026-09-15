@@ -1,0 +1,87 @@
+{
+  "experiment_id": "YOUNG_LEADER_ADDITIVE_V1",
+  "status": "PREREGISTERED_ADAPTIVE_FOLLOWUP_NO_UNTOUCHED_HOLDOUT",
+  "production_effect": "NONE",
+  "research_label": "SURVIVORSHIP- AND EARNINGS-SCHEDULE-BIASED ADAPTIVE RESEARCH; NO UNTOUCHED HOLDOUT",
+  "preregistration_commit": "TO_BE_REPLACED_BEFORE_IMPLEMENTATION",
+  "primary_candidate_id": "additive_young_first",
+  "hypothesis": "The unchanged short-history leader path, prioritized ahead of same-date MODEL_0-only candidates, may add emerging leaders and improve return plus return/drawdown without violating risk, sample, or outlier gates.",
+  "periods": {
+    "development_signal": ["2017-01-01", "2023-11-01"],
+    "development_outcome_end": "2023-12-29",
+    "development_stability_split": "2020-12-31",
+    "excluded_contaminated_gap": ["2024-01-01", "2024-02-29"],
+    "reused_2024_signal": ["2024-03-01", "2024-10-31"],
+    "reused_2024_outcome_end": "2024-12-31",
+    "reused_2025_signal": ["2025-01-02", "2025-10-31"],
+    "reused_2025_outcome_end": "2025-12-31"
+  },
+  "execution": {
+    "entry": "next available session open plus 5 bps adverse slippage",
+    "initial_stop": "signal-date trailing 20-session low",
+    "target_r": null,
+    "maximum_holding_sessions": 40,
+    "exit_slippage_bps": 5.0,
+    "same_bar_policy": "STOP_FIRST",
+    "favorable_gap_fill": "LEVEL",
+    "earnings_blackout_calendar_days": 10
+  },
+  "portfolio": {
+    "type": "FIXED",
+    "maximum_heat_r": 2.0,
+    "risk_per_trade_r": 1.0,
+    "maximum_positions": 4,
+    "starting_equity_r": 100.0,
+    "default_candidate_order": "entry_date, signal_date, ticker"
+  },
+  "signal_thresholds": {
+    "young_minimum_history_sessions": 90,
+    "young_maximum_history_sessions": 219,
+    "min_price": 10.0,
+    "min_average_volume_50d": 500000.0,
+    "young_near_high_pct_max": 15.0,
+    "young_volume_ratio_min": 1.5,
+    "young_close_location_min": 75.0,
+    "exclude_global_archive_start_histories": true
+  },
+  "variants": [
+    {"id": "baseline", "path": "model_0"},
+    {"id": "young_standalone", "path": "young_leader_breakout"},
+    {"id": "additive_default", "path": "model_0_or_young", "parent": "baseline"},
+    {"id": "additive_young_first", "path": "model_0_or_young", "candidate_order": "YOUNG_FIRST", "parent": "baseline"},
+    {"id": "additive_model0_first", "path": "model_0_or_young", "candidate_order": "MODEL0_FIRST", "parent": "baseline"}
+  ],
+  "variant_count": 5,
+  "stage_gates": {
+    "development": {
+      "minimum_trades": 75,
+      "minimum_expectancy_per_trade_r": 0.0,
+      "minimum_profit_factor": 1.2,
+      "maximum_drawdown_pct": 10.0,
+      "minimum_total_return_pct": 0.0,
+      "require_positive_early_and_late_returns": true
+    },
+    "reused_period": {
+      "minimum_trades": 8,
+      "minimum_expectancy_per_trade_r": 0.0,
+      "minimum_profit_factor": 1.1,
+      "maximum_drawdown_pct": 10.0,
+      "minimum_total_return_pct": 0.0,
+      "require_positive_early_and_late_returns": false
+    }
+  },
+  "cross_stage_gate": {
+    "minimum_return_improvement_periods": 2,
+    "minimum_return_to_drawdown_improvement_periods": 2,
+    "maximum_largest_winner_share_of_positive_pnl": 0.5,
+    "require_positive_total_pnl_ex_largest_winner_all_periods": true,
+    "require_all_stage_gates": true,
+    "require_neighbor_direction_not_both_contradictory": true
+  },
+  "sample_status": {
+    "development_2017_2023": "REUSED_CONTAMINATED",
+    "reused_2024": "REUSED_CONTAMINATED",
+    "reused_2025": "REUSED_CONTAMINATED",
+    "untouched_holdout": "UNAVAILABLE"
+  }
+}
