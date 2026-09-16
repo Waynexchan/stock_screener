@@ -528,6 +528,44 @@ def test_manual_earnings_review_requires_non_empty_source() -> None:
         apply_manual_earnings_journal(experiment, signals, events)
 
 
+def test_earnings_exclusion_must_match_one_frozen_candidate() -> None:
+    signals = pd.DataFrame(
+        {
+            "signal_date": ["2026-01-02"],
+            "ticker": ["AAA"],
+            "snapshot_generated_at": ["2026-01-02T22:00:00+00:00"],
+        }
+    )
+    events = pd.DataFrame(
+        [
+            {
+                "event_type": "EARNINGS_SCREEN_COMPLETE",
+                "signal_date": "2026-01-02",
+                "reviewed_at": "2026-01-02T20:00:00+00:00",
+                "recorded_at": "2026-01-02T20:01:00+00:00",
+                "source": "fixture",
+            },
+            {
+                "event_type": "EARNINGS_EXCLUSION",
+                "signal_date": "2026-01-02",
+                "ticker": "AAB",
+                "earnings_date": "2026-01-08",
+                "reviewed_at": "2026-01-02T20:00:00+00:00",
+                "recorded_at": "2026-01-02T20:01:00+00:00",
+                "reason": "earnings blackout",
+            },
+        ]
+    )
+    experiment = {
+        "trading_policy": {
+            "earnings_policy": "MANUAL_FAIL_CLOSED_JOURNAL",
+            "earnings_blackout_calendar_days": 10,
+        }
+    }
+    with pytest.raises(ValueError, match="must match exactly one frozen candidate"):
+        apply_manual_earnings_journal(experiment, signals, events)
+
+
 def test_formal_outcome_input_audit_rejects_missing_candidate_history() -> None:
     signals = pd.DataFrame({"ticker": ["AAA"], "signal_date": ["2026-01-02"]})
     benchmark = pd.DataFrame(
@@ -710,6 +748,36 @@ def test_non_finite_formal_numeric_settings_fail_closed(
         variants[0]["portfolio"][field] = float("nan")  # type: ignore[index]
         match = "maximum_heat_r must be finite"
     with pytest.raises(ValueError, match=match):
+        load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
+
+
+@pytest.mark.parametrize("sample_floor", [0, -1, 0.5, True])
+def test_formal_sample_floor_must_be_a_positive_integer(
+    tmp_path: Path, sample_floor: object
+) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    experiment["sample_definition"][  # type: ignore[index]
+        "minimum_mature_independent_episodes"
+    ] = sample_floor
+    with pytest.raises(ValueError, match="must be an integer >= 1"):
+        load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("entry_valid_sessions", 1.5),
+        ("maximum_holding_sessions_from_trigger", "2.9"),
+    ],
+)
+def test_formal_session_counts_reject_fractional_values(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    experiment["plan_execution"][field] = value  # type: ignore[index]
+    with pytest.raises(ValueError, match=rf"{field} must be an integer >= 1"):
         load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
 
 

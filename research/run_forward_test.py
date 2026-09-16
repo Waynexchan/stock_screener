@@ -68,6 +68,29 @@ def _truth(value: object) -> bool:
     return value is True or str(value).strip().casefold() == "true"
 
 
+def _strict_integer(value: object, *, label: str, minimum: int) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be an integer >= {minimum}")
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be an integer >= {minimum}") from exc
+    if not math.isfinite(numeric) or not numeric.is_integer() or numeric < minimum:
+        raise ValueError(f"{label} must be an integer >= {minimum}")
+    return int(numeric)
+
+
+def _minimum_review_sample(experiment: dict[str, Any]) -> int:
+    sample = experiment.get("sample_definition", {})
+    if not isinstance(sample, dict):
+        raise ValueError("sample_definition must be an object")
+    return _strict_integer(
+        sample.get("minimum_mature_independent_episodes"),
+        label="minimum_mature_independent_episodes",
+        minimum=1,
+    )
+
+
 def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
     plan = experiment.get("plan_execution", {})
     required = {
@@ -82,15 +105,21 @@ def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
     missing = sorted(required - set(plan))
     if missing:
         raise ValueError("plan_execution missing fields: " + ", ".join(missing))
-    entry_valid_sessions = int(plan["entry_valid_sessions"])
-    maximum_holding_sessions = int(plan["maximum_holding_sessions_from_trigger"])
+    entry_valid_sessions = _strict_integer(
+        plan["entry_valid_sessions"],
+        label="entry_valid_sessions",
+        minimum=1,
+    )
+    maximum_holding_sessions = _strict_integer(
+        plan["maximum_holding_sessions_from_trigger"],
+        label="maximum_holding_sessions_from_trigger",
+        minimum=1,
+    )
     entry_slippage_bps = float(plan["entry_slippage_bps"])
     exit_slippage_bps = float(plan["exit_slippage_bps"])
     same_bar_policy = str(plan["same_bar_policy"])
     favorable_target_gap_fill = str(plan["favorable_target_gap_fill"])
     unresolved_policy = str(plan["unresolved_policy"])
-    if entry_valid_sessions <= 0 or maximum_holding_sessions <= 0:
-        raise ValueError("plan execution session counts must be positive")
     if not all(
         math.isfinite(value) for value in (entry_slippage_bps, exit_slippage_bps)
     ):
@@ -174,9 +203,11 @@ def _validate_trading_policy(experiment: dict[str, Any]) -> None:
     if earnings_policy == "MANUAL_FAIL_CLOSED_JOURNAL":
         if "earnings_blackout_calendar_days" not in policy:
             raise ValueError("manual earnings policy requires blackout calendar days")
-        blackout_days = int(policy["earnings_blackout_calendar_days"])
-        if blackout_days < 0:
-            raise ValueError("earnings blackout calendar days must be non-negative")
+        _strict_integer(
+            policy["earnings_blackout_calendar_days"],
+            label="earnings_blackout_calendar_days",
+            minimum=0,
+        )
 
 
 def _validate_variants(experiment: dict[str, Any]) -> None:
@@ -199,10 +230,12 @@ def _validate_variants(experiment: dict[str, Any]) -> None:
             required=mode == "FORMAL",
         )
         portfolio = variant.get("portfolio", {})
-        maximum_positions = int(portfolio.get("maximum_positions", 0))
+        _strict_integer(
+            portfolio.get("maximum_positions"),
+            label=f"variant {variant_id} maximum_positions",
+            minimum=1,
+        )
         maximum_heat_r = float(portfolio.get("maximum_heat_r", float("nan")))
-        if maximum_positions <= 0:
-            raise ValueError(f"variant {variant_id} maximum_positions must be positive")
         if not math.isfinite(maximum_heat_r) or maximum_heat_r <= 0:
             raise ValueError(
                 f"variant {variant_id} maximum_heat_r must be finite and positive"
@@ -261,6 +294,7 @@ def load_experiment(path: Path) -> dict[str, Any]:
         raise ValueError("collection_mode must be PILOT or FORMAL")
     _plan_execution_kwargs(experiment)
     _validate_trading_policy(experiment)
+    _minimum_review_sample(experiment)
     variants = experiment.get("portfolio_experiment", {}).get("variants", [])
     if mode == "FORMAL":
         if experiment.get("status") != "PREREGISTERED_ACTIVE_COLLECTION":
@@ -601,7 +635,12 @@ def apply_manual_earnings_journal(
     ):
         raise ValueError("earnings exclusion has invalid date or reviewed_at")
     if not exclusions.empty:
-        duplicate_keys = exclusions.duplicated(["signal_date", "ticker"], keep=False)
+        exclusion_keys = (
+            exclusions["signal_date"].astype(str)
+            + "|"
+            + exclusions["ticker"].astype(str).str.strip().str.upper()
+        )
+        duplicate_keys = exclusion_keys.duplicated(keep=False)
         if duplicate_keys.any():
             raise ValueError("duplicate earnings exclusion for signal_date/ticker")
     policy_events = pd.concat([completions, exclusions], ignore_index=True)
@@ -621,7 +660,11 @@ def apply_manual_earnings_journal(
                 "earnings review must be completed and recorded no later than the "
                 f"signal snapshot: {signal_date}"
             )
-    blackout_days = int(trading_policy["earnings_blackout_calendar_days"])
+    blackout_days = _strict_integer(
+        trading_policy["earnings_blackout_calendar_days"],
+        label="earnings_blackout_calendar_days",
+        minimum=0,
+    )
     for _, exclusion in exclusions.iterrows():
         signal_date = pd.Timestamp(str(exclusion["signal_date"])).normalize()
         earnings_date = pd.Timestamp(str(exclusion["earnings_date"])).normalize()
@@ -631,11 +674,15 @@ def apply_manual_earnings_journal(
             <= signal_date + pd.Timedelta(days=blackout_days)
         ):
             raise ValueError("earnings exclusion date is outside the frozen blackout")
+        exclusion_ticker = str(exclusion["ticker"]).strip().upper()
         mask = annotated["signal_date"].astype(str).eq(
             signal_date.date().isoformat()
-        ) & annotated["ticker"].astype(str).str.upper().eq(
-            str(exclusion["ticker"]).upper()
-        )
+        ) & annotated["ticker"].astype(str).str.strip().str.upper().eq(exclusion_ticker)
+        if int(mask.sum()) != 1:
+            raise ValueError(
+                "earnings exclusion must match exactly one frozen candidate: "
+                f"{signal_date.date().isoformat()}:{exclusion_ticker}"
+            )
         annotated.loc[mask, "earnings_excluded"] = True
         annotated.loc[mask, "earnings_exclusion_reason"] = str(exclusion["reason"])
         annotated.loc[mask, "earnings_date"] = earnings_date.date().isoformat()
@@ -910,9 +957,7 @@ def main(argv: list[str] | None = None) -> int:
             bootstrap_seed=bootstrap_seed,
             bootstrap_resamples=bootstrap_resamples,
         )
-    minimum_review_sample = int(
-        experiment["sample_definition"]["minimum_mature_independent_episodes"]
-    )
+    minimum_review_sample = _minimum_review_sample(experiment)
     champion_mature_count = 0
     variant_mature_counts: dict[str, int] = {}
     portfolio_valid = False

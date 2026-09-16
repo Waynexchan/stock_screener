@@ -759,3 +759,22 @@ Post-contract research verification passed 159 tests plus Ruff, mypy,
 data-readiness, and production-isolation gates. Full verification passed 348
 pytest tests and 118 legacy unittest tests plus every integration, invariant,
 offline dry-run, and semantic-validation stage.
+
+### Strict sample, session, and exclusion identity
+
+A later review demonstrated three remaining coercion/identity gaps. A zero
+minimum sample made every variant sample-ready; fractional entry/holding session
+values were silently truncated by `int()`; and a misspelled ticker in an
+earnings exclusion matched no candidate but did not stop the run.
+
+One strict integer parser now governs the mature independent-episode floor,
+entry and maximum-holding sessions, the earnings blackout, and portfolio
+position limits. It rejects booleans, non-finite values, fractions, and values
+below the declared minimum. Earnings exclusions normalize ticker case and
+whitespace, reject duplicate normalized keys, and must match exactly one frozen
+candidate. The formal epoch remains `DRAFT_BLOCKED`.
+
+Post-fix research verification passed 166 tests plus Ruff, mypy,
+data-readiness, and production-isolation gates. Full verification passed 355
+pytest tests and 118 legacy unittest tests plus every integration, invariant,
+offline dry-run, and semantic-validation stage.

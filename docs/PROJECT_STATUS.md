@@ -43,6 +43,10 @@ Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJE
   Formal `plan_execution` rejects unimplemented extra fields, and run metadata
   records only the normalized contract actually passed to the simulator rather
   than echoing an unchecked raw config.
+  The latest counterexamples are also fail-closed: the mature-episode sample
+  floor must be a positive integer, session counts must be exact positive
+  integers rather than values truncated by `int()`, and every earnings
+  exclusion must match exactly one frozen signal-date/ticker candidate.
 - `FILTER_EDGE_SEQUENCED_V1` separated filter quality from fixed-2R portfolio
   scarcity. Development contained 25,413 executable signals and 14,083
   non-overlapping ticker episodes before cross-stock constraints, versus only

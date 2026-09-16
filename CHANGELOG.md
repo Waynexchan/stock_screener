@@ -17,6 +17,8 @@
 - Made the frozen execution declaration exact: unresolved-plan semantics are
   required and passed into the simulator, unsupported formal execution fields
   are rejected, and metadata records only the normalized applied contract.
+- Enforced positive-integer sample/session limits without truncation and
+  required every earnings exclusion to match exactly one frozen candidate.
 
 ## 2026-09-05 - Canonical production decision integrity
 
