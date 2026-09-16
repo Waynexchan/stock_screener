@@ -717,3 +717,26 @@ Post-closure research verification passed 147 tests plus Ruff, mypy,
 data-readiness, and production-isolation gates. Full verification passed 336
 pytest tests and 118 legacy unittest tests plus all integration, invariant,
 offline dry-run, and semantic-validation stages.
+
+### Follow-up formal-contract closure
+
+A further independent review found that duplicate variant IDs could collapse in
+the sample-ready dictionary, formal variants could omit ordering, and a typo in
+`earnings_policy` silently disabled the manual journal. These paths now fail at
+experiment load. Variant IDs are unique case-insensitively; every formal variant
+has a non-empty ordering with unique columns and explicit `ASC`/`DESC`; ordering,
+eligibility, and source-risk columns must exist before simulation. The portfolio
+engine independently rejects missing ordering columns, invalid directions, and
+non-finite or non-positive capacity limits.
+
+Earnings policies use an explicit mode-specific allowlist. Manual mode requires
+a declared non-negative blackout and non-empty completion/exclusion evidence;
+unknown policy strings cannot bypass the journal. Frozen slippage must also be
+finite in both config validation and the execution engine. The formal epoch
+remains `DRAFT_BLOCKED`, and none of these changes alters production decisions
+or thresholds.
+
+Post-follow-up research verification passed 155 tests plus Ruff, mypy,
+data-readiness, and production-isolation gates. Full verification passed 344
+pytest tests and 118 legacy unittest tests plus every integration, invariant,
+offline dry-run, and semantic-validation stage.

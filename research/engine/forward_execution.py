@@ -54,6 +54,8 @@ def simulate_frozen_plan(
         raise ValueError(
             f"unsupported favorable_target_gap_fill: {favorable_target_gap_fill}"
         )
+    if not np.isfinite(entry_slippage_bps) or not np.isfinite(exit_slippage_bps):
+        raise ValueError("slippage basis points must be finite")
     if entry_slippage_bps < 0 or exit_slippage_bps < 0:
         raise ValueError("slippage basis points must be non-negative")
 

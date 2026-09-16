@@ -31,6 +31,13 @@ Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJE
   champion and challenger must independently reach the mature accepted-episode
   floor, and boolean eligibility parses strings strictly. The formal template
   remains `DRAFT_BLOCKED`; these controls do not start an epoch.
+  A subsequent review found duplicate variant IDs, optional/invalid portfolio
+  ordering, and permissive policy/numeric parsing. Formal configs now require
+  case-insensitively unique variant IDs, a non-empty validated ordering for
+  every variant, existing ordering/risk columns, an exact supported earnings
+  policy, and finite positive portfolio limits. Invalid ordering directions,
+  missing ordering columns, blank earnings evidence fields, and non-finite
+  slippage fail closed. `DRAFT_BLOCKED` remains unchanged.
 - `FILTER_EDGE_SEQUENCED_V1` separated filter quality from fixed-2R portfolio
   scarcity. Development contained 25,413 executable signals and 14,083
   non-overlapping ticker episodes before cross-stock constraints, versus only

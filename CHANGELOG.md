@@ -11,6 +11,9 @@
   strict boolean eligibility parsing, and added active-formal plus fail-open
   regression coverage. The formal template remains blocked and production
   thresholds are unchanged.
+- Follow-up hardening rejects duplicate variant IDs, missing or invalid formal
+  ordering, unknown earnings-policy spellings, blank earnings evidence, missing
+  ordering/risk columns, and non-finite slippage or portfolio heat.
 
 ## 2026-09-05 - Canonical production decision integrity
 

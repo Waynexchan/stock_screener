@@ -194,9 +194,16 @@ def evaluate_portfolio_variants(
         for rule in ordering:
             column = str(rule["column"])
             if column not in selected:
-                selected[column] = pd.NA
+                raise ValueError(
+                    f"variant {variant_id} ordering column is missing: {column}"
+                )
+            direction = str(rule.get("direction", "")).upper()
+            if direction not in {"ASC", "DESC"}:
+                raise ValueError(
+                    f"variant {variant_id} ordering direction is invalid: {direction}"
+                )
             sort_columns.append(column)
-            ascending.append(str(rule.get("direction", "ASC")).upper() == "ASC")
+            ascending.append(direction == "ASC")
         sort_columns.extend(["signal_date", "ticker", "_snapshot_order"])
         ascending.extend([True, True, True])
         selected = selected.sort_values(
@@ -205,6 +212,12 @@ def evaluate_portfolio_variants(
         portfolio = variant["portfolio"]
         maximum_positions = int(portfolio["maximum_positions"])
         maximum_heat_r = float(portfolio["maximum_heat_r"])
+        if maximum_positions <= 0:
+            raise ValueError(f"variant {variant_id} maximum_positions must be positive")
+        if not np.isfinite(maximum_heat_r) or maximum_heat_r <= 0:
+            raise ValueError(
+                f"variant {variant_id} maximum_heat_r must be finite and positive"
+            )
         industry_cap = portfolio.get("maximum_positions_per_industry")
         if industry_cap is not None:
             industry_cap = int(industry_cap)

@@ -390,6 +390,47 @@ def test_boolean_variant_eligibility_parses_false_string_as_false() -> None:
     assert metrics.iloc[0]["selected_episode_count"] == 1
 
 
+def test_portfolio_ordering_column_and_direction_fail_closed() -> None:
+    episodes = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "signal_date": "2026-01-02",
+                "plan_entry_date": "2026-01-05",
+                "plan_exit_date": "2026-01-06",
+                "plan_entry": 10.0,
+                "Initial Stop": 9.0,
+                "plan_realised_r": 0.5,
+            }
+        ]
+    )
+    sessions = pd.date_range("2026-01-05", "2026-01-06", freq="B")
+    history = pd.DataFrame(
+        {"Open": [10.0, 10.0], "Close": [10.0, 10.0]}, index=sessions
+    )
+    base = {
+        "variant_id": "ORDERED",
+        "role": "CHALLENGER",
+        "eligibility": {"all": []},
+        "risk": {"fixed_r": 1.0},
+        "portfolio": {"maximum_positions": 1, "maximum_heat_r": 1.0},
+    }
+    for ordering, match in (
+        ([{"column": "Missing", "direction": "ASC"}], "column is missing"),
+        ([{"column": "ticker", "direction": "SIDEWAYS"}], "direction is invalid"),
+    ):
+        with pytest.raises(ValueError, match=match):
+            evaluate_portfolio_variants(
+                episodes,
+                {"AAA": history},
+                sessions,
+                [{**base, "ordering": ordering}],
+                observation_end=sessions[-1],
+                bootstrap_seed=7,
+                bootstrap_resamples=10,
+            )
+
+
 def test_manual_earnings_exclusion_is_applied_before_research_accounting() -> None:
     signals = pd.DataFrame(
         {
@@ -458,6 +499,35 @@ def test_manual_earnings_review_recorded_after_snapshot_fails_closed() -> None:
         apply_manual_earnings_journal(experiment, signals, events)
 
 
+def test_manual_earnings_review_requires_non_empty_source() -> None:
+    signals = pd.DataFrame(
+        {
+            "signal_date": ["2026-01-02"],
+            "ticker": ["AAA"],
+            "snapshot_generated_at": ["2026-01-02T22:00:00+00:00"],
+        }
+    )
+    events = pd.DataFrame(
+        [
+            {
+                "event_type": "EARNINGS_SCREEN_COMPLETE",
+                "signal_date": "2026-01-02",
+                "reviewed_at": "2026-01-02T20:00:00+00:00",
+                "recorded_at": "2026-01-02T20:01:00+00:00",
+                "source": "   ",
+            }
+        ]
+    )
+    experiment = {
+        "trading_policy": {
+            "earnings_policy": "MANUAL_FAIL_CLOSED_JOURNAL",
+            "earnings_blackout_calendar_days": 10,
+        }
+    }
+    with pytest.raises(ValueError, match="non-empty source"):
+        apply_manual_earnings_journal(experiment, signals, events)
+
+
 def test_formal_outcome_input_audit_rejects_missing_candidate_history() -> None:
     signals = pd.DataFrame({"ticker": ["AAA"], "signal_date": ["2026-01-02"]})
     benchmark = pd.DataFrame(
@@ -522,6 +592,7 @@ def _active_formal_experiment(
 ) -> dict[str, object]:
     frozen = dict(audit_experiment["frozen_epoch"])  # type: ignore[arg-type]
     frozen["strategy_epoch_id"] = "FORMAL_FIXTURE_EPOCH"
+    ordering = audit_experiment["ranking_and_tie_break"]
     return {
         "experiment_id": "FORMAL_FIXTURE",
         "status": "PREREGISTERED_ACTIVE_COLLECTION",
@@ -556,6 +627,7 @@ def _active_formal_experiment(
                     },
                     "risk": {"source_column": "Maximum Risk R"},
                     "portfolio": {"maximum_positions": 2, "maximum_heat_r": 2.0},
+                    "ordering": ordering,
                 },
                 {
                     "variant_id": "CHALLENGER",
@@ -570,10 +642,74 @@ def _active_formal_experiment(
                     },
                     "risk": {"fixed_r": 1.0},
                     "portfolio": {"maximum_positions": 2, "maximum_heat_r": 2.0},
+                    "ordering": ordering,
                 },
             ]
         },
     }
+
+
+def _write_experiment(path: Path, experiment: dict[str, object]) -> Path:
+    path.write_text(json.dumps(experiment), encoding="utf-8")
+    return path
+
+
+def test_formal_variant_ids_must_be_unique(tmp_path: Path) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    variants = experiment["portfolio_experiment"]["variants"]  # type: ignore[index]
+    variants[1]["variant_id"] = str(  # type: ignore[index]
+        variants[0]["variant_id"]  # type: ignore[index]
+    ).lower()
+    with pytest.raises(ValueError, match="variant_id values must be unique"):
+        load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
+
+
+def test_formal_variant_ordering_is_required_and_validated(tmp_path: Path) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    variants = experiment["portfolio_experiment"]["variants"]  # type: ignore[index]
+    variants[1].pop("ordering")  # type: ignore[union-attr]
+    with pytest.raises(ValueError, match="ordering is required"):
+        load_experiment(_write_experiment(tmp_path / "missing.json", experiment))
+
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    variants = experiment["portfolio_experiment"]["variants"]  # type: ignore[index]
+    variants[1]["ordering"] = [  # type: ignore[index]
+        {"column": "Final Score", "direction": "SIDEWAYS"}
+    ]
+    with pytest.raises(ValueError, match="invalid ordering rule"):
+        load_experiment(_write_experiment(tmp_path / "direction.json", experiment))
+
+
+def test_misspelled_formal_earnings_policy_fails_closed(tmp_path: Path) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    experiment["trading_policy"]["earnings_policy"] = (  # type: ignore[index]
+        "MANUAL_FAIL_CLOSE_JOURNAL"
+    )
+    with pytest.raises(ValueError, match="unsupported earnings_policy"):
+        load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
+
+
+@pytest.mark.parametrize(
+    ("field", "target"),
+    [("entry_slippage_bps", "plan_execution"), ("maximum_heat_r", "portfolio")],
+)
+def test_non_finite_formal_numeric_settings_fail_closed(
+    tmp_path: Path, field: str, target: str
+) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    if target == "plan_execution":
+        experiment["plan_execution"][field] = float("nan")  # type: ignore[index]
+        match = "slippage must be finite"
+    else:
+        variants = experiment["portfolio_experiment"]["variants"]  # type: ignore[index]
+        variants[0]["portfolio"][field] = float("nan")  # type: ignore[index]
+        match = "maximum_heat_r must be finite"
+    with pytest.raises(ValueError, match=match):
+        load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
 
 
 def _write_price_fixture(path: Path, ticker: str) -> None:

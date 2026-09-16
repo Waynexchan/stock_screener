@@ -145,6 +145,15 @@ the mature accepted-episode floor. The supported operational events also cover
 missed runs, cancelled orders, partial fills, splits, halts, and actual fills;
 the schema is in `research/config/forward_execution_event.schema.json`.
 
+Variant IDs must be unique, including case-only differences. Every formal
+variant must declare a non-empty ordering with explicit `ASC` or `DESC`; all
+eligibility, ordering, and source-risk columns must exist in the frozen
+snapshot journal. Earnings policy names are exact: use
+`MANUAL_FAIL_CLOSED_JOURNAL` or the explicit `NOT_INCLUDED_THIS_EPOCH` policy.
+Unknown spellings do not disable the journal—they stop the run. Non-finite
+slippage or portfolio heat and blank earnings evidence fields also stop a
+formal run.
+
 ## Positions and completed trades
 
 For normal daily use, those seven trade facts are the only mandatory position

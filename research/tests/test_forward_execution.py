@@ -107,3 +107,9 @@ def test_unsupported_frozen_execution_policy_fails_closed(
     bars = history([("2026-01-05", 100, 101, 99, 100)])
     with pytest.raises(ValueError, match="unsupported"):
         simulate_frozen_plan(plan(), bars, **{keyword: value})
+
+
+def test_non_finite_slippage_fails_closed() -> None:
+    bars = history([("2026-01-05", 100, 101, 99, 100)])
+    with pytest.raises(ValueError, match="must be finite"):
+        simulate_frozen_plan(plan(), bars, entry_slippage_bps=float("nan"))

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -82,6 +83,10 @@ def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
     favorable_target_gap_fill = str(plan["favorable_target_gap_fill"])
     if entry_valid_sessions <= 0 or maximum_holding_sessions <= 0:
         raise ValueError("plan execution session counts must be positive")
+    if not all(
+        math.isfinite(value) for value in (entry_slippage_bps, exit_slippage_bps)
+    ):
+        raise ValueError("plan execution slippage must be finite")
     if entry_slippage_bps < 0 or exit_slippage_bps < 0:
         raise ValueError("plan execution slippage must be non-negative")
     if same_bar_policy != "STOP_FIRST":
@@ -98,24 +103,93 @@ def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_ordering(
+    ordering: object, *, label: str, required: bool
+) -> list[dict[str, Any]]:
+    if not isinstance(ordering, list):
+        raise ValueError(f"{label} ordering must be a list")
+    if required and not ordering:
+        raise ValueError(f"{label} ordering is required")
+    columns: list[str] = []
+    validated: list[dict[str, Any]] = []
+    for rule in ordering:
+        if not isinstance(rule, dict):
+            raise ValueError(f"{label} ordering rules must be objects")
+        column = str(rule.get("column", "")).strip()
+        direction = str(rule.get("direction", "")).strip().upper()
+        if not column or direction not in {"ASC", "DESC"}:
+            raise ValueError(f"{label} has invalid ordering rule")
+        columns.append(column.casefold())
+        validated.append({"column": column, "direction": direction})
+    if len(columns) != len(set(columns)):
+        raise ValueError(f"{label} ordering columns must be unique")
+    return validated
+
+
+def _validate_trading_policy(experiment: dict[str, Any]) -> None:
+    mode = str(experiment.get("collection_mode", "")).upper()
+    policy = experiment.get("trading_policy", {})
+    if not isinstance(policy, dict):
+        raise ValueError("trading_policy must be an object")
+    earnings_policy = str(policy.get("earnings_policy", "")).strip()
+    allowed = (
+        {"MANUAL_FAIL_CLOSED_JOURNAL", "NOT_INCLUDED_THIS_EPOCH"}
+        if mode == "FORMAL"
+        else {"MANUAL_FAIL_CLOSED_JOURNAL", "NOT_INCLUDED_THIS_PILOT"}
+    )
+    if earnings_policy not in allowed:
+        raise ValueError(f"unsupported earnings_policy: {earnings_policy or 'missing'}")
+    if earnings_policy == "MANUAL_FAIL_CLOSED_JOURNAL":
+        if "earnings_blackout_calendar_days" not in policy:
+            raise ValueError("manual earnings policy requires blackout calendar days")
+        blackout_days = int(policy["earnings_blackout_calendar_days"])
+        if blackout_days < 0:
+            raise ValueError("earnings blackout calendar days must be non-negative")
+
+
 def _validate_variants(experiment: dict[str, Any]) -> None:
     mode = str(experiment.get("collection_mode", "")).upper()
     variants = experiment.get("portfolio_experiment", {}).get("variants", [])
+    if not isinstance(variants, list):
+        raise ValueError("portfolio variants must be a list")
+    variant_ids: list[str] = []
     for variant in variants:
+        if not isinstance(variant, dict):
+            raise ValueError("portfolio variants must be objects")
         variant_id = str(variant.get("variant_id", "")).strip()
+        variant_ids.append(variant_id.casefold())
         rules = variant.get("eligibility", {}).get("all", [])
         if not variant_id:
             raise ValueError("portfolio variant requires variant_id")
+        _validate_ordering(
+            variant.get("ordering", []),
+            label=f"variant {variant_id}",
+            required=mode == "FORMAL",
+        )
+        portfolio = variant.get("portfolio", {})
+        maximum_positions = int(portfolio.get("maximum_positions", 0))
+        maximum_heat_r = float(portfolio.get("maximum_heat_r", float("nan")))
+        if maximum_positions <= 0:
+            raise ValueError(f"variant {variant_id} maximum_positions must be positive")
+        if not math.isfinite(maximum_heat_r) or maximum_heat_r <= 0:
+            raise ValueError(
+                f"variant {variant_id} maximum_heat_r must be finite and positive"
+            )
         if mode == "FORMAL" and (
             "REPLACE" in variant_id.upper()
             or not rules
             or any("REPLACE" in str(rule.get("column", "")).upper() for rule in rules)
         ):
             raise ValueError(f"formal variant is unresolved: {variant_id}")
+    if len(variant_ids) != len(set(variant_ids)):
+        raise ValueError("portfolio variant_id values must be unique")
 
 
 def _validate_variant_columns(
-    frame: pd.DataFrame, variants: list[dict[str, Any]]
+    frame: pd.DataFrame,
+    variants: list[dict[str, Any]],
+    *,
+    formal: bool,
 ) -> None:
     missing: list[str] = []
     for variant in variants:
@@ -123,8 +197,17 @@ def _validate_variant_columns(
             column = str(rule.get("column", ""))
             if column not in frame:
                 missing.append(f"{variant.get('variant_id')}:{column}")
+        if formal:
+            for rule in variant.get("ordering", []):
+                column = str(rule.get("column", ""))
+                if column not in frame:
+                    missing.append(f"{variant.get('variant_id')}:ordering:{column}")
+            risk = variant.get("risk", {})
+            source_column = str(risk.get("source_column", "")).strip()
+            if source_column and source_column not in frame:
+                missing.append(f"{variant.get('variant_id')}:risk:{source_column}")
     if missing:
-        raise ValueError("variant eligibility columns missing: " + ", ".join(missing))
+        raise ValueError("variant columns missing: " + ", ".join(missing))
 
 
 def _snapshot_cohort_payload(metadata: dict[str, Any]) -> dict[str, Any]:
@@ -145,6 +228,7 @@ def load_experiment(path: Path) -> dict[str, Any]:
     if mode not in {"PILOT", "FORMAL"}:
         raise ValueError("collection_mode must be PILOT or FORMAL")
     _plan_execution_kwargs(experiment)
+    _validate_trading_policy(experiment)
     variants = experiment.get("portfolio_experiment", {}).get("variants", [])
     if mode == "FORMAL":
         if experiment.get("status") != "PREREGISTERED_ACTIVE_COLLECTION":
@@ -173,6 +257,11 @@ def load_experiment(path: Path) -> dict[str, Any]:
             raise ValueError("formal epoch requires a start_date")
         if not experiment.get("ranking_and_tie_break"):
             raise ValueError("formal epoch requires ranking_and_tie_break")
+        _validate_ordering(
+            experiment["ranking_and_tie_break"],
+            label="formal ranking_and_tie_break",
+            required=True,
+        )
     else:
         _validate_variants(experiment)
     return experiment
@@ -413,10 +502,12 @@ def apply_manual_earnings_journal(
     annotated["earnings_exclusion_reason"] = pd.NA
     annotated["earnings_date"] = pd.NA
     annotated["earnings_reviewed_at"] = pd.NA
-    if experiment.get("trading_policy", {}).get("earnings_policy") != (
-        "MANUAL_FAIL_CLOSED_JOURNAL"
-    ):
+    trading_policy = experiment.get("trading_policy", {})
+    earnings_policy = str(trading_policy.get("earnings_policy", "")).strip()
+    if earnings_policy in {"NOT_INCLUDED_THIS_EPOCH", "NOT_INCLUDED_THIS_PILOT"}:
         return annotated
+    if earnings_policy != "MANUAL_FAIL_CLOSED_JOURNAL":
+        raise ValueError(f"unsupported earnings_policy: {earnings_policy or 'missing'}")
     if events.empty:
         raise ValueError("formal manual earnings policy requires an event journal")
     snapshot_dates = sorted(annotated["signal_date"].astype(str).unique())
@@ -443,6 +534,8 @@ def apply_manual_earnings_journal(
         list(completion_required)
     ].isna().any(axis=None):
         raise ValueError("earnings review completion requires reviewed_at and source")
+    if completions["source"].astype(str).str.strip().eq("").any():
+        raise ValueError("earnings review completion requires a non-empty source")
     if (
         pd.to_datetime(completions["reviewed_at"], errors="coerce", utc=True)
         .isna()
@@ -463,6 +556,11 @@ def apply_manual_earnings_journal(
         or exclusions[list(required)].isna().any(axis=None)
     ):
         raise ValueError("earnings exclusions require ticker/date/reviewed_at/reason")
+    if not exclusions.empty and (
+        exclusions["ticker"].astype(str).str.strip().eq("").any()
+        or exclusions["reason"].astype(str).str.strip().eq("").any()
+    ):
+        raise ValueError("earnings exclusions require non-empty ticker and reason")
     if not exclusions.empty and (
         pd.to_datetime(exclusions["reviewed_at"], errors="coerce", utc=True)
         .isna()
@@ -491,9 +589,7 @@ def apply_manual_earnings_journal(
                 "earnings review must be completed and recorded no later than the "
                 f"signal snapshot: {signal_date}"
             )
-    blackout_days = int(
-        experiment.get("trading_policy", {}).get("earnings_blackout_calendar_days", 10)
-    )
+    blackout_days = int(trading_policy["earnings_blackout_calendar_days"])
     for _, exclusion in exclusions.iterrows():
         signal_date = pd.Timestamp(str(exclusion["signal_date"])).normalize()
         earnings_date = pd.Timestamp(str(exclusion["earnings_date"])).normalize()
@@ -673,7 +769,7 @@ def main(argv: list[str] | None = None) -> int:
         signals["rolling_beta_126"] = pd.NA
     signals = add_filter_flags(signals)
     variants = experiment.get("portfolio_experiment", {}).get("variants", [])
-    _validate_variant_columns(signals, variants)
+    _validate_variant_columns(signals, variants, formal=formal)
     outcomes: list[dict[str, Any]] = []
     plan_outcomes: list[dict[str, Any]] = []
     for row in signals[signals["earnings_excluded"].eq(False)].to_dict("records"):
