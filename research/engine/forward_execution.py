@@ -43,8 +43,19 @@ def simulate_frozen_plan(
     maximum_holding_sessions: int = 40,
     entry_slippage_bps: float = 5.0,
     exit_slippage_bps: float = 5.0,
+    same_bar_policy: str = "STOP_FIRST",
+    favorable_target_gap_fill: str = "TARGET_LEVEL",
 ) -> dict[str, Any]:
     """Evaluate a point-in-time entry/stop/target plan without inventing maturity."""
+
+    if same_bar_policy != "STOP_FIRST":
+        raise ValueError(f"unsupported same_bar_policy: {same_bar_policy}")
+    if favorable_target_gap_fill != "TARGET_LEVEL":
+        raise ValueError(
+            f"unsupported favorable_target_gap_fill: {favorable_target_gap_fill}"
+        )
+    if entry_slippage_bps < 0 or exit_slippage_bps < 0:
+        raise ValueError("slippage basis points must be non-negative")
 
     ticker = str(row.get("ticker", row.get("Ticker", ""))).upper()
     signal_date = str(row.get("signal_date", row.get("Signal Date", "")))

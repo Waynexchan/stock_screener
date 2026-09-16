@@ -1,5 +1,17 @@
 # Project Changelog
 
+## 2026-09-16 - Formal forward-test fail-closed closure
+
+- Applied frozen execution parameters to shadow plan simulation and rejected
+  unsupported same-bar or target-gap semantics.
+- Required complete snapshot payload hashes, exact ranking and cohort identity,
+  prospective earnings review/exclusion application, and reproducible hashed
+  candidate/benchmark price inputs for formal epochs.
+- Required mature accepted evidence from every champion and challenger, fixed
+  strict boolean eligibility parsing, and added active-formal plus fail-open
+  regression coverage. The formal template remains blocked and production
+  thresholds are unchanged.
+
 ## 2026-09-05 - Canonical production decision integrity
 
 - Unified decision authority under one deterministic FULL/HALF/WATCH/NO TRADE

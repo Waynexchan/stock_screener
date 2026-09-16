@@ -122,7 +122,13 @@ def _eligibility_mask(frame: pd.DataFrame, variant: dict[str, Any]) -> pd.Series
             continue
         expected = rule.get("equals")
         if isinstance(expected, bool):
-            values = frame[column].fillna(False).astype(bool)
+            values = frame[column].map(
+                lambda value: (
+                    value
+                    if isinstance(value, (bool, np.bool_))
+                    else str(value).strip().casefold() == "true"
+                )
+            )
         else:
             values = frame[column]
         mask &= values.eq(expected)

@@ -13,14 +13,20 @@
     "universe_hash": null,
     "universe_methodology_version": null,
     "data_provider_name": null,
-    "data_provider_version": null
+    "data_provider_version": null,
+    "strategy_cohort_id": null
   },
   "trading_policy": {
     "earnings_policy": "MANUAL_FAIL_CLOSED_JOURNAL",
+    "earnings_blackout_calendar_days": 10,
     "earnings_snapshot_policy": "NOT_ENFORCED",
     "market_cap_policy": "NOT_INCLUDED_THIS_EPOCH",
     "market_cap_snapshot_policy": "NOT_ENFORCED"
   },
+  "ranking_and_tie_break": [
+    {"column": "Final Score", "direction": "DESC"},
+    {"column": "snapshot_row_order", "direction": "ASC"}
+  ],
   "plan_execution": {
     "entry_valid_sessions": 5,
     "entry_slippage_bps": 5.0,

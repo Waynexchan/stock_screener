@@ -11,6 +11,8 @@ from research.run_filter_audit import filter_mask
 from research.run_forward_test import (
     _snapshot_audit,
     add_filter_flags,
+    apply_manual_earnings_journal,
+    audit_outcome_inputs,
     earliest_complete_snapshots,
     load_experiment,
     load_snapshot_signals,
@@ -21,6 +23,7 @@ from research.engine.forward_portfolio import (
     evaluate_portfolio_variants,
 )
 from research.engine.reproducibility import sha256_file
+from research.engine.reproducibility import stable_payload_hash
 
 
 def test_snapshot_actionability_requires_decision_and_actionable_flag() -> None:
@@ -117,6 +120,125 @@ def test_snapshot_artifact_hash_is_verified_and_corruption_fails(
     assert _snapshot_audit(run, experiment)["candidate_file_hash_status"] == "VERIFIED"
     (run / "candidates.csv").write_text("Ticker\nCORRUPTED\n", encoding="utf-8")
     with pytest.raises(ValueError, match="artifact hash mismatch"):
+        _snapshot_audit(run, experiment)
+
+
+def _formal_snapshot(root: Path) -> tuple[Path, dict[str, object]]:
+    date = "2026-01-02"
+    run = _snapshot(root, date, "formal")
+    candidates = pd.DataFrame(
+        [
+            {
+                "Signal Date": date,
+                "Ticker": "AAA",
+                "Final Decision": "FULL",
+                "Actionable": True,
+                "Planned Entry": 100.0,
+                "Initial Stop": 95.0,
+                "Realistic Target": 110.0,
+                "Realistic Target Source": "prior high resistance",
+                "Maximum Risk R": 1.0,
+                "Final Score": 90.0,
+                "Industry": "Software",
+                "Sector": "Technology",
+                "Recent RS Score": 80,
+            }
+        ]
+    )
+    candidates.to_csv(run / "candidates.csv", index=False)
+    ranking = [
+        {"column": "Final Score", "direction": "DESC"},
+        {"column": "snapshot_row_order", "direction": "ASC"},
+    ]
+    policy = {"earnings": "NOT_ENFORCED", "market_cap": "NOT_ENFORCED"}
+    metadata = {
+        "snapshot_schema_version": 2,
+        "signal_trading_date": date,
+        "candidate_count": 1,
+        "generated_timestamp": f"{date}T22:00:00+00:00",
+        "git_commit": "frozen-commit",
+        "git_dirty": False,
+        "config_hash": "config-hash",
+        "universe_hash": "universe-hash",
+        "universe_methodology_version": "UNIVERSE_V1",
+        "data_provider": {"name": "fixture", "version": "1"},
+        "policy": policy,
+        "candidate_ranking": ranking,
+    }
+    cohort_payload = {
+        "git_commit": metadata["git_commit"],
+        "config_hash": metadata["config_hash"],
+        "universe_hash": metadata["universe_hash"],
+        "universe_methodology_version": metadata["universe_methodology_version"],
+        "data_provider": metadata["data_provider"],
+        "policy": policy,
+        "ranking": ranking,
+    }
+    metadata["strategy_cohort_id"] = stable_payload_hash(cohort_payload)
+    metadata["artifact_hashes"] = {
+        name: sha256_file(run / name)
+        for name in ("candidates.csv", "market.json", "portfolio.json", "config.json")
+    }
+    metadata["candidate_record_hash"] = metadata["artifact_hashes"]["candidates.csv"]
+    (run / "metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+    experiment: dict[str, object] = {
+        "collection_mode": "FORMAL",
+        "frozen_epoch": {
+            "git_commit": "frozen-commit",
+            "config_hash": "config-hash",
+            "universe_hash": "universe-hash",
+            "universe_methodology_version": "UNIVERSE_V1",
+            "data_provider_name": "fixture",
+            "data_provider_version": "1",
+            "strategy_cohort_id": metadata["strategy_cohort_id"],
+        },
+        "trading_policy": {
+            "earnings_snapshot_policy": "NOT_ENFORCED",
+            "market_cap_snapshot_policy": "NOT_ENFORCED",
+        },
+        "ranking_and_tie_break": ranking,
+    }
+    return run, experiment
+
+
+@pytest.mark.parametrize(
+    "missing_name", ["config.json", "market.json", "portfolio.json"]
+)
+def test_formal_snapshot_requires_every_payload_hash(
+    tmp_path: Path, missing_name: str
+) -> None:
+    run, experiment = _formal_snapshot(tmp_path)
+    metadata_path = run / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["artifact_hashes"].pop(missing_name)
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="missing_artifact_hash"):
+        _snapshot_audit(run, experiment)
+
+
+def test_formal_snapshot_rejects_corrupt_config_and_wrong_cohort(
+    tmp_path: Path,
+) -> None:
+    run, experiment = _formal_snapshot(tmp_path)
+    (run / "config.json").write_text('{"changed": true}', encoding="utf-8")
+    with pytest.raises(ValueError, match="artifact hash mismatch"):
+        _snapshot_audit(run, experiment)
+    run, experiment = _formal_snapshot(tmp_path / "second")
+    metadata_path = run / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["strategy_cohort_id"] = "wrong"
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="strategy_cohort_id"):
+        _snapshot_audit(run, experiment)
+
+
+def test_formal_snapshot_rejects_ranking_drift(tmp_path: Path) -> None:
+    run, experiment = _formal_snapshot(tmp_path)
+    metadata_path = run / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["candidate_ranking"] = [{"column": "Ticker", "direction": "ASC"}]
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="candidate_ranking"):
         _snapshot_audit(run, experiment)
 
 
@@ -228,6 +350,130 @@ def test_forward_portfolio_applies_order_heat_and_unknown_industry_fail_closed()
     assert metrics.iloc[0]["maximum_positions"] == 2
 
 
+def test_boolean_variant_eligibility_parses_false_string_as_false() -> None:
+    episodes = pd.DataFrame(
+        [
+            {
+                "ticker": ticker,
+                "signal_date": "2026-01-02",
+                "plan_entry_date": "2026-01-05",
+                "plan_exit_date": "2026-01-06",
+                "plan_entry": 10.0,
+                "Initial Stop": 9.0,
+                "plan_realised_r": 0.5,
+                "eligible": value,
+            }
+            for ticker, value in (("AAA", "False"), ("BBB", "True"), ("CCC", None))
+        ]
+    )
+    sessions = pd.date_range("2026-01-05", "2026-01-06", freq="B")
+    history = pd.DataFrame(
+        {"Open": [10.0, 10.0], "Close": [10.0, 10.0]}, index=sessions
+    )
+    variant = {
+        "variant_id": "BOOLEAN",
+        "role": "CHALLENGER",
+        "eligibility": {"all": [{"column": "eligible", "equals": True}]},
+        "risk": {"fixed_r": 1.0},
+        "portfolio": {"maximum_positions": 3, "maximum_heat_r": 3.0},
+    }
+    metrics, ledger, _, _ = evaluate_portfolio_variants(
+        episodes,
+        {ticker: history for ticker in ("AAA", "BBB", "CCC")},
+        sessions,
+        [variant],
+        observation_end=sessions[-1],
+        bootstrap_seed=7,
+        bootstrap_resamples=10,
+    )
+    assert ledger["ticker"].tolist() == ["BBB"]
+    assert metrics.iloc[0]["selected_episode_count"] == 1
+
+
+def test_manual_earnings_exclusion_is_applied_before_research_accounting() -> None:
+    signals = pd.DataFrame(
+        {
+            "signal_date": ["2026-01-02", "2026-01-02"],
+            "ticker": ["AAA", "BBB"],
+            "snapshot_generated_at": [
+                "2026-01-02T22:00:00+00:00",
+                "2026-01-02T22:00:00+00:00",
+            ],
+        }
+    )
+    events = pd.DataFrame(
+        [
+            {
+                "event_type": "EARNINGS_SCREEN_COMPLETE",
+                "signal_date": "2026-01-02",
+                "reviewed_at": "2026-01-02T20:00:00+00:00",
+                "recorded_at": "2026-01-02T20:01:00+00:00",
+                "source": "fixture",
+            },
+            {
+                "event_type": "EARNINGS_EXCLUSION",
+                "signal_date": "2026-01-02",
+                "ticker": "AAA",
+                "earnings_date": "2026-01-08",
+                "reviewed_at": "2026-01-02T20:00:00+00:00",
+                "recorded_at": "2026-01-02T20:01:00+00:00",
+                "reason": "earnings blackout",
+            },
+        ]
+    )
+    experiment = {
+        "trading_policy": {
+            "earnings_policy": "MANUAL_FAIL_CLOSED_JOURNAL",
+            "earnings_blackout_calendar_days": 10,
+        }
+    }
+    annotated = apply_manual_earnings_journal(experiment, signals, events)
+    assert annotated.set_index("ticker")["earnings_excluded"].to_dict() == {
+        "AAA": True,
+        "BBB": False,
+    }
+
+
+def test_manual_earnings_review_recorded_after_snapshot_fails_closed() -> None:
+    signals = pd.DataFrame(
+        {
+            "signal_date": ["2026-01-02"],
+            "ticker": ["AAA"],
+            "snapshot_generated_at": ["2026-01-02T22:00:00+00:00"],
+        }
+    )
+    events = pd.DataFrame(
+        [
+            {
+                "event_type": "EARNINGS_SCREEN_COMPLETE",
+                "signal_date": "2026-01-02",
+                "reviewed_at": "2026-01-02T23:00:00+00:00",
+                "recorded_at": "2026-01-02T23:01:00+00:00",
+                "source": "fixture",
+            }
+        ]
+    )
+    experiment = {"trading_policy": {"earnings_policy": "MANUAL_FAIL_CLOSED_JOURNAL"}}
+    with pytest.raises(ValueError, match="no later than the signal snapshot"):
+        apply_manual_earnings_journal(experiment, signals, events)
+
+
+def test_formal_outcome_input_audit_rejects_missing_candidate_history() -> None:
+    signals = pd.DataFrame({"ticker": ["AAA"], "signal_date": ["2026-01-02"]})
+    benchmark = pd.DataFrame(
+        {
+            "Open": [100.0],
+            "High": [101.0],
+            "Low": [99.0],
+            "Close": [100.0],
+            "Volume": [1_000_000],
+        },
+        index=pd.to_datetime(["2026-01-02"]),
+    )
+    with pytest.raises(ValueError, match="formal outcome inputs are incomplete"):
+        audit_outcome_inputs(signals, {}, benchmark, formal=True)
+
+
 def test_forward_journal_without_prices_freezes_signals_with_missing_outcomes(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -269,3 +515,156 @@ def test_forward_journal_without_prices_freezes_signals_with_missing_outcomes(
     assert metadata["evidence_status"] == "ENGINEERING_PILOT_NOT_FORMAL"
     assert metadata["minimum_review_sample_unit"] == "MATURE_INDEPENDENT_EPISODES"
     assert (output / "run_manifest.jsonl").is_file()
+
+
+def _active_formal_experiment(
+    audit_experiment: dict[str, object], *, challenger_expected: bool
+) -> dict[str, object]:
+    frozen = dict(audit_experiment["frozen_epoch"])  # type: ignore[arg-type]
+    frozen["strategy_epoch_id"] = "FORMAL_FIXTURE_EPOCH"
+    return {
+        "experiment_id": "FORMAL_FIXTURE",
+        "status": "PREREGISTERED_ACTIVE_COLLECTION",
+        "collection_mode": "FORMAL",
+        "research_label": "FORMAL TEST FIXTURE",
+        "start_date": "2026-01-02",
+        "frozen_epoch": frozen,
+        "trading_policy": {
+            "earnings_policy": "MANUAL_FAIL_CLOSED_JOURNAL",
+            "earnings_blackout_calendar_days": 10,
+            "earnings_snapshot_policy": "NOT_ENFORCED",
+            "market_cap_snapshot_policy": "NOT_ENFORCED",
+        },
+        "plan_execution": {
+            "entry_valid_sessions": 1,
+            "entry_slippage_bps": 0.0,
+            "exit_slippage_bps": 0.0,
+            "maximum_holding_sessions_from_trigger": 2,
+            "same_bar_policy": "STOP_FIRST",
+            "favorable_target_gap_fill": "TARGET_LEVEL",
+        },
+        "ranking_and_tie_break": audit_experiment["ranking_and_tie_break"],
+        "sample_definition": {"minimum_mature_independent_episodes": 1},
+        "uncertainty": {"seed": 1, "resamples": 10},
+        "portfolio_experiment": {
+            "variants": [
+                {
+                    "variant_id": "CHAMPION",
+                    "role": "CHAMPION",
+                    "eligibility": {
+                        "all": [{"column": "snapshot_actionable", "equals": True}]
+                    },
+                    "risk": {"source_column": "Maximum Risk R"},
+                    "portfolio": {"maximum_positions": 2, "maximum_heat_r": 2.0},
+                },
+                {
+                    "variant_id": "CHALLENGER",
+                    "role": "CHALLENGER",
+                    "eligibility": {
+                        "all": [
+                            {
+                                "column": "snapshot_actionable",
+                                "equals": challenger_expected,
+                            }
+                        ]
+                    },
+                    "risk": {"fixed_r": 1.0},
+                    "portfolio": {"maximum_positions": 2, "maximum_heat_r": 2.0},
+                },
+            ]
+        },
+    }
+
+
+def _write_price_fixture(path: Path, ticker: str) -> None:
+    pd.DataFrame(
+        [
+            {
+                "Date": date,
+                "Ticker": ticker,
+                "Open": open_price,
+                "High": high,
+                "Low": low,
+                "Close": close,
+                "Volume": 1_000_000,
+            }
+            for date, open_price, high, low, close in (
+                ("2026-01-02", 98.0, 99.0, 97.0, 98.0),
+                ("2026-01-05", 100.0, 101.0, 99.0, 100.0),
+                ("2026-01-06", 105.0, 111.0, 99.0, 110.0),
+            )
+        ]
+    ).to_csv(path, index=False)
+
+
+@pytest.mark.parametrize(
+    ("challenger_expected", "expected_review_eligible"),
+    [(True, True), (False, False)],
+)
+def test_active_formal_flow_requires_evidence_for_every_variant(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    challenger_expected: bool,
+    expected_review_eligible: bool,
+) -> None:
+    snapshot_root = tmp_path / "snapshots"
+    _, audit_experiment = _formal_snapshot(snapshot_root)
+    experiment = _active_formal_experiment(
+        audit_experiment, challenger_expected=challenger_expected
+    )
+    experiment_path = tmp_path / "experiment.json"
+    experiment_path.write_text(json.dumps(experiment), encoding="utf-8")
+    prices = tmp_path / "prices.csv"
+    benchmark = tmp_path / "benchmark.csv"
+    _write_price_fixture(prices, "AAA")
+    _write_price_fixture(benchmark, "SPY")
+    events = tmp_path / "events.jsonl"
+    events.write_text(
+        json.dumps(
+            {
+                "event_id": "earnings-complete",
+                "event_type": "EARNINGS_SCREEN_COMPLETE",
+                "signal_date": "2026-01-02",
+                "reviewed_at": "2026-01-02T20:00:00+00:00",
+                "recorded_at": "2026-01-02T20:01:00+00:00",
+                "source": "fixture",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    output = tmp_path / "research_output"
+    monkeypatch.setattr(
+        "research.run_forward_test.ensure_research_output_path",
+        lambda project_root, output_dir: output,
+    )
+    assert (
+        run_forward_test(
+            [
+                "--snapshot-root",
+                str(snapshot_root),
+                "--output-dir",
+                str(output),
+                "--experiment",
+                str(experiment_path),
+                "--prices",
+                str(prices),
+                "--benchmark",
+                str(benchmark),
+                "--events",
+                str(events),
+            ]
+        )
+        == 0
+    )
+    run_dir = next((output / "runs").iterdir())
+    metadata = json.loads((run_dir / "metadata.json").read_text(encoding="utf-8"))
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    assert metadata["review_eligible"] is expected_review_eligible
+    assert metadata["variant_sample_ready"] == {
+        "CHALLENGER": expected_review_eligible,
+        "CHAMPION": True,
+    }
+    assert metadata["plan_execution_applied"]["entry_valid_sessions"] == 1
+    assert manifest["prices_input_hash"] == sha256_file(prices)
+    assert manifest["benchmark_input_hash"] == sha256_file(benchmark)

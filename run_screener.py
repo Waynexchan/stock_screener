@@ -3439,7 +3439,10 @@ def write_forward_snapshot(
         "universe_methodology_version": "NASDAQTRADER_CURRENT_LISTED_V1",
         "data_provider": {"name": "yfinance", "version": yf.__version__},
         "policy": policy,
-        "ranking": ["Final Score DESC", "immutable input row order ASC"],
+        "ranking": [
+            {"column": "Final Score", "direction": "DESC"},
+            {"column": "snapshot_row_order", "direction": "ASC"},
+        ],
     }
     metadata = {
         "snapshot_schema_version": 2,

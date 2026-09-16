@@ -128,9 +128,22 @@ earnings and market-cap gates because production does not enforce them. If the
 formal policy uses manual earnings avoidance, pass an append-only JSONL event
 journal with `--events`; every signal date needs an `EARNINGS_SCREEN_COMPLETE`
 record and every exclusion needs the ticker, earnings date, review timestamp,
-and reason. The supported operational events also cover missed runs, cancelled
-orders, partial fills, splits, halts, and actual fills; the schema is in
-`research/config/forward_execution_event.schema.json`.
+and reason. The review and append timestamps must not be later than the signal
+snapshot. Excluded candidates remain visible in the raw journal but do not enter
+outcomes, independent episodes, portfolio allocation, accepted-candidate counts,
+or the review sample.
+
+Formal runs must also supply candidate and SPY CSV archives with `--prices` and
+`--benchmark`. Their hashes and loader diagnostics are frozen in the run
+manifest, and every eligible candidate plus SPY must have a valid signal-date
+bar. Snapshot audit requires all candidate/config/market/portfolio hashes, the
+exact structured ranking rules, and a reproducible strategy-cohort ID. The
+declared execution window, maximum hold, entry/exit slippage, same-bar policy,
+and favorable-gap policy are validated and used directly. Review eligibility
+requires every declared champion and challenger—not only the champion—to reach
+the mature accepted-episode floor. The supported operational events also cover
+missed runs, cancelled orders, partial fills, splits, halts, and actual fills;
+the schema is in `research/config/forward_execution_event.schema.json`.
 
 ## Positions and completed trades
 

@@ -691,3 +691,29 @@ tests, the expected data-readiness block, and production hash isolation. Full
 verification passed 322 pytest tests, 118 legacy unittest tests, all industry
 and report invariants, the offline dry run, and generated HTML semantic
 validation.
+
+### Independent-review closure
+
+A follow-up review identified six remaining fail-open paths. The runner now
+uses every frozen execution parameter rather than simulator defaults and rejects
+unsupported same-bar or favorable-gap semantics. A formal snapshot must hash all
+four payload files and match its recomputed strategy cohort and structured
+ranking. Manual earnings reviews must be completed and appended no later than
+the signal snapshot; matching exclusions are annotated in the raw journal and
+removed before outcome, episode, portfolio, production-accepted, and review-gate
+accounting.
+
+Formal price and SPY archives are now hashed in each run manifest, retain loader
+diagnostics, and must provide valid signal-date bars for every non-excluded
+candidate and benchmark date. Missing histories fail the cohort instead of
+silently yielding no outcome. Review eligibility requires the sample floor for
+every declared champion and challenger, while unresolved/missing eligibility
+columns fail closed. String booleans are parsed strictly, so `"False"` is no
+longer truthy. Active-formal fixture tests cover both a passing cohort and a
+zero-evidence challenger. The epoch template remains `DRAFT_BLOCKED`; production
+strategy decisions and thresholds remain unchanged.
+
+Post-closure research verification passed 147 tests plus Ruff, mypy,
+data-readiness, and production-isolation gates. Full verification passed 336
+pytest tests and 118 legacy unittest tests plus all integration, invariant,
+offline dry-run, and semantic-validation stages.

@@ -77,3 +77,33 @@ def test_model_target_is_not_used_as_observed_exit() -> None:
         plan(**{"Realistic Target Source": "model 2R feasibility target"}), bars
     )
     assert result["plan_outcome_status"] == "OPEN_UNMATURED"
+
+
+def test_entry_window_and_slippage_are_frozen_inputs() -> None:
+    bars = history(
+        [
+            ("2026-01-05", 98, 99, 97, 98),
+            ("2026-01-06", 100, 101, 99, 100),
+        ]
+    )
+    short_window = simulate_frozen_plan(plan(), bars, entry_valid_sessions=1)
+    configured = simulate_frozen_plan(
+        plan(), bars, entry_valid_sessions=2, entry_slippage_bps=25
+    )
+    assert short_window["plan_outcome_status"] == "NOT_TRIGGERED"
+    assert configured["plan_entry"] == pytest.approx(100.25)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value"),
+    [
+        ("same_bar_policy", "TARGET_FIRST"),
+        ("favorable_target_gap_fill", "OPEN"),
+    ],
+)
+def test_unsupported_frozen_execution_policy_fails_closed(
+    keyword: str, value: str
+) -> None:
+    bars = history([("2026-01-05", 100, 101, 99, 100)])
+    with pytest.raises(ValueError, match="unsupported"):
+        simulate_frozen_plan(plan(), bars, **{keyword: value})

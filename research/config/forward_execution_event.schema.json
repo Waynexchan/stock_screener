@@ -31,6 +31,10 @@
   },
   "allOf": [
     {
+      "if": {"properties": {"event_type": {"const": "EARNINGS_SCREEN_COMPLETE"}}},
+      "then": {"required": ["reviewed_at", "source"]}
+    },
+    {
       "if": {"properties": {"event_type": {"const": "EARNINGS_EXCLUSION"}}},
       "then": {"required": ["ticker", "reviewed_at", "earnings_date", "reason"]}
     }

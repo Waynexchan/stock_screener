@@ -21,6 +21,16 @@ Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJE
   challenger must be preregistered, and any manual earnings policy requires an
   append-only review/exclusion journal. Production strategy thresholds are
   unchanged.
+  A second independent review found six remaining fail-open paths; they are now
+  closed in code and regression coverage. Frozen execution settings are
+  validated and passed to the simulator. Formal snapshots require all payload
+  hashes plus an internally reproducible cohort ID and exact ranking rules.
+  Earnings exclusions are applied before all evidence accounting, and review
+  timestamps must predate the signal snapshot. Candidate and SPY inputs are
+  hashed, diagnosed, and required to contain valid signal-date bars. Every
+  champion and challenger must independently reach the mature accepted-episode
+  floor, and boolean eligibility parses strings strictly. The formal template
+  remains `DRAFT_BLOCKED`; these controls do not start an epoch.
 - `FILTER_EDGE_SEQUENCED_V1` separated filter quality from fixed-2R portfolio
   scarcity. Development contained 25,413 executable signals and 14,083
   non-overlapping ticker episodes before cross-stock constraints, versus only
