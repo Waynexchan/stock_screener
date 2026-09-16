@@ -123,14 +123,21 @@ def test_snapshot_artifact_hash_is_verified_and_corruption_fails(
         _snapshot_audit(run, experiment)
 
 
-def _formal_snapshot(root: Path) -> tuple[Path, dict[str, object]]:
+def _formal_snapshot(
+    root: Path, *, candidate_count: int = 1
+) -> tuple[Path, dict[str, object]]:
     date = "2026-01-02"
     run = _snapshot(root, date, "formal")
+    tickers = (
+        ["AAA"]
+        if candidate_count == 1
+        else [f"T{position:03d}" for position in range(candidate_count)]
+    )
     candidates = pd.DataFrame(
         [
             {
                 "Signal Date": date,
-                "Ticker": "AAA",
+                "Ticker": ticker,
                 "Final Decision": "FULL",
                 "Actionable": True,
                 "Planned Entry": 100.0,
@@ -143,6 +150,7 @@ def _formal_snapshot(root: Path) -> tuple[Path, dict[str, object]]:
                 "Sector": "Technology",
                 "Recent RS Score": 80,
             }
+            for ticker in tickers
         ]
     )
     candidates.to_csv(run / "candidates.csv", index=False)
@@ -154,7 +162,7 @@ def _formal_snapshot(root: Path) -> tuple[Path, dict[str, object]]:
     metadata = {
         "snapshot_schema_version": 2,
         "signal_trading_date": date,
-        "candidate_count": 1,
+        "candidate_count": candidate_count,
         "generated_timestamp": f"{date}T22:00:00+00:00",
         "git_commit": "frozen-commit",
         "git_dirty": False,
@@ -430,6 +438,29 @@ def test_portfolio_ordering_column_and_direction_fail_closed() -> None:
                 bootstrap_resamples=10,
             )
 
+    fractional_industry_cap = {
+        **base,
+        "portfolio": {
+            "maximum_positions": 1,
+            "maximum_heat_r": 1.0,
+            "maximum_positions_per_industry": 1.5,
+        },
+        "ordering": [{"column": "ticker", "direction": "ASC"}],
+    }
+    with pytest.raises(
+        ValueError,
+        match="variant ORDERED maximum_positions_per_industry must be a positive integer",
+    ):
+        evaluate_portfolio_variants(
+            episodes,
+            {"AAA": history},
+            sessions,
+            [fractional_industry_cap],
+            observation_end=sessions[-1],
+            bootstrap_seed=7,
+            bootstrap_resamples=10,
+        )
+
 
 def test_manual_earnings_exclusion_is_applied_before_research_accounting() -> None:
     signals = pd.DataFrame(
@@ -654,7 +685,7 @@ def _active_formal_experiment(
             "unresolved_policy": "OPEN_UNMATURED with null realised R",
         },
         "ranking_and_tie_break": audit_experiment["ranking_and_tie_break"],
-        "sample_definition": {"minimum_mature_independent_episodes": 1},
+        "sample_definition": {"minimum_mature_independent_episodes": 100},
         "uncertainty": {"seed": 1, "resamples": 10},
         "portfolio_experiment": {
             "variants": [
@@ -751,8 +782,8 @@ def test_non_finite_formal_numeric_settings_fail_closed(
         load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
 
 
-@pytest.mark.parametrize("sample_floor", [0, -1, 0.5, True])
-def test_formal_sample_floor_must_be_a_positive_integer(
+@pytest.mark.parametrize("sample_floor", [0, -1, 0.5, True, 99])
+def test_formal_sample_floor_must_be_at_least_one_hundred(
     tmp_path: Path, sample_floor: object
 ) -> None:
     _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
@@ -760,7 +791,22 @@ def test_formal_sample_floor_must_be_a_positive_integer(
     experiment["sample_definition"][  # type: ignore[index]
         "minimum_mature_independent_episodes"
     ] = sample_floor
-    with pytest.raises(ValueError, match="must be an integer >= 1"):
+    with pytest.raises(ValueError, match="must be an integer >= 100"):
+        load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
+
+
+@pytest.mark.parametrize("industry_cap", [0, 1.5, True])
+def test_formal_industry_cap_must_be_a_positive_integer(
+    tmp_path: Path, industry_cap: object
+) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    variants = experiment["portfolio_experiment"]["variants"]  # type: ignore[index]
+    variants[0]["portfolio"]["maximum_positions_per_industry"] = industry_cap  # type: ignore[index]
+    with pytest.raises(
+        ValueError,
+        match="variant CHAMPION maximum_positions_per_industry must be an integer >= 1",
+    ):
         load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
 
 
@@ -805,7 +851,8 @@ def test_formal_execution_contract_must_exactly_match_simulator(
         load_experiment(_write_experiment(tmp_path / f"{mutation}.json", experiment))
 
 
-def _write_price_fixture(path: Path, ticker: str) -> None:
+def _write_price_fixture(path: Path, tickers: str | list[str]) -> None:
+    ticker_list = [tickers] if isinstance(tickers, str) else tickers
     pd.DataFrame(
         [
             {
@@ -817,6 +864,7 @@ def _write_price_fixture(path: Path, ticker: str) -> None:
                 "Close": close,
                 "Volume": 1_000_000,
             }
+            for ticker in ticker_list
             for date, open_price, high, low, close in (
                 ("2026-01-02", 98.0, 99.0, 97.0, 98.0),
                 ("2026-01-05", 100.0, 101.0, 99.0, 100.0),
@@ -827,25 +875,37 @@ def _write_price_fixture(path: Path, ticker: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("challenger_expected", "expected_review_eligible"),
-    [(True, True), (False, False)],
+    ("candidate_count", "challenger_expected"),
+    [(100, True), (1, True), (100, False)],
 )
-def test_active_formal_flow_requires_evidence_for_every_variant(
+@pytest.mark.filterwarnings("ignore:Downcasting object dtype arrays.*:FutureWarning")
+def test_active_formal_flow_requires_hard_floor_for_every_variant(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    candidate_count: int,
     challenger_expected: bool,
-    expected_review_eligible: bool,
 ) -> None:
     snapshot_root = tmp_path / "snapshots"
-    _, audit_experiment = _formal_snapshot(snapshot_root)
+    _, audit_experiment = _formal_snapshot(
+        snapshot_root, candidate_count=candidate_count
+    )
     experiment = _active_formal_experiment(
         audit_experiment, challenger_expected=challenger_expected
     )
+    variants = experiment["portfolio_experiment"]["variants"]  # type: ignore[index]
+    for variant in variants:
+        variant["portfolio"]["maximum_positions"] = candidate_count  # type: ignore[index]
+        variant["portfolio"]["maximum_heat_r"] = float(candidate_count)  # type: ignore[index]
     experiment_path = tmp_path / "experiment.json"
     experiment_path.write_text(json.dumps(experiment), encoding="utf-8")
     prices = tmp_path / "prices.csv"
     benchmark = tmp_path / "benchmark.csv"
-    _write_price_fixture(prices, "AAA")
+    tickers = (
+        ["AAA"]
+        if candidate_count == 1
+        else [f"T{position:03d}" for position in range(candidate_count)]
+    )
+    _write_price_fixture(prices, tickers)
     _write_price_fixture(benchmark, "SPY")
     events = tmp_path / "events.jsonl"
     events.write_text(
@@ -889,10 +949,17 @@ def test_active_formal_flow_requires_evidence_for_every_variant(
     run_dir = next((output / "runs").iterdir())
     metadata = json.loads((run_dir / "metadata.json").read_text(encoding="utf-8"))
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
-    assert metadata["review_eligible"] is expected_review_eligible
+    champion_ready = candidate_count >= 100
+    challenger_count = candidate_count if challenger_expected else 0
+    challenger_ready = challenger_count >= 100
+    assert metadata["review_eligible"] is (champion_ready and challenger_ready)
     assert metadata["variant_sample_ready"] == {
-        "CHALLENGER": expected_review_eligible,
-        "CHAMPION": True,
+        "CHALLENGER": challenger_ready,
+        "CHAMPION": champion_ready,
+    }
+    assert metadata["variant_mature_accepted_episode_counts"] == {
+        "CHALLENGER": challenger_count,
+        "CHAMPION": candidate_count,
     }
     assert metadata["plan_execution_applied"] == experiment["plan_execution"]
     assert manifest["prices_input_hash"] == sha256_file(prices)

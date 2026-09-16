@@ -19,6 +19,9 @@
   are rejected, and metadata records only the normalized applied contract.
 - Enforced positive-integer sample/session limits without truncation and
   required every earnings exclusion to match exactly one frozen candidate.
+- Locked the formal mature independent-episode floor at 100 and made declared
+  per-industry position limits fail closed on fractional or boolean values at
+  both experiment-load and portfolio-execution boundaries.
 
 ## 2026-09-05 - Canonical production decision integrity
 

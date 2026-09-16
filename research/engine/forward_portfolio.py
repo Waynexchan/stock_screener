@@ -14,6 +14,15 @@ def _number(value: object) -> float | None:
     return None if pd.isna(parsed) or not np.isfinite(parsed) else float(parsed)
 
 
+def _positive_integer(value: object, *, label: str) -> int:
+    if isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{label} must be a positive integer")
+    parsed = _number(value)
+    if parsed is None or not parsed.is_integer() or parsed < 1:
+        raise ValueError(f"{label} must be a positive integer")
+    return int(parsed)
+
+
 def build_independent_episodes(
     journal: pd.DataFrame, observation_end: pd.Timestamp
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -210,17 +219,21 @@ def evaluate_portfolio_variants(
             sort_columns, ascending=ascending, kind="stable"
         )
         portfolio = variant["portfolio"]
-        maximum_positions = int(portfolio["maximum_positions"])
+        maximum_positions = _positive_integer(
+            portfolio["maximum_positions"],
+            label=f"variant {variant_id} maximum_positions",
+        )
         maximum_heat_r = float(portfolio["maximum_heat_r"])
-        if maximum_positions <= 0:
-            raise ValueError(f"variant {variant_id} maximum_positions must be positive")
         if not np.isfinite(maximum_heat_r) or maximum_heat_r <= 0:
             raise ValueError(
                 f"variant {variant_id} maximum_heat_r must be finite and positive"
             )
         industry_cap = portfolio.get("maximum_positions_per_industry")
         if industry_cap is not None:
-            industry_cap = int(industry_cap)
+            industry_cap = _positive_integer(
+                industry_cap,
+                label=f"variant {variant_id} maximum_positions_per_industry",
+            )
         accepted: list[dict[str, Any]] = []
         ledger_rows: list[dict[str, Any]] = []
         peak_positions = 0

@@ -161,9 +161,11 @@ holding period, same-bar rule, favorable target-gap rule, and
 unimplemented fields. The run metadata reports the normalized contract actually
 passed to the simulator.
 
-Integer-valued controls are strict. The mature independent-episode review floor
-and entry/maximum-holding session counts must be whole numbers above zero; a
-fraction is rejected rather than rounded or truncated. Each
+Integer-valued controls are strict. A formal mature independent-episode review
+floor cannot be configured below 100. Entry/maximum-holding session counts,
+total position caps, and any per-industry position cap must be positive whole
+numbers; booleans and fractions are rejected rather than rounded or truncated.
+Each
 `EARNINGS_EXCLUSION` must match exactly one candidate from the same frozen signal
 date after ticker case/whitespace normalization. A typo or exclusion for an
 absent candidate stops the formal run.

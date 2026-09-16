@@ -778,3 +778,20 @@ Post-fix research verification passed 166 tests plus Ruff, mypy,
 data-readiness, and production-isolation gates. Full verification passed 355
 pytest tests and 118 legacy unittest tests plus every integration, invariant,
 offline dry-run, and semantic-validation stage.
+
+### Formal sample hard floor and industry-cap strictness
+
+Independent review then showed that a valid positive integer below 100 could
+still lower the formal review gate, and that the portfolio engine truncated a
+fractional `maximum_positions_per_industry`. Formal configs now enforce 100 as
+the minimum mature independent-episode floor. A declared per-industry position
+cap is validated both when the experiment is loaded and again inside the
+portfolio engine; booleans, non-finite values, fractions, zero, and negatives
+fail closed. The engine applies the same exact-positive-integer rule to total
+position capacity. The epoch remains `DRAFT_BLOCKED`, and production strategy
+decisions and thresholds remain unchanged.
+
+Post-fix research verification passed 171 tests plus Ruff, mypy,
+data-readiness, and production-isolation gates. Full verification passed 360
+pytest tests and 118 legacy unittest tests plus every integration, invariant,
+offline dry-run, and semantic-validation stage.

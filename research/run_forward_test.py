@@ -39,6 +39,7 @@ EXPECTED_SNAPSHOT_FILES = {
     "metadata.json",
 }
 HASHED_SNAPSHOT_FILES = EXPECTED_SNAPSHOT_FILES - {"metadata.json"}
+FORMAL_MINIMUM_MATURE_INDEPENDENT_EPISODES = 100
 
 
 def parser() -> argparse.ArgumentParser:
@@ -84,10 +85,15 @@ def _minimum_review_sample(experiment: dict[str, Any]) -> int:
     sample = experiment.get("sample_definition", {})
     if not isinstance(sample, dict):
         raise ValueError("sample_definition must be an object")
+    minimum = (
+        FORMAL_MINIMUM_MATURE_INDEPENDENT_EPISODES
+        if str(experiment.get("collection_mode", "")).upper() == "FORMAL"
+        else 1
+    )
     return _strict_integer(
         sample.get("minimum_mature_independent_episodes"),
         label="minimum_mature_independent_episodes",
-        minimum=1,
+        minimum=minimum,
     )
 
 
@@ -235,6 +241,13 @@ def _validate_variants(experiment: dict[str, Any]) -> None:
             label=f"variant {variant_id} maximum_positions",
             minimum=1,
         )
+        industry_cap = portfolio.get("maximum_positions_per_industry")
+        if industry_cap is not None:
+            _strict_integer(
+                industry_cap,
+                label=f"variant {variant_id} maximum_positions_per_industry",
+                minimum=1,
+            )
         maximum_heat_r = float(portfolio.get("maximum_heat_r", float("nan")))
         if not math.isfinite(maximum_heat_r) or maximum_heat_r <= 0:
             raise ValueError(
