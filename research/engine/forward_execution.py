@@ -23,6 +23,9 @@ PLAN_OUTCOME_COLUMNS = (
     "plan_holding_sessions",
     "plan_outcome_status",
 )
+SAME_BAR_POLICY_STOP_FIRST = "STOP_FIRST"
+FAVORABLE_TARGET_GAP_FILL_TARGET_LEVEL = "TARGET_LEVEL"
+UNRESOLVED_POLICY_OPEN_UNMATURED = "OPEN_UNMATURED with null realised R"
 
 
 def _number(value: object) -> float | None:
@@ -43,17 +46,20 @@ def simulate_frozen_plan(
     maximum_holding_sessions: int = 40,
     entry_slippage_bps: float = 5.0,
     exit_slippage_bps: float = 5.0,
-    same_bar_policy: str = "STOP_FIRST",
-    favorable_target_gap_fill: str = "TARGET_LEVEL",
+    same_bar_policy: str = SAME_BAR_POLICY_STOP_FIRST,
+    favorable_target_gap_fill: str = FAVORABLE_TARGET_GAP_FILL_TARGET_LEVEL,
+    unresolved_policy: str = UNRESOLVED_POLICY_OPEN_UNMATURED,
 ) -> dict[str, Any]:
     """Evaluate a point-in-time entry/stop/target plan without inventing maturity."""
 
-    if same_bar_policy != "STOP_FIRST":
+    if same_bar_policy != SAME_BAR_POLICY_STOP_FIRST:
         raise ValueError(f"unsupported same_bar_policy: {same_bar_policy}")
-    if favorable_target_gap_fill != "TARGET_LEVEL":
+    if favorable_target_gap_fill != FAVORABLE_TARGET_GAP_FILL_TARGET_LEVEL:
         raise ValueError(
             f"unsupported favorable_target_gap_fill: {favorable_target_gap_fill}"
         )
+    if unresolved_policy != UNRESOLVED_POLICY_OPEN_UNMATURED:
+        raise ValueError(f"unsupported unresolved_policy: {unresolved_policy}")
     if not np.isfinite(entry_slippage_bps) or not np.isfinite(exit_slippage_bps):
         raise ValueError("slippage basis points must be finite")
     if entry_slippage_bps < 0 or exit_slippage_bps < 0:

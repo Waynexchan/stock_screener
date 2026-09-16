@@ -154,6 +154,13 @@ Unknown spellings do not disable the journal—they stop the run. Non-finite
 slippage or portfolio heat and blank earnings evidence fields also stop a
 formal run.
 
+The formal `plan_execution` object is an exact executable contract, not a notes
+field. It must contain the supported entry window, entry/exit slippage, maximum
+holding period, same-bar rule, favorable target-gap rule, and
+`OPEN_UNMATURED with null realised R` unresolved policy—without extra
+unimplemented fields. The run metadata reports the normalized contract actually
+passed to the simulator.
+
 ## Positions and completed trades
 
 For normal daily use, those seven trade facts are the only mandatory position

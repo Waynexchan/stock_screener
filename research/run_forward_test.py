@@ -13,7 +13,13 @@ import pandas as pd
 
 from research.engine.ablation import with_without_summary
 from research.engine.data import load_price_csv, valid_bar_mask
-from research.engine.forward_execution import PLAN_OUTCOME_COLUMNS, simulate_frozen_plan
+from research.engine.forward_execution import (
+    FAVORABLE_TARGET_GAP_FILL_TARGET_LEVEL,
+    PLAN_OUTCOME_COLUMNS,
+    SAME_BAR_POLICY_STOP_FIRST,
+    UNRESOLVED_POLICY_OPEN_UNMATURED,
+    simulate_frozen_plan,
+)
 from research.engine.forward_portfolio import (
     build_independent_episodes,
     evaluate_portfolio_variants,
@@ -71,6 +77,7 @@ def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
         "maximum_holding_sessions_from_trigger",
         "same_bar_policy",
         "favorable_target_gap_fill",
+        "unresolved_policy",
     }
     missing = sorted(required - set(plan))
     if missing:
@@ -81,6 +88,7 @@ def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
     exit_slippage_bps = float(plan["exit_slippage_bps"])
     same_bar_policy = str(plan["same_bar_policy"])
     favorable_target_gap_fill = str(plan["favorable_target_gap_fill"])
+    unresolved_policy = str(plan["unresolved_policy"])
     if entry_valid_sessions <= 0 or maximum_holding_sessions <= 0:
         raise ValueError("plan execution session counts must be positive")
     if not all(
@@ -89,10 +97,21 @@ def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("plan execution slippage must be finite")
     if entry_slippage_bps < 0 or exit_slippage_bps < 0:
         raise ValueError("plan execution slippage must be non-negative")
-    if same_bar_policy != "STOP_FIRST":
+    if same_bar_policy != SAME_BAR_POLICY_STOP_FIRST:
         raise ValueError("formal runner supports only STOP_FIRST same-bar policy")
-    if favorable_target_gap_fill != "TARGET_LEVEL":
+    if favorable_target_gap_fill != FAVORABLE_TARGET_GAP_FILL_TARGET_LEVEL:
         raise ValueError("formal runner supports only TARGET_LEVEL gap-fill policy")
+    if unresolved_policy != UNRESOLVED_POLICY_OPEN_UNMATURED:
+        raise ValueError(
+            "formal runner supports only OPEN_UNMATURED with null realised R "
+            "for unresolved plans"
+        )
+    if str(experiment.get("collection_mode", "")).upper() == "FORMAL":
+        unexpected = sorted(set(plan) - required)
+        if unexpected:
+            raise ValueError(
+                "formal plan_execution has unsupported fields: " + ", ".join(unexpected)
+            )
     return {
         "entry_valid_sessions": entry_valid_sessions,
         "maximum_holding_sessions": maximum_holding_sessions,
@@ -100,6 +119,19 @@ def _plan_execution_kwargs(experiment: dict[str, Any]) -> dict[str, Any]:
         "exit_slippage_bps": exit_slippage_bps,
         "same_bar_policy": same_bar_policy,
         "favorable_target_gap_fill": favorable_target_gap_fill,
+        "unresolved_policy": unresolved_policy,
+    }
+
+
+def _applied_plan_execution(kwargs: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "entry_valid_sessions": kwargs["entry_valid_sessions"],
+        "entry_slippage_bps": kwargs["entry_slippage_bps"],
+        "exit_slippage_bps": kwargs["exit_slippage_bps"],
+        "maximum_holding_sessions_from_trigger": kwargs["maximum_holding_sessions"],
+        "same_bar_policy": kwargs["same_bar_policy"],
+        "favorable_target_gap_fill": kwargs["favorable_target_gap_fill"],
+        "unresolved_policy": kwargs["unresolved_policy"],
     }
 
 
@@ -998,7 +1030,7 @@ def main(argv: list[str] | None = None) -> int:
         "price_input_diagnostics": price_diagnostics,
         "benchmark_input_diagnostics": benchmark_diagnostics,
         "outcome_input_audit": outcome_input_audit,
-        "plan_execution_applied": experiment["plan_execution"],
+        "plan_execution_applied": _applied_plan_execution(plan_execution_kwargs),
         "plan_trigger_r_outcomes": "ENABLED_CONSERVATIVE_DAILY_BAR_MODEL",
         "execution_event_count": len(events),
         "execution_event_journal_hash": events_hash,

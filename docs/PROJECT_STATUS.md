@@ -38,6 +38,11 @@ Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJE
   policy, and finite positive portfolio limits. Invalid ordering directions,
   missing ordering columns, blank earnings evidence fields, and non-finite
   slippage fail closed. `DRAFT_BLOCKED` remains unchanged.
+  The final visible P2 is also closed: `unresolved_policy` is now a required
+  simulator argument backed by the execution engine's canonical constant.
+  Formal `plan_execution` rejects unimplemented extra fields, and run metadata
+  records only the normalized contract actually passed to the simulator rather
+  than echoing an unchecked raw config.
 - `FILTER_EDGE_SEQUENCED_V1` separated filter quality from fixed-2R portfolio
   scarcity. Development contained 25,413 executable signals and 14,083
   non-overlapping ticker episodes before cross-stock constraints, versus only

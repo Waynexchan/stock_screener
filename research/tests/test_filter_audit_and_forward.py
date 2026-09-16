@@ -613,6 +613,7 @@ def _active_formal_experiment(
             "maximum_holding_sessions_from_trigger": 2,
             "same_bar_policy": "STOP_FIRST",
             "favorable_target_gap_fill": "TARGET_LEVEL",
+            "unresolved_policy": "OPEN_UNMATURED with null realised R",
         },
         "ranking_and_tie_break": audit_experiment["ranking_and_tie_break"],
         "sample_definition": {"minimum_mature_independent_episodes": 1},
@@ -712,6 +713,30 @@ def test_non_finite_formal_numeric_settings_fail_closed(
         load_experiment(_write_experiment(tmp_path / "experiment.json", experiment))
 
 
+@pytest.mark.parametrize(
+    ("mutation", "match"),
+    [
+        ("missing", "plan_execution missing fields: unresolved_policy"),
+        ("mismatch", "supports only OPEN_UNMATURED"),
+        ("extra", "formal plan_execution has unsupported fields"),
+    ],
+)
+def test_formal_execution_contract_must_exactly_match_simulator(
+    tmp_path: Path, mutation: str, match: str
+) -> None:
+    _, audit_experiment = _formal_snapshot(tmp_path / "snapshots")
+    experiment = _active_formal_experiment(audit_experiment, challenger_expected=True)
+    plan = experiment["plan_execution"]  # type: ignore[assignment]
+    if mutation == "missing":
+        plan.pop("unresolved_policy")  # type: ignore[union-attr]
+    elif mutation == "mismatch":
+        plan["unresolved_policy"] = "MARK_TO_MARKET"  # type: ignore[index]
+    else:
+        plan["commission_bps"] = 2.0  # type: ignore[index]
+    with pytest.raises(ValueError, match=match):
+        load_experiment(_write_experiment(tmp_path / f"{mutation}.json", experiment))
+
+
 def _write_price_fixture(path: Path, ticker: str) -> None:
     pd.DataFrame(
         [
@@ -801,6 +826,6 @@ def test_active_formal_flow_requires_evidence_for_every_variant(
         "CHALLENGER": expected_review_eligible,
         "CHAMPION": True,
     }
-    assert metadata["plan_execution_applied"]["entry_valid_sessions"] == 1
+    assert metadata["plan_execution_applied"] == experiment["plan_execution"]
     assert manifest["prices_input_hash"] == sha256_file(prices)
     assert manifest["benchmark_input_hash"] == sha256_file(benchmark)

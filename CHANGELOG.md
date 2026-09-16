@@ -14,6 +14,9 @@
 - Follow-up hardening rejects duplicate variant IDs, missing or invalid formal
   ordering, unknown earnings-policy spellings, blank earnings evidence, missing
   ordering/risk columns, and non-finite slippage or portfolio heat.
+- Made the frozen execution declaration exact: unresolved-plan semantics are
+  required and passed into the simulator, unsupported formal execution fields
+  are rejected, and metadata records only the normalized applied contract.
 
 ## 2026-09-05 - Canonical production decision integrity
 

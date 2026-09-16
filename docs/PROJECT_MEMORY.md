@@ -740,3 +740,22 @@ Post-follow-up research verification passed 155 tests plus Ruff, mypy,
 data-readiness, and production-isolation gates. Full verification passed 344
 pytest tests and 118 legacy unittest tests plus every integration, invariant,
 offline dry-run, and semantic-validation stage.
+
+### Frozen-execution contract equality
+
+The remaining P2 was a declared-versus-executed mismatch: the experiment could
+declare any `unresolved_policy`, or add another execution field, while the
+simulator always used `OPEN_UNMATURED` with null realised R. Derived metadata
+then echoed the entire raw config as if every field had been applied.
+
+`unresolved_policy` is now required and passed into the simulator, using one
+canonical constant shared by validation and execution. Formal execution configs
+reject unsupported extra fields, and `plan_execution_applied` is reconstructed
+only from normalized arguments actually supplied to the simulator. Regression
+tests cover missing, mismatched, and extra execution-contract fields plus direct
+simulator rejection. The formal epoch remains `DRAFT_BLOCKED`.
+
+Post-contract research verification passed 159 tests plus Ruff, mypy,
+data-readiness, and production-isolation gates. Full verification passed 348
+pytest tests and 118 legacy unittest tests plus every integration, invariant,
+offline dry-run, and semantic-validation stage.

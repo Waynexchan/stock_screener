@@ -99,6 +99,7 @@ def test_entry_window_and_slippage_are_frozen_inputs() -> None:
     [
         ("same_bar_policy", "TARGET_FIRST"),
         ("favorable_target_gap_fill", "OPEN"),
+        ("unresolved_policy", "MARK_TO_MARKET"),
     ],
 )
 def test_unsupported_frozen_execution_policy_fails_closed(
