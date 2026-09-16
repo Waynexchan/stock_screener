@@ -1,9 +1,26 @@
 # Project Status
 
-Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
+- Forward-test hardening on 2026-09-16 keeps the six-date, 313-row history as
+  `ENGINEERING_PILOT_NOT_FORMAL`. Future schema-v2 snapshots include verifiable
+  payload hashes, provider version, explicit earnings/market-cap enforcement
+  state, ranking rules, and a strategy-cohort ID. The research runner now audits
+  frozen cohort fields, fails closed on hash corruption, treats missing/Unknown
+  sector as ineligible for a no-Utilities rule, separates raw rows from
+  non-overlapping ticker episodes and production-accepted candidates, applies
+  shared portfolio heat/capacity/order rules to declared variants, reports
+  ticker-cluster intervals, and writes immutable per-run outputs plus an
+  append-only manifest. The hardened audit found 102 unique tickers, 40
+  triggered plans, 27 non-overlapping episodes, and only six mature independent
+  episodes; the sole production-accepted candidate did not trigger. The formal
+  champion/challenger epoch remains
+  `DRAFT_BLOCKED`: its fixed commit/config/universe/provider fields and an actual
+  challenger must be preregistered, and any manual earnings policy requires an
+  append-only review/exclusion journal. Production strategy thresholds are
+  unchanged.
 - `FILTER_EDGE_SEQUENCED_V1` separated filter quality from fixed-2R portfolio
   scarcity. Development contained 25,413 executable signals and 14,083
   non-overlapping ticker episodes before cross-stock constraints, versus only
@@ -132,6 +149,13 @@ Fast handoff as of 2026-09-15. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-forward-hardening verification on 2026-09-16: PASS — focused research
+verification passed Ruff, mypy, 133 research tests, the expected
+`BLOCKED_DATA_NOT_READY` baseline gate, and production hash isolation. Full
+project verification passed 322 pytest and 118 legacy tests plus every syntax,
+formatting, typing, industry/report invariant, offline dry-run, and generated
+HTML semantic-validation stage.
 
 Post-sequenced-filter-audit verification on 2026-09-15: PASS — focused
 research verification passed Ruff, mypy, 128 research tests, the expected

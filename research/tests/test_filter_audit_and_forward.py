@@ -4,15 +4,23 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from research.download_yahoo import long_form, ticker_frame, yahoo_symbol
 from research.run_filter_audit import filter_mask
 from research.run_forward_test import (
+    _snapshot_audit,
     add_filter_flags,
     earliest_complete_snapshots,
+    load_experiment,
     load_snapshot_signals,
     main as run_forward_test,
 )
+from research.engine.forward_portfolio import (
+    build_independent_episodes,
+    evaluate_portfolio_variants,
+)
+from research.engine.reproducibility import sha256_file
 
 
 def test_snapshot_actionability_requires_decision_and_actionable_flag() -> None:
@@ -24,6 +32,19 @@ def test_snapshot_actionability_requires_decision_and_actionable_flag() -> None:
     )
     result = add_filter_flags(frame)
     assert result["snapshot_actionable"].tolist() == [True, False, False, False]
+
+
+def test_formal_forward_epoch_template_is_fail_closed() -> None:
+    template = Path(__file__).parents[1] / "config" / "forward_epoch_template.json"
+    with pytest.raises(ValueError, match="preregistered and active"):
+        load_experiment(template)
+
+
+def test_unknown_sector_fails_closed_for_utilities_exclusion() -> None:
+    frame = pd.DataFrame({"Sector": ["Technology", "Utilities", "Unknown", ""]})
+    result = add_filter_flags(frame)
+    assert result["sector_known"].tolist() == [True, True, False, False]
+    assert result["exclude_utility"].tolist() == [True, False, False, False]
 
 
 def test_yahoo_download_conversion_preserves_original_ticker() -> None:
@@ -80,11 +101,138 @@ def test_forward_journal_uses_earliest_complete_snapshot_per_date(
     assert signals.iloc[0]["snapshot_run_id"] == expected.name
 
 
+def test_snapshot_artifact_hash_is_verified_and_corruption_fails(
+    tmp_path: Path,
+) -> None:
+    run = _snapshot(tmp_path, "2026-01-02", "run")
+    metadata_path = run / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["snapshot_schema_version"] = 2
+    metadata["artifact_hashes"] = {
+        name: sha256_file(run / name)
+        for name in ("candidates.csv", "market.json", "portfolio.json", "config.json")
+    }
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    experiment = {"collection_mode": "PILOT", "frozen_epoch": {}}
+    assert _snapshot_audit(run, experiment)["candidate_file_hash_status"] == "VERIFIED"
+    (run / "candidates.csv").write_text("Ticker\nCORRUPTED\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="artifact hash mismatch"):
+        _snapshot_audit(run, experiment)
+
+
+def test_forward_episodes_exclude_overlapping_same_ticker() -> None:
+    journal = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "signal_date": "2026-01-02",
+                "plan_triggered": True,
+                "plan_entry_date": "2026-01-05",
+                "plan_exit_date": "2026-01-12",
+            },
+            {
+                "ticker": "AAA",
+                "signal_date": "2026-01-06",
+                "plan_triggered": True,
+                "plan_entry_date": "2026-01-07",
+                "plan_exit_date": "2026-01-20",
+            },
+            {
+                "ticker": "AAA",
+                "signal_date": "2026-01-13",
+                "plan_triggered": True,
+                "plan_entry_date": "2026-01-13",
+                "plan_exit_date": "2026-01-20",
+            },
+        ]
+    )
+    annotated, episodes = build_independent_episodes(
+        journal, pd.Timestamp("2026-01-31")
+    )
+    assert episodes["signal_date"].tolist() == ["2026-01-02", "2026-01-13"]
+    assert annotated["episode_exclusion_reason"].eq("SAME_TICKER_OVERLAP").sum() == 1
+
+
+def test_forward_portfolio_applies_order_heat_and_unknown_industry_fail_closed() -> (
+    None
+):
+    episodes = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "signal_date": "2026-01-02",
+                "plan_entry_date": "2026-01-05",
+                "plan_exit_date": "2026-01-07",
+                "plan_entry": 10.0,
+                "Initial Stop": 9.0,
+                "plan_realised_r": 0.5,
+                "Industry": "Unknown",
+                "Final Score": 100.0,
+                "snapshot_row_order": 0,
+            },
+            {
+                "ticker": "BBB",
+                "signal_date": "2026-01-02",
+                "plan_entry_date": "2026-01-05",
+                "plan_exit_date": "2026-01-07",
+                "plan_entry": 10.0,
+                "Initial Stop": 9.0,
+                "plan_realised_r": 0.5,
+                "Industry": "Software",
+                "Final Score": 90.0,
+                "snapshot_row_order": 1,
+            },
+            {
+                "ticker": "CCC",
+                "signal_date": "2026-01-02",
+                "plan_entry_date": "2026-01-05",
+                "plan_exit_date": "2026-01-07",
+                "plan_entry": 10.0,
+                "Initial Stop": 9.0,
+                "plan_realised_r": -0.5,
+                "Industry": "Hardware",
+                "Final Score": 80.0,
+                "snapshot_row_order": 2,
+            },
+        ]
+    )
+    sessions = pd.date_range("2026-01-05", "2026-01-07", freq="B")
+    history = pd.DataFrame(
+        {"Open": [10.0, 10.0, 10.0], "Close": [10.0, 10.0, 10.0]},
+        index=sessions,
+    )
+    variant = {
+        "variant_id": "TEST",
+        "role": "CHALLENGER",
+        "eligibility": {"all": []},
+        "risk": {"fixed_r": 1.0},
+        "portfolio": {
+            "maximum_positions": 2,
+            "maximum_heat_r": 2.0,
+            "maximum_positions_per_industry": 2,
+        },
+        "ordering": [{"column": "Final Score", "direction": "DESC"}],
+    }
+    metrics, ledger, _, _ = evaluate_portfolio_variants(
+        episodes,
+        {ticker: history for ticker in ("AAA", "BBB", "CCC")},
+        sessions,
+        [variant],
+        observation_end=sessions[-1],
+        bootstrap_seed=7,
+        bootstrap_resamples=50,
+    )
+    reasons = ledger.set_index("ticker")["portfolio_rejection_reason"].to_dict()
+    assert reasons == {"AAA": "UNKNOWN_INDUSTRY", "BBB": None, "CCC": None}
+    assert metrics.iloc[0]["accepted_episode_count"] == 2
+    assert metrics.iloc[0]["maximum_positions"] == 2
+
+
 def test_forward_journal_without_prices_freezes_signals_with_missing_outcomes(
     tmp_path: Path, monkeypatch
 ) -> None:
     root = tmp_path / "snapshots"
-    run = _snapshot(root, "2026-01-02", "20260102T220000Z")
+    run = _snapshot(root, "2026-09-16", "20260916T220000Z")
     candidates = pd.read_csv(run / "candidates.csv")
     candidates["Recent RS Score"] = 80
     candidates["RS Score"] = 90
@@ -112,6 +260,12 @@ def test_forward_journal_without_prices_freezes_signals_with_missing_outcomes(
         ]
     )
     assert result == 0
-    journal = pd.read_csv(output / "journal.csv")
+    runs = list((output / "runs").iterdir())
+    assert len(runs) == 1
+    journal = pd.read_csv(runs[0] / "raw_snapshot_journal.csv")
     assert journal.empty is False
     assert journal["future_5d_return"].isna().all()
+    metadata = json.loads((runs[0] / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["evidence_status"] == "ENGINEERING_PILOT_NOT_FORMAL"
+    assert metadata["minimum_review_sample_unit"] == "MATURE_INDEPENDENT_EPISODES"
+    assert (output / "run_manifest.jsonl").is_file()

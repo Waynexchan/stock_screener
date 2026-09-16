@@ -1,0 +1,82 @@
+{
+  "experiment_id": "REPLACE_WITH_NEW_FORWARD_EXPERIMENT_ID",
+  "status": "DRAFT_BLOCKED",
+  "collection_mode": "FORMAL",
+  "production_effect": "NONE",
+  "research_label": "FROZEN FORWARD PORTFOLIO EXPERIMENT",
+  "source": "Earliest complete schema-v2 immutable production snapshot on or after start_date",
+  "start_date": null,
+  "frozen_epoch": {
+    "strategy_epoch_id": null,
+    "git_commit": null,
+    "config_hash": null,
+    "universe_hash": null,
+    "universe_methodology_version": null,
+    "data_provider_name": null,
+    "data_provider_version": null
+  },
+  "trading_policy": {
+    "earnings_policy": "MANUAL_FAIL_CLOSED_JOURNAL",
+    "earnings_snapshot_policy": "NOT_ENFORCED",
+    "market_cap_policy": "NOT_INCLUDED_THIS_EPOCH",
+    "market_cap_snapshot_policy": "NOT_ENFORCED"
+  },
+  "plan_execution": {
+    "entry_valid_sessions": 5,
+    "entry_slippage_bps": 5.0,
+    "exit_slippage_bps": 5.0,
+    "maximum_holding_sessions_from_trigger": 40,
+    "same_bar_policy": "STOP_FIRST",
+    "favorable_target_gap_fill": "TARGET_LEVEL",
+    "unresolved_policy": "OPEN_UNMATURED with null realised R"
+  },
+  "sample_definition": {
+    "unit": "MATURE_INDEPENDENT_EPISODE",
+    "maximum_active_episodes_per_ticker": 1,
+    "minimum_mature_independent_episodes": 100,
+    "raw_snapshot_rows_never_count_toward_minimum": true,
+    "production_accepted_candidates_reported_separately": true
+  },
+  "uncertainty": {
+    "method": "TICKER_CLUSTER_BOOTSTRAP",
+    "resamples": 2000,
+    "seed": 20260916
+  },
+  "portfolio_experiment": {
+    "variants": [
+      {
+        "variant_id": "PRODUCTION_CHAMPION",
+        "role": "CHAMPION",
+        "eligibility": {"all": [{"column": "snapshot_actionable", "equals": true}]},
+        "risk": {"source_column": "Maximum Risk R"},
+        "portfolio": {
+          "maximum_positions": 4,
+          "maximum_heat_r": 3.0,
+          "maximum_positions_per_industry": 3,
+          "unknown_industry_policy": "FAIL_CLOSED"
+        },
+        "ordering": [
+          {"column": "Final Score", "direction": "DESC"},
+          {"column": "snapshot_row_order", "direction": "ASC"}
+        ]
+      },
+      {
+        "variant_id": "REPLACE_WITH_PREREGISTERED_CHALLENGER",
+        "role": "CHALLENGER",
+        "eligibility": {"all": [{"column": "REPLACE_ME", "equals": true}]},
+        "risk": {"fixed_r": 1.0},
+        "portfolio": {
+          "maximum_positions": 4,
+          "maximum_heat_r": 3.0,
+          "maximum_positions_per_industry": 3,
+          "unknown_industry_policy": "FAIL_CLOSED"
+        },
+        "ordering": [
+          {"column": "Final Score", "direction": "DESC"},
+          {"column": "snapshot_row_order", "direction": "ASC"}
+        ]
+      }
+    ]
+  },
+  "production_gate": "READY FOR PRODUCTION REVIEW requires the frozen review gate and a separate explicit human decision; research never deploys."
+}

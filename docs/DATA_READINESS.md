@@ -1,6 +1,6 @@
 # Historical Data Readiness
 
-Audit date: 2026-09-10. This audit used only durable local files and performed no download.
+Audit date: 2026-09-16. This audit used only durable local files and performed no download.
 
 Overall assessment: **NOT_READY**
 
@@ -18,7 +18,7 @@ Required label for any run that substitutes currently observed symbols for histo
 | Corporate actions | PARTIALLY_READY | Production asks Yahoo for auto-adjusted bars, but no split/dividend/delisting ledger is stored. |
 | Split adjustment | PARTIALLY_READY | The research loader can consume provider-adjusted bars or apply an Adj Close ratio, but the local repository cannot independently audit splits. |
 | Dividend adjustment | PARTIALLY_READY | Adj Close may include dividends, but dividend and split effects cannot be separated without an action ledger. |
-| Forward snapshots | PARTIALLY_READY | Three candidate bundles cover signal dates 2026-09-04, 2026-09-08, and 2026-09-09 with 159 total candidate rows. They are forward evidence, not raw historical bars. |
+| Forward snapshots | PARTIALLY_READY | Six candidate bundles cover signal dates 2026-09-04 through 2026-09-15 with 313 total candidate rows. They span five Git commits, two config hashes, two universe hashes, and three early dirty worktrees, so they are an engineering pilot rather than one frozen formal epoch. |
 | Completed trades | NOT_READY for inference | The journal schema exists but contains zero completed trades. |
 
 ## Bias classification
@@ -26,7 +26,7 @@ Required label for any run that substitutes currently observed symbols for histo
 - **SURVIVORSHIP BIAS — HIGH:** no historical universe or delisted-symbol coverage.
 - **LOOK-AHEAD BIAS — controlled by engine, not by provenance:** feature code slices bars at T and tests mutate future bars, but any supplied dataset still needs source/as-of verification.
 - **CLASSIFICATION BIAS — HIGH:** historical sector/industry classifications are absent.
-- **DATA AVAILABILITY BIAS — HIGH:** local evidence is limited to a current universe and three recent forward dates.
+- **DATA AVAILABILITY BIAS — HIGH:** local evidence is limited to a current universe and six recent forward dates.
 
 ## Gate conclusion
 

@@ -1,10 +1,39 @@
 {
   "experiment_id": "FORWARD_FILTER_AUDIT_V1",
-  "status": "PREREGISTERED_ACTIVE_COLLECTION",
+  "status": "ENGINEERING_PILOT_ACTIVE_COLLECTION",
+  "collection_mode": "PILOT",
   "production_effect": "NONE",
+  "research_label": "POINT-IN-TIME SNAPSHOT ENGINEERING PILOT — NOT A FORMAL FROZEN EPOCH",
   "source": "Earliest complete immutable production snapshot for each signal date",
   "start_date": "2026-09-04",
   "signal_definition": "Every canonical candidate row is frozen with its observed decision and filter fields. Candidate-plan simulations are shadow outcomes, not claims that WATCH or NO TRADE rows were authorized trades.",
+  "frozen_epoch": {
+    "strategy_epoch_id": null,
+    "git_commit": null,
+    "config_hash": null,
+    "universe_hash": null,
+    "universe_methodology_version": null,
+    "data_provider_name": null,
+    "data_provider_version": null,
+    "reason": "Existing snapshots span multiple commits, config hashes, universe hashes, and dirty states; they remain an engineering pilot cohort."
+  },
+  "trading_policy": {
+    "earnings_policy": "NOT_INCLUDED_THIS_PILOT",
+    "earnings_snapshot_policy": "NOT_ENFORCED",
+    "market_cap_policy": "NOT_INCLUDED_THIS_PILOT",
+    "market_cap_snapshot_policy": "NOT_ENFORCED",
+    "manual_execution_event_journal": "OPTIONAL_JSONL",
+    "allowed_event_types": [
+      "EARNINGS_SCREEN_COMPLETE",
+      "EARNINGS_EXCLUSION",
+      "MISSED_RUN",
+      "ORDER_CANCELLED",
+      "PARTIAL_FILL",
+      "SPLIT",
+      "HALT",
+      "ACTUAL_FILL"
+    ]
+  },
   "entry_definition": "Raw outcomes begin at the next available session open. A valid production plan may trigger during the next five sessions; a gap above entry fills at the open and an intraday touch fills at the planned entry, both plus 5 bps.",
   "plan_execution": {
     "entry_valid_sessions": 5,
@@ -13,13 +42,54 @@
     "maximum_holding_sessions_from_trigger": 40,
     "same_bar_policy": "STOP_FIRST",
     "favorable_target_gap_fill": "TARGET_LEVEL",
-    "unresolved_policy": "OPEN_UNMATURED with null realised R"
+    "unresolved_policy": "OPEN_UNMATURED with null realised R",
+    "partial_fills": "NOT_MODELLED; journal actual differences",
+    "halts_splits_and_cancellations": "NOT_MODELLED; journal operational events"
   },
+  "ranking_and_tie_break": [
+    {"column": "Final Score", "direction": "DESC"},
+    {"column": "snapshot_row_order", "direction": "ASC"}
+  ],
   "outcome_horizons_sessions": [5, 10, 20, 40],
   "beta_definition": "126-session rolling covariance of stock daily returns with SPY divided by SPY variance, using only data through the signal date",
-  "utility_definition": "Sector equals Utilities in the immutable snapshot",
-  "primary_metric": "expectancy_r_after_costs for mature triggered plans",
+  "utility_definition": "Sector must be known and must not equal Utilities; missing or Unknown fails closed",
+  "primary_metric": "expectancy_r_after_costs for mature independent episodes",
   "interim_metrics": ["future return", "MFE", "MAE", "sample count", "outcome maturity"],
-  "minimum_review_sample": 100,
-  "production_gate": "Forward evidence can become READY FOR PRODUCTION REVIEW only after a separate historical validation and explicit human review"
+  "sample_definition": {
+    "unit": "MATURE_INDEPENDENT_EPISODE",
+    "maximum_active_episodes_per_ticker": 1,
+    "minimum_mature_independent_episodes": 100,
+    "raw_snapshot_rows_never_count_toward_minimum": true,
+    "production_accepted_candidates_reported_separately": true
+  },
+  "uncertainty": {
+    "method": "TICKER_CLUSTER_BOOTSTRAP",
+    "resamples": 2000,
+    "seed": 20260916
+  },
+  "portfolio_experiment": {
+    "status": "PILOT_CHAMPION_RECONSTRUCTION_ONLY",
+    "variants": [
+      {
+        "variant_id": "PRODUCTION_ACCEPTED_CHAMPION",
+        "role": "CHAMPION",
+        "eligibility": {
+          "all": [{"column": "snapshot_actionable", "equals": true}]
+        },
+        "risk": {"source_column": "Maximum Risk R"},
+        "portfolio": {
+          "maximum_positions": 4,
+          "maximum_heat_r": 3.0,
+          "maximum_positions_per_industry": 3,
+          "unknown_industry_policy": "FAIL_CLOSED"
+        },
+        "ordering": [
+          {"column": "Final Score", "direction": "DESC"},
+          {"column": "snapshot_row_order", "direction": "ASC"}
+        ]
+      }
+    ],
+    "challenger_status": "UNSPECIFIED_DO_NOT_INVENT"
+  },
+  "production_gate": "Pilot evidence cannot become READY FOR PRODUCTION REVIEW. A formal epoch requires one frozen champion and at least one preregistered challenger, cohort-valid snapshots, a separate historical validation, and explicit human review."
 }

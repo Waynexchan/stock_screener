@@ -108,7 +108,29 @@ After CSV, HTML, and email pass semantic cross-validation, each valid production
 run creates a new evidence bundle under
 `output/forward_snapshots/<signal-date>/<run-id>/`. It contains candidate inputs
 and decisions, market, portfolio, config, hashes, metadata coverage, timestamps,
-and reasons. Existing bundles are never overwritten.
+and reasons. Schema-v2 bundles also record the data-provider version, explicit
+earnings and market-cap enforcement states, candidate ordering, a strategy
+cohort ID, and SHA-256 hashes for every payload file. Existing bundles are never
+overwritten.
+
+The existing forward history is an engineering pilot, not one frozen formal
+epoch. Run `python -m research.run_forward_test` to create an immutable derived
+run under `research/output/forward_test_v1/runs/<run-id>/`. It reports raw
+snapshot rows, non-overlapping ticker episodes, production-accepted candidates,
+portfolio results, ticker-cluster confidence intervals, snapshot cohort audit,
+and an append-only `run_manifest.jsonl`. The 100-observation review floor counts
+only mature independent episodes; repeated daily rows do not count.
+
+A formal epoch must be started from a clean fixed commit and fill every frozen
+field in `research/config/forward_epoch_template.json`. It must preregister one
+champion and at least one challenger. The current pilot explicitly excludes both
+earnings and market-cap gates because production does not enforce them. If the
+formal policy uses manual earnings avoidance, pass an append-only JSONL event
+journal with `--events`; every signal date needs an `EARNINGS_SCREEN_COMPLETE`
+record and every exclusion needs the ticker, earnings date, review timestamp,
+and reason. The supported operational events also cover missed runs, cancelled
+orders, partial fills, splits, halts, and actual fills; the schema is in
+`research/config/forward_execution_event.schema.json`.
 
 ## Positions and completed trades
 

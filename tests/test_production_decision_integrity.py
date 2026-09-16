@@ -662,6 +662,24 @@ def test_forward_snapshots_are_unique_and_never_overwritten(tmp_path: Path):
     assert metadata["price_data_as_of"] == "2026-09-04"
     assert metadata["candidate_count"] == 1
     assert metadata["candidate_record_hash"]
+    assert metadata["candidate_logical_record_hash"]
+    assert metadata["snapshot_schema_version"] == 2
+    assert metadata["git_dirty"] in {True, False}
+    assert metadata["data_provider"]["name"] == "yfinance"
+    assert metadata["universe_methodology_version"] == (
+        "NASDAQTRADER_CURRENT_LISTED_V1"
+    )
+    assert metadata["policy"] == {
+        "earnings": "NOT_ENFORCED",
+        "market_cap": "NOT_ENFORCED",
+    }
+    assert metadata["strategy_cohort_id"]
+    for name, digest in metadata["artifact_hashes"].items():
+        assert run_screener._sha256_file(first / name) == digest
+    assert (
+        metadata["candidate_record_hash"]
+        == metadata["artifact_hashes"]["candidates.csv"]
+    )
 
 
 def test_same_day_authorisation_ledger_survives_reruns_without_double_counting(

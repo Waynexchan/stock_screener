@@ -658,3 +658,36 @@ immutable forward journal remained unchanged. Post-result research verification
 passed 128 tests plus the data-readiness and production-isolation gates; full
 verification passed 317 pytest and 118 legacy unittest tests plus every
 integration, invariant, dry-run, and semantic-validation stage.
+
+## 2026-09-16 forward-test hardening
+
+The existing six signal dates and 313 candidate rows are permanently classified
+as an engineering pilot rather than one frozen epoch. They span five commits,
+two config hashes, two universe hashes, and three dirty snapshots. Raw snapshot
+rows do not count toward the 100-observation review floor; the review unit is a
+mature, non-overlapping ticker episode. Production-accepted candidates are
+reported separately.
+
+Future production snapshots use schema v2 and record SHA-256 payload hashes,
+provider version, explicit earnings and market-cap enforcement states, ranking
+and tie-break semantics, and a strategy-cohort ID. The forward runner verifies
+available hashes, audits frozen commit/config/universe/provider policy fields,
+fails closed for a formal mismatch, excludes overlapping same-ticker episodes,
+fails closed on Unknown sector for the Utilities rule, applies shared portfolio
+heat/position/industry limits in declared order, and reports ticker-cluster
+bootstrap intervals. Each derived run has a unique directory and the root has
+an append-only manifest index.
+
+`research/config/forward_epoch_template.json` defines the formal
+champion/challenger contract but remains `DRAFT_BLOCKED`; no challenger was
+invented from reused history. The current pilot explicitly excludes earnings
+and market-cap gates. A formal manual earnings policy requires a timestamped
+append-only event journal with one completion record per signal date and
+ticker/date/reason records for exclusions. Production decision logic and
+thresholds remain unchanged.
+
+Post-change focused research verification passed Ruff, mypy, 133 research
+tests, the expected data-readiness block, and production hash isolation. Full
+verification passed 322 pytest tests, 118 legacy unittest tests, all industry
+and report invariants, the offline dry run, and generated HTML semantic
+validation.

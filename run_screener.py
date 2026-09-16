@@ -3422,26 +3422,55 @@ def write_forward_snapshot(
 
     universe_path = project_root / config.UNIVERSE_CSV
     config_path = project_root / "config.py"
+    config_hash = _sha256_file(config_path)
+    universe_hash = _sha256_file(universe_path) if universe_path.exists() else ""
+    policy = {
+        "earnings": "NOT_ENFORCED",
+        "market_cap": (
+            "ENFORCED_FAIL_CLOSED"
+            if config.ENFORCE_MARKET_CAP_FILTER
+            else "NOT_ENFORCED"
+        ),
+    }
+    cohort_payload = {
+        "git_commit": git_commit,
+        "config_hash": config_hash,
+        "universe_hash": universe_hash,
+        "universe_methodology_version": "NASDAQTRADER_CURRENT_LISTED_V1",
+        "data_provider": {"name": "yfinance", "version": yf.__version__},
+        "policy": policy,
+        "ranking": ["Final Score DESC", "immutable input row order ASC"],
+    }
     metadata = {
+        "snapshot_schema_version": 2,
         "generated_timestamp": reference.isoformat(),
         "signal_trading_date": signal_date,
         "price_data_as_of": max(price_as_of_values) if price_as_of_values else "",
         "git_commit": git_commit,
         "git_dirty": git_dirty,
-        "config_hash": _sha256_file(config_path),
+        "config_hash": config_hash,
         "universe_count": int(
             LAST_METADATA_DIAGNOSTICS.get("universe_member_count", 0)
         ),
-        "universe_hash": _sha256_file(universe_path) if universe_path.exists() else "",
+        "universe_hash": universe_hash,
         "universe_metadata_coverage": LAST_METADATA_DIAGNOSTICS,
         "market_cap_filter": decision_context.get("market_cap_filter_status"),
         "candidate_count": int(len(canonical)),
-        "candidate_record_hash": hashlib.sha256(
+        "candidate_logical_record_hash": hashlib.sha256(
             json.dumps(
                 _json_safe(canonical.to_dict("records")),
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode("utf-8")
+        ).hexdigest(),
+        "data_provider": cohort_payload["data_provider"],
+        "universe_methodology_version": cohort_payload["universe_methodology_version"],
+        "policy": policy,
+        "candidate_ranking": cohort_payload["ranking"],
+        "strategy_cohort_id": hashlib.sha256(
+            json.dumps(cohort_payload, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )
         ).hexdigest(),
     }
     public_config = {
@@ -3465,12 +3494,19 @@ def write_forward_snapshot(
         ("market.json", market_payload),
         ("portfolio.json", portfolio_payload),
         ("config.json", public_config),
-        ("metadata.json", metadata),
     ):
         (target / name).write_text(
             json.dumps(_json_safe(payload), indent=2, sort_keys=True),
             encoding="utf-8",
         )
+    metadata["artifact_hashes"] = {
+        name: _sha256_file(target / name)
+        for name in ("candidates.csv", "market.json", "portfolio.json", "config.json")
+    }
+    metadata["candidate_record_hash"] = metadata["artifact_hashes"]["candidates.csv"]
+    (target / "metadata.json").write_text(
+        json.dumps(_json_safe(metadata), indent=2, sort_keys=True), encoding="utf-8"
+    )
     return target
 
 

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Append-only forward execution event",
+  "type": "object",
+  "required": ["event_id", "event_type", "recorded_at", "signal_date"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {
+      "enum": [
+        "EARNINGS_SCREEN_COMPLETE",
+        "EARNINGS_EXCLUSION",
+        "MISSED_RUN",
+        "ORDER_CANCELLED",
+        "PARTIAL_FILL",
+        "SPLIT",
+        "HALT",
+        "ACTUAL_FILL"
+      ]
+    },
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "signal_date": {"type": "string", "format": "date"},
+    "ticker": {"type": "string"},
+    "reviewed_at": {"type": "string", "format": "date-time"},
+    "earnings_date": {"type": "string", "format": "date"},
+    "reason": {"type": "string"},
+    "planned_quantity": {"type": "number"},
+    "filled_quantity": {"type": "number"},
+    "actual_fill_price": {"type": "number"},
+    "source": {"type": "string"},
+    "notes": {"type": "string"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"event_type": {"const": "EARNINGS_EXCLUSION"}}},
+      "then": {"required": ["ticker", "reviewed_at", "earnings_date", "reason"]}
+    }
+  ],
+  "additionalProperties": true
+}
