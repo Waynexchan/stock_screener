@@ -7,10 +7,15 @@
 - Date:
 - Hypothesis/version:
 - Strategy/research version:
+- Research posture: <!-- PROSPECTIVE, RETROSPECTIVE, or HYPOTHESIS-GENERATING. -->
+- Prior outcome exposure:
 - Parent experiment (if any):
 - Change tested:
 - Reason for change:
 - Parameters/config version:
+- Code commit:
+- Dependency/environment version:
+- Immutable artifact identifier/path:
 - Dataset/version:
 - Reproducibility manifest/path:
 - Data-readiness status and research label:

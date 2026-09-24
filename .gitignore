@@ -46,3 +46,6 @@ jobs/applied_jobs/
 jobs/api_jobs.csv
 tracker/
 tracker/backups/
+
+# Transient active task handoff
+/HANDOFF.md

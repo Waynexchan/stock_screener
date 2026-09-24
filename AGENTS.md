@@ -2,6 +2,43 @@
 
 This file is the authoritative operating manual for coding agents in this repository. Read it before `docs/PROJECT_STATUS.md` and `docs/PROJECT_MEMORY.md`.
 
+## Workflow baseline and authority
+
+This repository is migrated to AI-agent workflow template `v1.8.1` from
+`Waynexchan/ai-agent-workflow-template` commit
+`a4d2c6aec4a26c3e2d76b391f687266eb1c898d1`. The reusable workflow is
+project-adapted: this file, project specifications, tests, and the stock-screener
+governance documents override generic skill defaults. The application and
+research versions are separate from the workflow-template baseline.
+
+At repository entry, after context compression or handoff, or whenever chat
+context may be stale, use `.agents/skills/context-resume/SKILL.md` to reconstruct
+a concise Working Context from repository evidence. Git and current files
+outrank stale status notes or conversational memory. Refresh relevant remote
+refs before a remote-backed decision when possible; otherwise state that remote
+freshness is unverified.
+
+Use the smallest applicable workflow:
+
+- `project-dev-cycle` for meaningful implementation work;
+- `debug` for a scoped defect;
+- `dependency-security-check` for dependency, package-source, credential,
+  environment, install/build, or related repository-security changes;
+- `quality-gate` for FAST or FULL validation evidence;
+- `code-review` for independent review without edits by default;
+- `release-check` for a named commit, merge, push, or release-readiness check;
+- `incident-recovery` for credible integrity, persisted-state, external-effect,
+  or unbounded-impact incidents;
+- `task-handoff` only when one active task must cross an agent or session
+  boundary;
+- `project-health` for a read-only operational summary and one next safe action;
+  and
+- `project-migrate` for later workflow-template upgrades.
+
+Read-only questions, review-only work, Git-only operations, production
+execution, and trivial documentation edits should use proportionate handling
+rather than the complete implementation lifecycle. See `docs/AI_WORKFLOW.md`.
+
 ## Project purpose
 
 Build and maintain a high-performance US-stock swing-trading decision system for an approximate one-to-two-month holding period. Optimise for positive expectancy, strong risk/reward, controlled maximum drawdown, limited simultaneous positions, and robust out-of-sample performance—not signal count, headline win rate, complexity, or plausible-sounding filters.
@@ -38,6 +75,29 @@ For every meaningful task:
 4. Find the authoritative implementation, entry point, schemas, callers, and relevant tests; do not edit the first matching function blindly.
 5. Run the baseline tests appropriate to the scope and reproduce a reported issue where practical.
 6. State any unresolved ambiguity instead of assuming it away.
+
+For meaningful behavioural work, use spec-driven, test-first development:
+
+1. Create or update the authoritative behavioural specification and explicit
+   acceptance criteria before production code. For research, the frozen
+   hypothesis/experiment record is the domain specification; do not create a
+   duplicate contract that can drift.
+2. Derive risk-based test scenarios from the contract and review their coverage,
+   assumptions, boundaries, failure cases, and shared-mistake risk.
+3. Implement or update tests first where practical, then make the smallest
+   coherent production change.
+4. Run focused checks while developing and the FULL quality gate before normal
+   independent review.
+5. Inspect the complete diff, record durable decisions in the appropriate
+   specification, decision, memory, status, or research artifact, and resolve
+   blocking review findings before seeking a Git boundary approval.
+
+The default branch is `main`. For new agent-led work, prefer a focused
+`codex/<short-task-name>` branch unless the user or an established workflow
+requires another name. Meaningful work should start from a clean default branch
+and a focused branch, or reuse a clearly associated branch. Never switch branches
+when doing so would endanger uncommitted work; stop for user direction if safe
+isolation is not possible.
 
 ## Development rules
 
@@ -86,6 +146,23 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1
 
 That script is the required verification entry and currently covers syntax compilation, Ruff format/lint, mypy where supported, pytest/unit/regression tests, the legacy unittest suite, industry integration tests, report invariants, the safe sample Daily Watchlist dry run, and generated HTML/CSV/email semantic validation.
 
+Quality-gate profiles:
+
+- `FAST`: the smallest relevant deterministic test command(s), plus affected
+  Ruff/mypy checks where practical. Record the exact commands and results for
+  the task. FAST is feedback only and cannot substitute for FULL.
+- `FULL`: `powershell -ExecutionPolicy Bypass -File
+  .\scripts\verify_project.ps1`. A required missing, failed, blocked, stale,
+  narrowed, or unexpectedly skipped check cannot be reported as PASS.
+
+When dependency/security-sensitive files or behaviour change, run
+`dependency-security-check` first and feed its current result into FULL without
+duplicating or weakening either check. Do not install a scanner, change package
+sources, upgrade dependencies, suppress warnings, expose secrets, or rewrite
+history merely to obtain a clean result. A likely real secret or broader
+integrity issue enters `incident-recovery`; an ordinary scoped test failure does
+not.
+
 When verification fails:
 
 1. Stop normal production report/email generation.
@@ -113,8 +190,15 @@ Do not invent new trading thresholds while enforcing these invariants.
 
 - Inspect status before and after work. Never discard, overwrite, stage, or commit unrelated user changes.
 - Never use `git reset --hard` or change a remote without explicit instruction and a verified need.
-- Use meaningful local commits/checkpoints and report the exact hash.
-- Do not push unless the user explicitly requests it or the established project workflow unambiguously requires it.
+- Create a meaningful local commit/checkpoint only after explicit user approval
+  for that exact commit, and report the exact hash.
+- Commit, merge, push, release/deploy, local branch deletion, and each remote
+  branch deletion are distinct approval boundaries. Approval for one never
+  implies another.
+- Do not push unless the user explicitly approves the exact local ref, remote,
+  and destination ref immediately before the push. Never force-push by default.
+- Retain branches by default. Name and verify the exact ref before any approved
+  deletion; never infer cleanup authority from commit, merge, or push approval.
 - Runtime reports, caches, secrets, credentials, local portfolio/trade data, databases, and logs must not be committed. Do not remove already tracked files merely because they look generated without first reporting the impact.
 
 ## Windows and automation safety
@@ -130,4 +214,8 @@ Do not invent new trading thresholds while enforcing these invariants.
 
 ## Completion report
 
-Report files changed, commands run, exact results, assumptions, limitations, remaining issues, Git status, and any checkpoint hash. Do not declare completion while a required check fails.
+Report files changed, commands run, exact results, review outcome, assumptions,
+limitations, remaining issues, Git status, and any checkpoint hash. Do not
+declare completion while a required check fails. A task handoff, project-health
+result, passing quality gate, review, or release-readiness result never supplies
+operational or Git approval.

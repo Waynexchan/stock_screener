@@ -1,6 +1,6 @@
 # Project Status
 
-Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
@@ -152,18 +152,27 @@ Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJE
   66.94% in reused 2025 after 51.71% development drawdown. The complete leader
   conjunction selected zero eligible signals. Decision: REJECT; fundamentals
   remain `BLOCKED_DATA_NOT_READY`, and production is unchanged.
-- Branch: `codex/superperformance-paths-backtest`. The five-commit
-  `fix/production-risk-boundaries` series was merged through `432be57`.
-- Agent workflow: the project-adapted optional `research-experiment` skill is
-  sourced from `Waynexchan/ai-agent-workflow-template`, `VERSION` 1.1.0 at
-  commit `b088397622cf8fb0013396162e7a909b63937d34`. This is not a
-  whole-repository template migration; exact upstream blob IDs are recorded in
-  `docs/PROJECT_MEMORY.md`.
+- Branch at workflow migration: `main` at
+  `8d1b00dff6983cd2ba6a32e6b5493f4bc54a09da`. The working tree already
+  contained preserved, uncommitted `PORTFOLIO_RANKING_PHASE_A_V1` source,
+  tests, configuration, and documentation before the workflow files were
+  changed. The five-commit `fix/production-risk-boundaries` series was merged
+  through `432be57`.
+- Agent workflow: migrated from the earlier research-only v1.1.0 integration to
+  a project-adapted `Waynexchan/ai-agent-workflow-template` v1.8.1 baseline at
+  commit `a4d2c6aec4a26c3e2d76b391f687266eb1c898d1`. The repository now includes
+  context recovery, project health, spec-driven/test-first development,
+  dependency-security review, FAST/FULL quality gates, incident recovery, task
+  handoff, independent review, release checks, and explicit Git approval
+  boundaries. Stock-screener production controls and the stricter local
+  discovery + separate validation + untouched holdout research lifecycle remain
+  authoritative intentional divergences. No strategy or production behaviour
+  changed in this workflow migration.
 - Remote confirmed: `https://github.com/Waynexchan/stock_screener.git`; it was not changed.
 - Research-task starting commit: `ff44477d4918852ed81becc84890ce9add8b634c`.
-- Worktree: clean after integration and verification. The former dirty `main`
-  files were verified blob-for-blob against `origin/main` before integration;
-  a local safety stash remains available as a recovery checkpoint.
+- Worktree: intentionally dirty during this migration because the preserved
+  Phase A work and the workflow upgrade are both uncommitted. No existing change
+  was reset, restored, staged, committed, or pushed by the workflow migration.
 - Production status: five fail-closed risk-boundary defects are corrected:
   unfinished/future-dated daily bars cannot be `CURRENT`; a current market label
   is not reused as the previous regime; missing, blank, or unsupported position
@@ -176,6 +185,23 @@ Fast handoff as of 2026-09-16. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-review-governance-fix verification on 2026-09-24: PASS — the canonical
+FULL gate passed 386 pytest tests, 118 legacy unittest tests, Python syntax,
+Ruff format/lint, mypy, industry and report invariants, the offline sample dry
+run, and generated HTML semantic validation. The exact final run timestamp is
+preserved in `logs/verify_project.log`. This evidence covers the workflow
+governance fixes and current preserved Phase A working tree; it grants no Git,
+release, production, or research-promotion authority.
+
+Workflow-migration verification on 2026-09-23: PASS — the canonical FULL gate
+completed against the dirty working tree at `main` /
+`8d1b00dff6983cd2ba6a32e6b5493f4bc54a09da`. It passed 386 pytest tests, 118
+legacy unittest tests, Python syntax, Ruff format/lint, mypy, industry and report
+invariants, the offline sample dry run, and generated HTML semantic validation.
+The result is recorded in `logs/verify_project.log` at
+`2026-09-23T23:49:53.8416929+01:00`; it validates that exact then-current working
+tree but does not authorize commit, merge, push, release, or production use.
 
 Post-forward-hardening verification on 2026-09-16: PASS — focused research
 verification passed Ruff, mypy, 133 research tests, the expected

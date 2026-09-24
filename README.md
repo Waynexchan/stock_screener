@@ -37,6 +37,18 @@ python run_screener.py --self-test
 python run_screener.py
 ```
 
+## AI-agent workflow
+
+This repository uses a project-adapted AI-agent workflow based on
+`Waynexchan/ai-agent-workflow-template` v1.8.1. Start with `AGENTS.md`, then
+`docs/PROJECT_STATUS.md`, `docs/PROJECT_MEMORY.md`, and
+`docs/AI_WORKFLOW.md`. The workflow adds repository-backed context recovery,
+spec-driven/test-first implementation, FAST and FULL quality gates,
+dependency-security review, incident recovery, task handoff, independent review,
+and separate approval boundaries for commit, merge, push, release/deploy, and
+branch deletion. Stock-screener production and research safeguards remain
+authoritative over generic workflow defaults.
+
 For safe local checks without running the full screener:
 
 ```bash

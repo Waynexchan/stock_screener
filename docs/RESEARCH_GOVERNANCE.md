@@ -18,6 +18,9 @@ Every material feature belongs in `research/filter_registry.json` as `UNASSESSED
 
 Before running an experiment, record:
 
+- whether the work is prospective, retrospective, or hypothesis-generating;
+- any previously viewed outcomes, periods, variants, charts, or summaries that
+  could influence the specification or criteria;
 - hypothesis and economic rationale;
 - exact baseline and one controlled change;
 - feature calculation and point-in-time availability;
@@ -28,7 +31,12 @@ Before running an experiment, record:
 - primary decision metric and minimum economically meaningful improvement;
 - config, code, and data versions/hashes.
 
-Do not select thresholds using the holdout. If sample size cannot support a conclusion, record the result as inconclusive.
+Never call a record preregistered if relevant outcomes were already observed.
+Treat affected evidence as discovery or contaminated for that version, freeze
+the resulting candidate before using genuinely unobserved validation evidence,
+and disclose when no untouched evidence remains. Do not select thresholds using
+validation or holdout results. If sample size cannot support a conclusion,
+record the result as inconclusive.
 
 ## Required comparisons and metrics
 

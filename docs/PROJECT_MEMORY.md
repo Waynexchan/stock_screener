@@ -243,7 +243,32 @@ Do not begin these steps without an explicit task.
 
 ## Last verified
 
-- Date: 2026-09-12 (Europe/London).
+### AI-agent workflow migration
+
+- Current workflow-template baseline: `v1.8.1` from
+  `https://github.com/Waynexchan/ai-agent-workflow-template.git` at commit
+  `a4d2c6aec4a26c3e2d76b391f687266eb1c898d1`.
+- Migration classification: reusable workflow skills, specifications, and
+  templates were added; `AGENTS.md` and `docs/AI_WORKFLOW.md` were merged with
+  existing project-specific production, research, verification, data-integrity,
+  Windows-automation, and Git protections rather than overwritten.
+- Intentional divergence: this project retains discovery, a separate validation
+  sample, and an untouched holdout. Upstream v1.8.1 simplified its generic
+  research skill to discovery plus holdout; the local three-stage evidence
+  contract remains stricter and authoritative.
+- The workflow baseline is governance metadata, not an application, strategy,
+  research, or production release version. The migration does not authorize or
+  change production decisions, thresholds, risk, sizing, reporting, email, or
+  scheduling.
+- Previous integrated baseline: v1.1.0 at commit
+  `b088397622cf8fb0013396162e7a909b63937d34`; the historical blob IDs below are
+  retained as provenance for that earlier research-only integration.
+- Migration integrity checks: all 24 copied generic workflow files matched the
+  upstream v1.8.1 Git blobs exactly; 13 skill frontmatter records passed; local
+  Markdown links passed across 31 workflow/specification/template files after
+  excluding documented placeholder examples; and `git diff --check` passed.
+
+- Historical v1.1.0 verification record date: 2026-09-12 (Europe/London).
 - Research-skill upstream repository:
   `https://github.com/Waynexchan/ai-agent-workflow-template.git`.
 - Upstream version/source: `VERSION` 1.1.0 at commit

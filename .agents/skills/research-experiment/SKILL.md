@@ -1,6 +1,6 @@
 ---
 name: research-experiment
-description: Govern systematic investment or trading research from a preregistered hypothesis through point-in-time backtesting, separate validation, untouched holdout evaluation, robustness checks, forward testing, and production review. Use for domain-specific research, not ordinary software work, securities recommendations, brokerage actions, or automatic production promotion.
+description: Govern systematic investment or trading research from prospective preregistration or disclosed retrospective assessment through point-in-time backtesting, separate validation, untouched holdout evaluation, robustness checks, forward testing, and production review. Use for domain-specific research, not ordinary software work, securities recommendations, brokerage actions, or automatic production promotion.
 ---
 
 # Research experiment
@@ -23,6 +23,7 @@ Keep four things distinct in every report: **hypothesis**, **evidence**, **inter
 
 - Do not cherry-pick attractive results, hide failed experiments, or optimize for an appealing backtest.
 - Do not begin parameter optimization before formalizing the hypothesis.
+- Never describe a record created after outcome exposure as preregistered; disclose prior exposure and treat the work as retrospective or hypothesis-generating.
 - Keep discovery, validation, and untouched holdout roles distinct. Do not repeatedly optimize against validation or holdout data, use the holdout as first validation, or silently reuse a contaminated sample.
 - Do not claim causality from correlation or claim that a profitable backtest proves a strategy works.
 - Do not equate statistical significance with tradability. Evaluate economic magnitude, execution, risk, capacity where relevant, and operational feasibility.
@@ -32,7 +33,7 @@ Keep four things distinct in every report: **hypothesis**, **evidence**, **inter
 
 ## 1. Formalize the investment logic
 
-Translate the human-readable idea into a testable statement before inspecting outcome results or tuning parameters. Distinguish:
+Translate the human-readable idea into a testable statement before inspecting any outcomes not already exposed or tuning parameters further. If prior outcomes have already been seen, do not pretend this ordering was followed; preserve and disclose their influence through Stage 2. Distinguish:
 
 - economic or market intuition and expected mechanism;
 - observable conditions and universe;
@@ -42,9 +43,22 @@ Translate the human-readable idea into a testable statement before inspecting ou
 
 A useful conceptual form is: “When condition X occurs under regime Y, instruments satisfying Z may outperform over horizon H because mechanism M is expected to occur.” Identify unresolved ambiguity before testing; do not conceal discretionary choices behind parameters.
 
-## 2. Preregister the hypothesis
+## 2. Preregister prospectively or disclose prior outcome exposure
 
-Before inspecting outcomes, record the hypothesis, universe, signal, entry, exit, holding periods, portfolio construction and position sizing where applicable, benchmark, primary and secondary metrics, risk metrics, transaction costs, slippage, separate discovery, validation, and untouched holdout periods with planned sample sizes, temporal split and boundary controls, sample-status conventions, and stage-specific acceptance and rejection criteria. Assign an experiment ID and hypothesis version where practical. The primary metric and criteria must be chosen before results are known.
+First establish and record whether the researcher or agent has already seen
+outcome data, result summaries, charts, selected variants, tuned parameters, or
+other evidence that could have influenced the hypothesis or criteria. Unknown
+prior exposure is a limitation; do not assume the work is prospective.
+
+If relevant outcomes have already been seen, label the record **retrospective**
+or **hypothesis-generating**, never preregistered. Record what evidence was
+known, when it was seen, which data periods and variants were inspected, and how
+that exposure may have influenced the specification. Treat exposed periods as
+discovery or contaminated for the affected version. Freeze the candidate before
+using genuinely unobserved validation evidence. If no untouched evidence exists,
+state that limitation and do not present the assessment as confirmatory.
+
+For prospective work, before inspecting outcomes, record the hypothesis, universe, signal, entry, exit, holding periods, portfolio construction and position sizing where applicable, benchmark, primary and secondary metrics, risk metrics, transaction costs, slippage, separate discovery, validation, and untouched holdout periods with planned sample sizes, temporal split and boundary controls, sample-status conventions, and stage-specific acceptance and rejection criteria. Assign an experiment ID and hypothesis version where practical. The primary metric and criteria must be chosen before results are known.
 
 Use [RESEARCH_HYPOTHESIS.md](../../../templates/RESEARCH_HYPOTHESIS.md) when the project has no equivalent record. Preserve the original record. A material change to logic, inputs, universe, execution, metrics, periods, or criteria creates a new experiment or version rather than rewriting history.
 
@@ -79,7 +93,7 @@ Where applicable, also define initial capital and cash handling; instrument sele
 
 ## 5. Conduct discovery with a ledger
 
-Use only the discovery sample for hypothesis exploration, feature investigation, threshold or parameter development, and failure analysis. Track every material variant, not only the winner. Record experiment ID, hypothesis/version, parameters, sample period and size, results, decision, and notes. Use [EXPERIMENT_LOG.md](../../../templates/EXPERIMENT_LOG.md) when no equivalent ledger exists.
+Use only the discovery sample for hypothesis exploration, feature investigation, threshold or parameter development, and failure analysis. Track every material variant, not only the winner. Record experiment ID, hypothesis/version, prospective or retrospective status and prior outcome exposure, parameters, code commit, dependency or environment version, immutable artifact identifier where available, dataset version, sample period and size, results, decision, and notes. Use [EXPERIMENT_LOG.md](../../../templates/EXPERIMENT_LOG.md) when no equivalent ledger exists.
 
 Report the breadth of the search and any repeated use of the same data. Treat unexplained sensitivity and unusually successful isolated variants as warning signs.
 
@@ -171,7 +185,8 @@ Maintain an auditable chain:
 
 ```text
 hypothesis -> experiment ID -> dataset/version -> code/config version
--> discovery results -> validation results -> untouched holdout results
+-> dependency/environment version or immutable artifact -> discovery results
+-> validation results -> untouched holdout results
 -> decision -> frozen strategy version
 -> forward signals -> forward outcomes -> production review
 ```
@@ -180,6 +195,8 @@ Make results reproducible where practical. Preserve losing, rejected, and inconc
 
 ## Relationship to repository workflows
 
-This skill governs research decisions and evidence. Use `docs/AI_WORKFLOW.md` for the repository development lifecycle, `docs/RESEARCH_GOVERNANCE.md` for filter status and evidence requirements, and `AGENTS.md` for Git, production, safety, and completion rules. Diagnose research-infrastructure defects before fixing them, independently review meaningful changes, and keep commit/push/release authority separate from research decisions.
+This skill governs research decisions and evidence. When research requires repository implementation, use `research-experiment` for the domain lifecycle and `project-dev-cycle` for Git safety, implementation, verification, review, and approval boundaries. Use `code-review` for independent technical review and `release-check` for a separately requested boundary assessment. Use `debug` for scoped defects in research infrastructure, `incident-recovery` when an integrity incident threatens provenance, holdout isolation, experiment history, or production state, and `project-migrate` when adopting the workflow into this investment project.
 
-Do not treat this skill as permission to commit, merge, push, release, deploy, change production strategy logic, modify runtime/private data, or interact with a brokerage.
+The frozen hypothesis or strategy record supplies the domain specification for spec-driven implementation; do not create a duplicate general specification that can drift. Before production or research code, derive and review executable scenarios where practical for point-in-time availability, future-data leakage, deterministic replay, universe and baseline definitions, signal/entry/outcome timing, missing data, survivorship handling, validation/holdout isolation, metric semantics, experiment versioning, and research/production separation. Run focused scenarios, `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`, and the FULL repository gate `powershell -ExecutionPolicy Bypass -File .\scripts\verify_project.ps1` before independent review of meaningful changes.
+
+Do not duplicate those workflow skills or treat their use as permission to commit, merge, push, release, deploy, change production strategy logic, modify runtime/private data, or interact with a brokerage.

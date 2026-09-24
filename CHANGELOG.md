@@ -1,5 +1,31 @@
 # Project Changelog
 
+## 2026-09-23 - AI-agent workflow template v1.8.1 migration
+
+- Migrated the repository workflow baseline from the earlier research-only
+  v1.1.0 integration to a project-adapted v1.8.1 baseline from
+  `Waynexchan/ai-agent-workflow-template` commit
+  `a4d2c6aec4a26c3e2d76b391f687266eb1c898d1`.
+- Added repository-backed context recovery, operational project health,
+  spec-driven/test-first development, dependency-security checks, FAST/FULL
+  quality gates, incident recovery, task handoff, independent code review,
+  release checks, bootstrap, and future migration skills with their supporting
+  contracts and templates.
+- Preserved the stock screener's canonical production paths, full verifier,
+  data-integrity controls, Windows automation safeguards, and explicit
+  production/research isolation.
+- Retained the stricter local discovery + separate validation + untouched
+  holdout lifecycle as an intentional divergence from the generic upstream
+  research skill, while adding explicit prospective/retrospective outcome-
+  exposure records and reproducibility fields.
+- Review closure made the hypothesis template posture-neutral, requires explicit
+  `YES`/`NO`/`UNKNOWN` prior-exposure evidence, and maps frozen research criteria
+  to executable point-in-time, leakage, replay, missing-data, survivorship,
+  production-isolation, provenance, and canonical validation checks.
+- Made commit, merge, push, release/deploy, and branch deletion separate explicit
+  approval boundaries. No trading strategy, threshold, risk, sizing, report,
+  email, or scheduler behaviour changed.
+
 ## 2026-09-16 - Formal forward-test fail-closed closure
 
 - Applied frozen execution parameters to shadow plan simulation and rejected
