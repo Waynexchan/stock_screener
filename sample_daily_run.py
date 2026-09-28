@@ -13,6 +13,11 @@ from decision_system import (
     calculate_drawdown_state,
     size_trade_candidate,
 )
+from run_screener import (
+    classify_pattern_discovery_sections,
+    decision_manifest_records,
+    pattern_discovery_sections,
+)
 
 OUTPUT = Path("daily_watchlist_dry_run.html")
 OUTPUT_CSV = Path("daily_watchlist_dry_run.csv")
@@ -178,6 +183,9 @@ def build_sample_report(output: Path = OUTPUT) -> tuple[pd.DataFrame, str]:
                 "Current Drawdown R": drawdown.drawdown_r,
                 "Reasons": "; ".join(result.reasons),
                 "Missing Confirmation": "; ".join(result.missing_confirmations),
+                "Decision Reasons": "; ".join(result.reasons)
+                or "; ".join(result.missing_confirmations),
+                "Main Missing Confirmation": "; ".join(result.missing_confirmations),
                 "Recent RS Score": row["Recent RS Score"],
                 "Planned Entry": row["Planned Entry"],
                 "Initial Stop": row["Initial Stop"],
@@ -188,33 +196,26 @@ def build_sample_report(output: Path = OUTPUT) -> tuple[pd.DataFrame, str]:
                 "Price Freshness Status": row["Price Freshness Status"],
             }
         )
-    frame = pd.DataFrame(records)
+    frame = classify_pattern_discovery_sections(pd.DataFrame(records))
     full = frame[frame["Final Decision"] == "FULL"]
     half = frame[frame["Final Decision"] == "HALF"]
     watch = frame[frame["Final Decision"] == "WATCH"]
     no_trade = frame[frame["Final Decision"] == "NO TRADE"]
-    manifest = [
-        {
-            "ticker": row["Ticker"],
-            "decision": row["Final Decision"],
-            "maximum_risk_r": row["Maximum Risk R"],
-            "maximum_risk_dollars": row["Maximum Risk Dollars"],
-            "maximum_shares": row["Maximum Shares"],
-            "actionable": row["Actionable"],
-            "confirmed_setup": row["Confirmed Setup"],
-            "setup_integrity": row["Setup Integrity"],
-            "review_tier": row["Review Tier"],
-            "action": row["Action"],
-        }
-        for row in frame.sort_values("Ticker").to_dict("records")
-    ]
+    actionable_now, pattern_watchlist, avoid_failed = pattern_discovery_sections(frame)
+    manifest = decision_manifest_records(frame)
     html = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Dry Run</title></head><body>"
         "<h2>Executive Summary</h2><p>Four-state decision and sizing regression.</p>"
         "<h2>Market Status</h2><p>Strong deterministic fixture.</p>"
         "<h2>Portfolio Risk</h2><p>Market, drawdown, heat, and position-count caps applied.</p>"
         "<h2>Top Industries</h2><p>Fixture industry support.</p>"
-        "<h2>FULL</h2>"
+        "<h2>Actionable Now</h2>"
+        + actionable_now.to_html(index=False)
+        + "<h2>Pattern Watchlist</h2>"
+        + pattern_watchlist.to_html(index=False)
+        + "<h2>Avoid / Failed</h2>"
+        + avoid_failed.to_html(index=False)
+        + "<h2>FULL</h2>"
         + full.to_html(index=False)
         + "<h2>HALF</h2>"
         + half.to_html(index=False)
@@ -255,6 +256,9 @@ def validate_sample_report(frame: pd.DataFrame, html: str) -> list[str]:
             "HALF",
             "WATCH",
             "NO TRADE",
+            "Pattern Watchlist",
+            "Actionable Now",
+            "Avoid / Failed",
             "Data and Logic Warnings",
             "Expectancy",
         )

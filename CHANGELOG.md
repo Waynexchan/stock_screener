@@ -1,5 +1,26 @@
 # Project Changelog
 
+## 2026-09-29 - Pattern Discovery reporting Phase 1
+
+- Added a post-canonical, `RESEARCH_ONLY` report classification that separates
+  Actionable Now, Pattern Watchlist, and Avoid / Failed without changing the
+  authoritative FULL/HALF/WATCH/NO TRADE decision or sizing pipeline.
+- Kept missing entry, observed target, and structural R/R values explicit for
+  chart-review candidates and added deterministic waiting/failure explanations.
+- Updated CSV, Markdown, HTML, email, preview, dry-run, and cross-output semantic
+  validation so research fields cannot promote or resize a candidate.
+- Added specification and regression coverage for production-field invariance,
+  deterministic classification, missing-value behaviour, real export-path
+  integration, legacy preview derivation, and manifest agreement. No setup lane,
+  ranking factor, performance claim, or production promotion was added.
+- Closed two independent-review gaps: report-only fields are now absent from the
+  discovery schema and defensively removed at the immutable snapshot boundary,
+  while CSV semantic validation enforces the same explicit failure-evidence
+  precedence between Pattern Watchlist and Avoid / Failed as the classifier.
+- Aligned classifier and validator handling of non-finite plan values: present
+  `+/-inf` entry or stop values are explicit Avoid / Failed evidence, while
+  genuinely missing entry or stop values remain Pattern Watchlist evidence.
+
 ## 2026-09-23 - AI-agent workflow template v1.8.1 migration
 
 - Migrated the repository workflow baseline from the earlier research-only
@@ -22,6 +43,9 @@
   `YES`/`NO`/`UNKNOWN` prior-exposure evidence, and maps frozen research criteria
   to executable point-in-time, leakage, replay, missing-data, survivorship,
   production-isolation, provenance, and canonical validation checks.
+- Refreshed project status with the 386-pytest/118-legacy FULL result, the current
+  Final Score then ticker production ordering, and the remaining Phase A formal
+  data-readiness task so context recovery does not repeat completed ranking work.
 - Made commit, merge, push, release/deploy, and branch deletion separate explicit
   approval boundaries. No trading strategy, threshold, risk, sizing, report,
   email, or scheduler behaviour changed.

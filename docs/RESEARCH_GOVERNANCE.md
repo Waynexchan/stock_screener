@@ -38,6 +38,38 @@ and disclose when no untouched evidence remains. Do not select thresholds using
 validation or holdout results. If sample size cannot support a conclusion,
 record the result as inconclusive.
 
+## Frozen benchmark-only parameter families
+
+The following heavily explored families are frozen and may be reused only as
+declared benchmarks. Do not rerun optimization, threshold search, or combination
+mining over them in a ranking experiment:
+
+- initial-stop and fixed-target grids;
+- fixed, earned, staircase, and drawdown exposure/heat grids;
+- earnings-blackout combinations;
+- SMA and ATR trailing-stop offsets;
+- Recent RS hard thresholds; and
+- hard-filter combinations.
+
+New candidate-order research must hold these non-ranking conditions constant
+across every arm. Reopening a family requires a new preregistration, new data,
+and an explicit rationale; it is not part of `PORTFOLIO_RANKING_PHASE_A_V1`.
+
+For `PORTFOLIO_RANKING_PHASE_A_V1`, the primary Phase B-shortlist metric,
+minimum improvement, sample floor, development/validation windows, untouched
+holdout, drawdown/profit-factor guardrails, and maximum shortlist size are
+frozen in `research/experiments/portfolio_ranking_phase_a_v1.json`. The random
+control cannot advance. Applying that gate may produce candidates for human
+review only; it cannot automatically select a champion or authorize Phase B,
+holdout access, or production promotion.
+
+The production baseline and every challenger must independently meet the
+preregistered mature-sample floor. Outcomes beyond a stage observation cutoff
+must be censored rather than counted as mature, while positions still open at
+the cutoff continue to consume portfolio heat. Current sector/industry mappings
+cannot support a formal industry-ranking arm; formal execution must fail closed
+until effective-dated classifications and their loader are verified.
+
 ## Required comparisons and metrics
 
 Compare the candidate feature with a simpler frozen baseline. At minimum report:

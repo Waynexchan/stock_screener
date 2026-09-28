@@ -11,6 +11,7 @@ import sys
 
 
 STATES = {"FULL", "HALF", "WATCH", "NO TRADE"}
+REPORT_SECTIONS = {"Actionable Now", "Pattern Watchlist", "Avoid / Failed"}
 
 
 def truth(value: object) -> bool:
@@ -23,6 +24,42 @@ def number(value: object) -> float | None:
         return parsed if math.isfinite(parsed) else None
     except (TypeError, ValueError):
         return None
+
+
+def is_present_nonfinite_number(value: object) -> bool:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return False
+    return not math.isnan(parsed) and not math.isfinite(parsed)
+
+
+def report_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float) and math.isnan(value):
+        return ""
+    parsed = str(value).strip()
+    return "" if parsed.lower() in {"nan", "none"} else parsed
+
+
+def has_pattern_failure_evidence(row: dict[str, object]) -> bool:
+    freshness = report_text(row.get("Price Freshness Status")).upper()
+    if freshness != "CURRENT":
+        return True
+    if report_text(row.get("Price Data Warning")):
+        return True
+    if is_present_nonfinite_number(row.get("Planned Entry")) or (
+        is_present_nonfinite_number(row.get("Initial Stop"))
+    ):
+        return True
+    entry = number(row.get("Planned Entry"))
+    stop = number(row.get("Initial Stop"))
+    if entry is not None and stop is not None and stop >= entry:
+        return True
+    if report_text(row.get("Extension Status")) in {"Extended", "Overextended"}:
+        return True
+    return report_text(row.get("Setup Integrity")).upper() == "FAIL"
 
 
 def manifest_record(row: dict[str, object]) -> dict[str, object]:
@@ -46,6 +83,13 @@ def manifest_record(row: dict[str, object]) -> dict[str, object]:
         ),
         "review_tier": str(row.get("Review Tier", row.get("review_tier", ""))),
         "action": str(row.get("Action", row.get("action", ""))),
+        "report_section": str(row.get("Report Section", row.get("report_section", ""))),
+        "pattern_discovery_status": str(
+            row.get("Pattern Discovery Status", row.get("pattern_discovery_status", ""))
+        ),
+        "pattern_discovery_reason": str(
+            row.get("Pattern Discovery Reason", row.get("pattern_discovery_reason", ""))
+        ),
     }
 
 
@@ -89,6 +133,9 @@ def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
         shares = row["maximum_shares"]
         actionable = bool(row["actionable"])
         confirmed = bool(row["confirmed_setup"])
+        report_section = str(row["report_section"])
+        pattern_status = str(row["pattern_discovery_status"])
+        pattern_reason = str(row["pattern_discovery_reason"]).strip()
         if state not in STATES:
             errors.append(f"{ticker}: unsupported state {state}")
             continue
@@ -115,6 +162,28 @@ def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
             in (str(row["review_tier"]) + " " + str(row["action"])).lower()
         ):
             errors.append(f"{ticker}: Watch Later coexists with actionable state")
+        if report_section not in REPORT_SECTIONS:
+            errors.append(f"{ticker}: unsupported or missing report section")
+        if state in {"FULL", "HALF"}:
+            if report_section != "Actionable Now":
+                errors.append(
+                    f"{ticker}: canonical actionable state must be in Actionable Now"
+                )
+            if pattern_status != "NOT_APPLICABLE":
+                errors.append(
+                    f"{ticker}: actionable state has invalid pattern discovery status"
+                )
+        else:
+            if report_section == "Actionable Now":
+                errors.append(
+                    f"{ticker}: non-actionable state cannot be in Actionable Now"
+                )
+            if pattern_status != "RESEARCH_ONLY":
+                errors.append(
+                    f"{ticker}: non-actionable report section must be RESEARCH_ONLY"
+                )
+        if not pattern_reason:
+            errors.append(f"{ticker}: pattern discovery reason missing")
     return errors
 
 
@@ -124,6 +193,17 @@ def validate_csv_semantics(rows: list[dict[str, object]]) -> list[str]:
         ticker = str(row.get("Ticker", "<missing ticker>"))
         actionable = str(row.get("Final Decision", "")) in {"FULL", "HALF"}
         if not actionable:
+            report_section = report_text(row.get("Report Section"))
+            failure_evidence = has_pattern_failure_evidence(row)
+            if failure_evidence and report_section != "Avoid / Failed":
+                errors.append(
+                    f"{ticker}: explicit failure evidence must be in Avoid / Failed"
+                )
+            if not failure_evidence and report_section != "Pattern Watchlist":
+                errors.append(
+                    f"{ticker}: non-actionable row without explicit failure evidence "
+                    "must be in Pattern Watchlist"
+                )
             continue
         recent = number(row.get("Recent RS Score"))
         entry = number(row.get("Planned Entry"))
@@ -183,6 +263,9 @@ def main(argv: list[str] | None = None) -> int:
         "HALF",
         "WATCH",
         "NO TRADE",
+        "Pattern Watchlist",
+        "Actionable Now",
+        "Avoid / Failed",
         "Data and Logic Warnings",
         "Expectancy",
     ]

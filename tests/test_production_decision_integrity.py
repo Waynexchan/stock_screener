@@ -19,7 +19,13 @@ from decision_system import (
 )
 import run_screener
 import send_email
-from scripts.validate_report import validate_csv_semantics
+from scripts.validate_report import (
+    manifest_record,
+    read_csv_rows,
+    read_email_manifest,
+    read_html_manifest,
+    validate_csv_semantics,
+)
 
 
 def candidate(ticker: str = "GENERIC", **updates: object) -> dict[str, object]:
@@ -105,6 +111,21 @@ def decision(row: dict[str, object], decision_context: dict[str, object] | None 
     ).iloc[0]
 
 
+PATTERN_REPORT_FIELDS = set(run_screener.PATTERN_REPORT_FIELDS)
+
+
+def assert_only_pattern_report_fields_added_or_changed(
+    before: pd.DataFrame, after: pd.DataFrame
+) -> None:
+    before_production = before.drop(columns=PATTERN_REPORT_FIELDS, errors="ignore")
+    after_production = after.drop(columns=PATTERN_REPORT_FIELDS, errors="ignore")
+    pd.testing.assert_frame_equal(
+        before_production.reset_index(drop=True),
+        after_production.reset_index(drop=True),
+        check_dtype=True,
+    )
+
+
 def history(latest: str, partial: bool = False) -> pd.DataFrame:
     dates = pd.DatetimeIndex([pd.Timestamp(latest) - pd.Timedelta(days=1), latest])
     frame = pd.DataFrame(
@@ -176,6 +197,278 @@ def test_sizing_never_promotes_watch_or_no_trade():
         assert sized.maximum_risk_r == 0
         assert sized.maximum_shares == 0
         assert not sized.actionable
+
+
+def test_missing_observed_target_is_research_only_pattern_without_fabrication():
+    canonical = run_screener.apply_canonical_decision_pipeline(
+        pd.DataFrame(
+            [
+                candidate(
+                    "MISSING_TARGET",
+                    **{
+                        "Realistic Target": np.nan,
+                        "Realistic Target Source": "",
+                        "Reward/Risk Ratio": np.nan,
+                    },
+                )
+            ]
+        ),
+        context(),
+    )
+
+    classified = run_screener.classify_pattern_discovery_sections(canonical).iloc[0]
+
+    assert classified["Report Section"] == "Pattern Watchlist"
+    assert classified["Pattern Discovery Status"] == "RESEARCH_ONLY"
+    assert classified["Final Decision"] == "NO TRADE"
+    assert classified["Maximum Risk R"] == 0
+    assert classified["Maximum Shares"] == 0
+    assert not classified["Actionable"]
+    assert pd.isna(classified["Realistic Target"])
+    assert pd.isna(classified["Reward/Risk Ratio"])
+    assert (
+        "observed structural target missing" in classified["Pattern Discovery Reason"]
+    )
+
+
+def test_canonical_full_and_half_map_to_actionable_now_unchanged():
+    canonical = run_screener.apply_canonical_decision_pipeline(
+        pd.DataFrame(
+            [
+                candidate("FULL_ROW", **{"Final Score": 90.0}),
+                candidate(
+                    "HALF_ROW",
+                    **{
+                        "Sector": "Industrials",
+                        "Industry": "Machinery",
+                        "Theme": "Industry: Machinery",
+                        "Sister Confirmation": False,
+                        "Final Score": 80.0,
+                    },
+                ),
+            ]
+        ),
+        context(),
+    )
+    before = canonical.copy(deep=True)
+
+    classified = run_screener.classify_pattern_discovery_sections(canonical)
+
+    assert_only_pattern_report_fields_added_or_changed(before, classified)
+    by_ticker = classified.set_index("Ticker")
+    assert by_ticker.loc["FULL_ROW", "Final Decision"] == "FULL"
+    assert by_ticker.loc["HALF_ROW", "Final Decision"] == "HALF"
+    assert set(by_ticker["Report Section"]) == {"Actionable Now"}
+    assert set(by_ticker["Pattern Discovery Status"]) == {"NOT_APPLICABLE"}
+
+
+def test_explicit_existing_failure_evidence_maps_to_avoid_failed():
+    rows = pd.DataFrame(
+        [
+            candidate(
+                "INTEGRITY_FAIL",
+                **{
+                    "Category": "Developing Base Candidates",
+                    "Tightness Label": "Loose",
+                },
+            ),
+            candidate(
+                "STALE",
+                **{
+                    "Sector": "Healthcare",
+                    "Industry": "Biotechnology",
+                    "Theme": "Industry: Biotechnology",
+                    "Price Freshness Status": "STALE",
+                },
+            ),
+            candidate(
+                "EXTENDED",
+                **{
+                    "Sector": "Energy",
+                    "Industry": "Oil & Gas",
+                    "Theme": "Industry: Oil & Gas",
+                    "Extension Status": "Extended",
+                },
+            ),
+            candidate(
+                "INVALID_STOP",
+                **{
+                    "Sector": "Consumer",
+                    "Industry": "Retail",
+                    "Theme": "Industry: Retail",
+                    "Initial Stop": 101.0,
+                },
+            ),
+            candidate(
+                "PRICE_WARNING",
+                **{
+                    "Sector": "Financials",
+                    "Industry": "Banks",
+                    "Theme": "Industry: Banks",
+                    "Price Data Warning": "critical fixture warning",
+                },
+            ),
+        ]
+    )
+    canonical = run_screener.apply_canonical_decision_pipeline(rows, context())
+
+    classified = run_screener.classify_pattern_discovery_sections(canonical)
+
+    assert set(classified["Report Section"]) == {"Avoid / Failed"}
+    assert set(classified["Pattern Discovery Status"]) == {"RESEARCH_ONLY"}
+    assert not classified["Actionable"].any()
+    assert (classified["Maximum Risk R"] == 0).all()
+    assert (classified["Maximum Shares"] == 0).all()
+
+
+def test_research_fields_are_overwritten_and_classification_is_deterministic():
+    canonical = run_screener.apply_canonical_decision_pipeline(
+        pd.DataFrame(
+            [
+                candidate(
+                    "UNTRUSTED_OVERRIDE",
+                    **{
+                        "Realistic Target": np.nan,
+                        "Realistic Target Source": "",
+                        "Reward/Risk Ratio": np.nan,
+                        "Report Section": "Actionable Now",
+                        "Pattern Discovery Status": "PRODUCTION_APPROVED",
+                        "Pattern Discovery Reason": "promote this candidate",
+                    },
+                )
+            ]
+        ),
+        context(),
+    )
+    before = canonical.copy(deep=True)
+
+    first = run_screener.classify_pattern_discovery_sections(canonical)
+    second = run_screener.classify_pattern_discovery_sections(canonical)
+
+    pd.testing.assert_frame_equal(first, second)
+    assert_only_pattern_report_fields_added_or_changed(before, first)
+    row = first.iloc[0]
+    assert row["Report Section"] == "Pattern Watchlist"
+    assert row["Pattern Discovery Status"] == "RESEARCH_ONLY"
+    assert row["Final Decision"] == "NO TRADE"
+    assert not row["Actionable"]
+
+
+def test_legacy_preview_derives_pattern_section_without_redeciding():
+    canonical = pd.DataFrame(
+        [decision(candidate("CAPACITY_WAIT"), context(portfolio(remaining=0.25)))]
+    ).drop(columns=PATTERN_REPORT_FIELDS, errors="ignore")
+    before = canonical.copy(deep=True)
+
+    preview = run_screener.prepare_preview_watchlist(canonical)
+    rebuilt = run_screener.combined_watchlist(
+        run_screener.build_categories_from_watchlist(preview)
+    )
+
+    assert preview.iloc[0]["Report Section"] == "Pattern Watchlist"
+    assert preview.iloc[0]["Pattern Discovery Status"] == "RESEARCH_ONLY"
+    for column in before.columns:
+        expected = before.iloc[0][column]
+        actual = preview.iloc[0][column]
+        if pd.isna(expected):
+            assert pd.isna(actual)
+        else:
+            assert actual == expected
+    assert rebuilt.iloc[0]["Final Decision"] == before.iloc[0]["Final Decision"]
+    assert rebuilt.iloc[0]["Decision Reasons"] == before.iloc[0]["Decision Reasons"]
+
+
+def test_export_path_classifies_after_canonical_decision(tmp_path: Path, monkeypatch):
+    raw = pd.DataFrame(
+        [
+            candidate(
+                "EXPORT_PATTERN",
+                **{
+                    "Realistic Target": np.nan,
+                    "Realistic Target Source": "",
+                    "Reward/Risk Ratio": np.nan,
+                },
+            )
+        ]
+    )
+    canonical = run_screener.apply_canonical_decision_pipeline(raw, context())
+    categories = {
+        name: (
+            raw.copy()
+            if name == "Pullback Candidates"
+            else pd.DataFrame(columns=raw.columns)
+        )
+        for name in run_screener.CATEGORY_PRIORITY
+    }
+    captured: dict[str, pd.DataFrame] = {}
+
+    monkeypatch.setattr(run_screener, "add_action_column", lambda frame: frame.copy())
+    monkeypatch.setattr(
+        run_screener, "add_review_guidance_columns", lambda frame: frame.copy()
+    )
+    monkeypatch.setattr(
+        run_screener,
+        "build_decision_context",
+        lambda *args: {**context(), "portfolio_new_risk_allowed": True},
+    )
+    monkeypatch.setattr(
+        run_screener,
+        "apply_canonical_decision_pipeline",
+        lambda candidates, decision_context: canonical.copy(),
+    )
+    monkeypatch.setattr(
+        run_screener, "build_daily_focus_list", lambda current: pd.DataFrame()
+    )
+    monkeypatch.setattr(
+        run_screener,
+        "analyse_top_action_list",
+        lambda top, industries, market: run_screener.AIAnalysisResult(
+            "fixture commentary", top.copy(), False, False, "fixture", len(top)
+        ),
+    )
+    monkeypatch.setattr(
+        run_screener, "determine_market_character", lambda *args: "Fixture Market"
+    )
+    monkeypatch.setattr(run_screener, "build_report_history_snapshot", lambda *args: {})
+    monkeypatch.setattr(run_screener, "load_last_report_history", lambda: None)
+    monkeypatch.setattr(run_screener, "report_history_delta", lambda *args: None)
+    monkeypatch.setattr(run_screener, "report_history_trend", lambda *args: None)
+    monkeypatch.setattr(run_screener, "write_markdown", lambda *args: None)
+    monkeypatch.setattr(run_screener, "write_html", lambda *args: None)
+
+    def capture_email(*args):
+        captured["canonical"] = args[7].copy()
+
+    monkeypatch.setattr(run_screener, "write_email_summary", capture_email)
+    monkeypatch.setattr(run_screener, "validate_exported_reports", lambda: None)
+
+    def capture_snapshot(*args):
+        captured["snapshot"] = args[0].copy()
+        return tmp_path / "snapshot"
+
+    monkeypatch.setattr(run_screener, "write_forward_snapshot", capture_snapshot)
+    monkeypatch.setattr(run_screener, "save_last_good_reports", lambda: None)
+    monkeypatch.setattr(run_screener, "append_report_history", lambda *args: None)
+    monkeypatch.setattr(run_screener, "OUTPUT_CSV", str(tmp_path / "watchlist.csv"))
+
+    watchlist, *_ = run_screener.export_results(
+        categories,
+        pd.DataFrame(columns=run_screener.TOP_INDUSTRY_COLUMNS),
+        pd.DataFrame(columns=run_screener.MARKET_COLUMNS),
+        "Strong",
+    )
+
+    for frame in (watchlist, captured["canonical"]):
+        row = frame.iloc[0]
+        assert row["Final Decision"] == "NO TRADE"
+        assert row["Report Section"] == "Pattern Watchlist"
+        assert row["Pattern Discovery Status"] == "RESEARCH_ONLY"
+        assert pd.isna(row["Realistic Target"])
+        assert pd.isna(row["Reward/Risk Ratio"])
+    assert PATTERN_REPORT_FIELDS.isdisjoint(captured["snapshot"].columns)
+    assert_only_pattern_report_fields_added_or_changed(
+        captured["snapshot"], captured["canonical"]
+    )
 
 
 def test_portfolio_heat_blocks_otherwise_valid_candidate():
@@ -366,6 +659,45 @@ def test_candidates_consume_shared_portfolio_heat_in_priority_order():
     assert "portfolio heat exhausted" in final.loc["SECOND", "Decision Reasons"]
 
 
+def test_candidate_permutations_select_the_same_tied_score_portfolio():
+    rows = pd.DataFrame(
+        [
+            candidate(
+                ticker,
+                **{
+                    "Final Score": 90.0,
+                    "Sector": f"Sector {ticker}",
+                    "Industry": f"Industry {ticker}",
+                    "Theme": f"Theme {ticker}",
+                },
+            )
+            for ticker in ("DDD", "BBB", "AAA", "CCC")
+        ]
+    )
+    expected: dict[str, str] | None = None
+    for random_state in range(20):
+        permuted = rows.sample(frac=1.0, random_state=random_state).reset_index(
+            drop=True
+        )
+        final = run_screener.apply_canonical_decision_pipeline(
+            permuted, context(portfolio(remaining=2.0))
+        )
+        decisions = dict(
+            final[["Ticker", "Final Decision"]]
+            .sort_values("Ticker")
+            .itertuples(index=False, name=None)
+        )
+        if expected is None:
+            expected = decisions
+        assert decisions == expected
+    assert expected == {
+        "AAA": "FULL",
+        "BBB": "FULL",
+        "CCC": "NO TRADE",
+        "DDD": "NO TRADE",
+    }
+
+
 def test_candidates_share_daily_new_initial_r_limit_in_priority_order():
     rows = pd.DataFrame(
         [
@@ -524,12 +856,14 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
         ),
         context(),
     )
+    canonical = run_screener.classify_pattern_discovery_sections(canonical)
     categories = {
         name: canonical[canonical["Category"].eq(name)].copy()
         for name in run_screener.CATEGORY_PRIORITY
     }
     top_action = canonical[canonical["Final Decision"].isin(["FULL", "HALF"])]
     html_path = tmp_path / "report.html"
+    markdown_path = tmp_path / "report.md"
     csv_path = tmp_path / "report.csv"
     email_path = tmp_path / "report_email.txt"
     canonical.to_csv(csv_path, index=False)
@@ -542,6 +876,16 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
         "Strong",
         "Deterministic test commentary",
         str(html_path),
+    )
+    run_screener.write_markdown(
+        top_action,
+        top_action,
+        categories,
+        pd.DataFrame(columns=run_screener.TOP_INDUSTRY_COLUMNS),
+        pd.DataFrame(columns=run_screener.MARKET_COLUMNS),
+        "Strong",
+        "Deterministic test commentary",
+        str(markdown_path),
     )
     run_screener.write_email_summary(
         top_action,
@@ -566,6 +910,41 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert set(canonical["Final Decision"]) == {"FULL", "HALF", "WATCH", "NO TRADE"}
+    html = html_path.read_text(encoding="utf-8")
+    markdown = markdown_path.read_text(encoding="utf-8")
+    email = email_path.read_text(encoding="utf-8")
+    for heading in ("Pattern Watchlist", "Actionable Now", "Avoid / Failed"):
+        assert heading in html
+        assert heading in markdown
+        assert heading in email
+
+    expected_manifest = run_screener.decision_manifest_records(canonical)
+    assert read_html_manifest(html) == expected_manifest
+    assert read_email_manifest(email_path) == expected_manifest
+    assert (
+        sorted(
+            (manifest_record(row) for row in read_csv_rows(csv_path)),
+            key=lambda row: str(row["ticker"]),
+        )
+        == expected_manifest
+    )
+
+    section_order = ["Actionable Now", "Pattern Watchlist", "Avoid / Failed"]
+    for index, section in enumerate(section_order):
+        start = markdown.index(f"## {section}")
+        later = [
+            markdown.find(f"## {name}", start + 1)
+            for name in section_order[index + 1 :] + ["AI Commentary"]
+        ]
+        end = min(position for position in later if position >= 0)
+        block = markdown[start:end]
+        expected_rows = canonical[canonical["Report Section"].eq(section)]
+        unexpected_rows = canonical[~canonical["Report Section"].eq(section)]
+        for _, row in expected_rows.iterrows():
+            assert str(row["Ticker"]) in block
+            assert str(row["Pattern Discovery Reason"]) in block
+        for ticker in unexpected_rows["Ticker"].astype(str):
+            assert ticker not in block
 
 
 def test_email_body_hides_machine_readable_decision_manifest(
@@ -624,6 +1003,106 @@ def test_row_semantic_validator_detects_actionable_contradictions():
         assert expected in errors
 
 
+def test_semantic_validator_rejects_report_section_override():
+    row = dict(
+        run_screener.classify_pattern_discovery_sections(
+            pd.DataFrame([decision(candidate("SECTION_OVERRIDE"))])
+        ).iloc[0]
+    )
+    row["Report Section"] = "Pattern Watchlist"
+    row["Pattern Discovery Status"] = "RESEARCH_ONLY"
+
+    errors = " | ".join(validate_csv_semantics([row]))
+
+    assert "canonical actionable state must be in Actionable Now" in errors
+
+
+def test_semantic_validator_enforces_failure_evidence_precedence():
+    failure_rows = [
+        candidate("STALE_SECTION", **{"Price Freshness Status": "STALE"}),
+        candidate("WARNING_SECTION", **{"Price Data Warning": "fixture warning"}),
+        candidate("STOP_SECTION", **{"Initial Stop": 101.0}),
+        candidate("POS_INF_STOP_SECTION", **{"Initial Stop": np.inf}),
+        candidate("NEG_INF_STOP_SECTION", **{"Initial Stop": -np.inf}),
+        candidate("POS_INF_ENTRY_SECTION", **{"Planned Entry": np.inf}),
+        candidate("NEG_INF_ENTRY_SECTION", **{"Planned Entry": -np.inf}),
+        candidate("EXTENDED_SECTION", **{"Extension Status": "Extended"}),
+        candidate(
+            "INTEGRITY_SECTION",
+            **{
+                "Category": "Developing Base Candidates",
+                "Tightness Label": "Loose",
+            },
+        ),
+    ]
+
+    for source in failure_rows:
+        row = dict(
+            run_screener.classify_pattern_discovery_sections(
+                pd.DataFrame([decision(source)])
+            ).iloc[0]
+        )
+        assert row["Report Section"] == "Avoid / Failed"
+        row["Report Section"] = "Pattern Watchlist"
+        errors = " | ".join(validate_csv_semantics([row]))
+        assert "explicit failure evidence must be in Avoid / Failed" in errors
+
+    capacity_only = dict(
+        run_screener.classify_pattern_discovery_sections(
+            pd.DataFrame(
+                [
+                    decision(
+                        candidate("CAPACITY_SECTION"),
+                        context(portfolio(remaining=0.25)),
+                    )
+                ]
+            )
+        ).iloc[0]
+    )
+    assert capacity_only["Report Section"] == "Pattern Watchlist"
+    capacity_only["Report Section"] = "Avoid / Failed"
+    errors = " | ".join(validate_csv_semantics([capacity_only]))
+    assert "without explicit failure evidence must be in Pattern Watchlist" in errors
+
+    for source in (
+        candidate("MISSING_ENTRY_SECTION", **{"Planned Entry": np.nan}),
+        candidate("MISSING_STOP_SECTION", **{"Initial Stop": np.nan}),
+    ):
+        missing_plan = dict(
+            run_screener.classify_pattern_discovery_sections(
+                pd.DataFrame([decision(source)])
+            ).iloc[0]
+        )
+        assert missing_plan["Report Section"] == "Pattern Watchlist"
+        assert validate_csv_semantics([missing_plan]) == []
+
+
+def test_real_discovery_schema_snapshot_excludes_pattern_report_fields(
+    tmp_path: Path,
+):
+    source = candidate("SCHEMA_SNAPSHOT")
+    schema_row = {
+        column: source.get(column, np.nan) for column in run_screener.DISCOVERY_COLUMNS
+    }
+    raw = pd.DataFrame([schema_row], columns=run_screener.DISCOVERY_COLUMNS)
+    canonical = run_screener.apply_canonical_decision_pipeline(raw, context())
+    assert PATTERN_REPORT_FIELDS.isdisjoint(raw.columns)
+    assert PATTERN_REPORT_FIELDS.isdisjoint(canonical.columns)
+    for field in PATTERN_REPORT_FIELDS:
+        canonical[field] = "must not enter snapshot"
+
+    snapshot = run_screener.write_forward_snapshot(
+        canonical,
+        pd.DataFrame(),
+        {**context(), "market_cap_filter_status": "NOT ENFORCED"},
+        datetime(2026, 9, 29, 10, tzinfo=timezone.utc),
+        tmp_path,
+    )
+    columns = set(pd.read_csv(snapshot / "candidates.csv").columns)
+
+    assert PATTERN_REPORT_FIELDS.isdisjoint(columns)
+
+
 def test_forward_snapshots_are_unique_and_never_overwritten(tmp_path: Path):
     canonical = pd.DataFrame([decision(candidate())])
     generated = datetime(2026, 9, 5, 10, tzinfo=timezone.utc)
@@ -674,6 +1153,10 @@ def test_forward_snapshots_are_unique_and_never_overwritten(tmp_path: Path):
         "market_cap": "NOT_ENFORCED",
     }
     assert metadata["strategy_cohort_id"]
+    assert metadata["candidate_ranking"] == [
+        {"column": "Final Score", "direction": "DESC"},
+        {"column": "Ticker", "direction": "ASC"},
+    ]
     for name, digest in metadata["artifact_hashes"].items():
         assert run_screener._sha256_file(first / name) == digest
     assert (

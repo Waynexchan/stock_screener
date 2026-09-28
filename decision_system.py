@@ -23,6 +23,17 @@ DECISIONS = {"FULL", "HALF", "WATCH", "NO TRADE"}
 SUPPORTED_POSITION_STATUSES = {"open", "closed"}
 
 
+def candidate_business_priority(row: dict[str, object]) -> tuple[float, str]:
+    """Return the canonical portfolio ordering key without row-order fallback."""
+
+    score = pd.to_numeric(row.get("Final Score"), errors="coerce")
+    score_key = (
+        -float(score) if pd.notna(score) and np.isfinite(float(score)) else float("inf")
+    )
+    ticker = str(row.get("Ticker", "")).strip().upper()
+    return score_key, ticker
+
+
 def normalise_position_status(value: object) -> str:
     if value is None or pd.isna(value):
         return ""
@@ -1847,9 +1858,7 @@ def apply_concentration_limits(
     selected, excluded = [], []
     industry_counts: dict[str, int] = {}
     sector_counts: dict[str, int] = {}
-    for row in sorted(
-        rows, key=lambda item: float(item.get("Final Score") or 0), reverse=True
-    ):
+    for row in sorted(rows, key=candidate_business_priority):
         industry, sector = str(row.get("Industry", "")), str(row.get("Sector", ""))
         industry_limit = (
             config.MAX_TOP_ACTION_PER_INDUSTRY

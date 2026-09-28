@@ -49,6 +49,7 @@ from decision_system import (
     qualify_industries,
     score_candidate,
     apply_concentration_limits,
+    candidate_business_priority,
     entry_timing_for_candidate,
 )
 from ai_analysis import AIAnalysisResult, analyse_top_action_list
@@ -82,6 +83,11 @@ UNIVERSE_COLUMNS = [
     "Market Cap",
     "Avg Volume",
 ]
+PATTERN_REPORT_FIELDS = (
+    "Report Section",
+    "Pattern Discovery Status",
+    "Pattern Discovery Reason",
+)
 DISCOVERY_COLUMNS = [
     "Generated At",
     "Signal Date",
@@ -223,6 +229,10 @@ FOCUS_LIMITS = {
 }
 DAILY_FOCUS_MAX = 25
 TOP_ACTION_MAX = 8
+ACTIONABLE_NOW = "Actionable Now"
+PATTERN_WATCHLIST = "Pattern Watchlist"
+AVOID_FAILED = "Avoid / Failed"
+RESEARCH_ONLY = "RESEARCH_ONLY"
 MARKET_COLUMNS = ["Symbol", "10EMA", "20EMA", "50MA"]
 NON_COMMON_PATTERNS = [
     r"\bETF\b",
@@ -3277,6 +3287,9 @@ def html_table(df: pd.DataFrame) -> str:
 def concise_decision_table(frame: pd.DataFrame) -> pd.DataFrame:
     mapping = {
         "Ticker": "Ticker",
+        "Report Section": "Report Section",
+        "Pattern Discovery Status": "Pattern Status",
+        "Pattern Discovery Reason": "Pattern / Waiting Reason",
         "Final Decision": "Final Decision",
         "Actionable": "Actionable",
         "Setup Integrity": "Setup Integrity",
@@ -3305,6 +3318,150 @@ def concise_decision_table(frame: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def _report_text(value: object) -> str:
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    return "" if text.lower() in {"nan", "none"} else text
+
+
+def _append_report_reason(reasons: list[str], value: object) -> None:
+    text = _report_text(value)
+    if text and text not in reasons:
+        reasons.append(text)
+
+
+def _append_report_field_reasons(reasons: list[str], value: object) -> None:
+    text = _report_text(value)
+    for item in re.split(r"\s*;\s*", text):
+        if any(existing.lower() in item.lower() for existing in reasons):
+            continue
+        _append_report_reason(reasons, item)
+
+
+def classify_pattern_discovery_sections(frame: pd.DataFrame) -> pd.DataFrame:
+    """Add deterministic Phase 1 report fields after canonical decisions.
+
+    The function returns a copy, overwrites all incoming research/report fields,
+    and never mutates canonical production fields.  It does not discover new
+    candidates or make a production decision.
+    """
+
+    classified = frame.copy(deep=True)
+    if classified.empty:
+        classified["Report Section"] = pd.Series(dtype="object")
+        classified["Pattern Discovery Status"] = pd.Series(dtype="object")
+        classified["Pattern Discovery Reason"] = pd.Series(dtype="object")
+        return classified
+
+    sections: list[str] = []
+    statuses: list[str] = []
+    explanations: list[str] = []
+    for row in classified.to_dict("records"):
+        decision = _report_text(row.get("Final Decision"))
+        if decision in {"FULL", "HALF"}:
+            sections.append(ACTIONABLE_NOW)
+            statuses.append("NOT_APPLICABLE")
+            explanations.append(
+                f"Canonical production decision: {decision}; use only the canonical plan and risk fields."
+            )
+            continue
+
+        avoid_reasons: list[str] = []
+        freshness = _report_text(row.get("Price Freshness Status")).upper()
+        if freshness != "CURRENT":
+            _append_report_reason(
+                avoid_reasons, "critical price data is missing, stale, or incomplete"
+            )
+        if _report_text(row.get("Price Data Warning")):
+            _append_report_reason(avoid_reasons, "critical price/data warning")
+
+        entry = pd.to_numeric(row.get("Planned Entry"), errors="coerce")
+        stop = pd.to_numeric(row.get("Initial Stop"), errors="coerce")
+        nonfinite_plan_value = any(
+            pd.notna(value) and not np.isfinite(float(value)) for value in (entry, stop)
+        )
+        invalid_stop_geometry = (
+            pd.notna(entry)
+            and pd.notna(stop)
+            and not nonfinite_plan_value
+            and float(stop) >= float(entry)
+        )
+        if nonfinite_plan_value or invalid_stop_geometry:
+            _append_report_reason(avoid_reasons, "invalid structural stop")
+
+        extension = _report_text(row.get("Extension Status"))
+        if extension in {"Extended", "Overextended"}:
+            _append_report_reason(avoid_reasons, extension.lower())
+        if _report_text(row.get("Setup Integrity")).upper() == "FAIL":
+            _append_report_reason(avoid_reasons, "setup integrity failed")
+
+        if avoid_reasons:
+            _append_report_field_reasons(avoid_reasons, row.get("Decision Reasons"))
+            sections.append(AVOID_FAILED)
+            statuses.append(RESEARCH_ONLY)
+            explanations.append("; ".join(avoid_reasons))
+            continue
+
+        waiting_reasons: list[str] = []
+        if pd.isna(entry):
+            _append_report_reason(waiting_reasons, "valid entry missing")
+        if pd.isna(stop):
+            _append_report_reason(waiting_reasons, "structural stop missing")
+
+        target = pd.to_numeric(row.get("Realistic Target"), errors="coerce")
+        target_source = _report_text(row.get("Realistic Target Source"))
+        if pd.isna(target) or target_source == "model 2R feasibility target":
+            _append_report_reason(waiting_reasons, "observed structural target missing")
+
+        reward_risk = pd.to_numeric(row.get("Reward/Risk Ratio"), errors="coerce")
+        if pd.isna(reward_risk):
+            _append_report_reason(waiting_reasons, "structural R/R unavailable")
+        elif float(reward_risk) < config.MIN_REWARD_RISK_ALLOWED:
+            _append_report_reason(waiting_reasons, "structural R/R below 2")
+
+        _append_report_field_reasons(
+            waiting_reasons, row.get("Main Missing Confirmation")
+        )
+        _append_report_field_reasons(waiting_reasons, row.get("Decision Reasons"))
+        if not waiting_reasons:
+            _append_report_reason(
+                waiting_reasons,
+                f"Canonical production decision: {decision or 'unavailable'}; chart review only",
+            )
+        sections.append(PATTERN_WATCHLIST)
+        statuses.append(RESEARCH_ONLY)
+        explanations.append("; ".join(waiting_reasons))
+
+    classified["Report Section"] = sections
+    classified["Pattern Discovery Status"] = statuses
+    classified["Pattern Discovery Reason"] = explanations
+    return classified
+
+
+def pattern_discovery_sections(
+    frame: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Return mutually exclusive Phase 1 report sections in source order."""
+
+    classified = classify_pattern_discovery_sections(frame)
+    actionable = concise_decision_table(
+        classified[classified["Report Section"].eq(ACTIONABLE_NOW)].copy()
+    )
+    pattern = concise_decision_table(
+        classified[classified["Report Section"].eq(PATTERN_WATCHLIST)].copy()
+    )
+    avoid = concise_decision_table(
+        classified[classified["Report Section"].eq(AVOID_FAILED)].copy()
+    )
+    return actionable, pattern, avoid
+
+
 def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
     """Return a stable machine-readable representation shared by all outputs."""
     if frame.empty:
@@ -3314,7 +3471,8 @@ def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
         return value is True or str(value).strip().lower() == "true"
 
     records = []
-    for row in frame.sort_values("Ticker").to_dict("records"):
+    classified = classify_pattern_discovery_sections(frame)
+    for row in classified.sort_values("Ticker").to_dict("records"):
         risk = pd.to_numeric(row.get("Maximum Risk R"), errors="coerce")
         risk_dollars = pd.to_numeric(row.get("Maximum Risk Dollars"), errors="coerce")
         shares = pd.to_numeric(row.get("Maximum Shares"), errors="coerce")
@@ -3332,6 +3490,13 @@ def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
                 "setup_integrity": str(row.get("Setup Integrity", "")),
                 "review_tier": str(row.get("Review Tier", "")),
                 "action": str(row.get("Action", "")),
+                "report_section": str(row.get("Report Section", "")),
+                "pattern_discovery_status": str(
+                    row.get("Pattern Discovery Status", "")
+                ),
+                "pattern_discovery_reason": str(
+                    row.get("Pattern Discovery Reason", "")
+                ),
             }
         )
     return records
@@ -3371,13 +3536,18 @@ def write_forward_snapshot(
     root: str | Path | None = None,
 ) -> Path:
     """Write a new immutable-by-construction forward-test evidence bundle."""
+    snapshot_candidates = canonical.drop(
+        columns=list(PATTERN_REPORT_FIELDS), errors="ignore"
+    ).copy()
     reference = generated_at or datetime.now(timezone.utc)
     if reference.tzinfo is None:
         reference = reference.replace(tzinfo=timezone.utc)
     reference = reference.astimezone(timezone.utc)
     signal_values = [
         str(value)
-        for value in canonical.get("Signal Date", pd.Series(dtype=str)).dropna()
+        for value in snapshot_candidates.get(
+            "Signal Date", pd.Series(dtype=str)
+        ).dropna()
         if str(value).strip()
     ]
     signal_date = (
@@ -3387,7 +3557,9 @@ def write_forward_snapshot(
     )
     price_as_of_values = [
         str(value)
-        for value in canonical.get("Price Data As Of", pd.Series(dtype=str)).dropna()
+        for value in snapshot_candidates.get(
+            "Price Data As Of", pd.Series(dtype=str)
+        ).dropna()
         if str(value).strip()
     ]
     base = Path(root or config.FORWARD_SNAPSHOT_DIR) / signal_date
@@ -3441,7 +3613,7 @@ def write_forward_snapshot(
         "policy": policy,
         "ranking": [
             {"column": "Final Score", "direction": "DESC"},
-            {"column": "snapshot_row_order", "direction": "ASC"},
+            {"column": "Ticker", "direction": "ASC"},
         ],
     }
     metadata = {
@@ -3458,10 +3630,10 @@ def write_forward_snapshot(
         "universe_hash": universe_hash,
         "universe_metadata_coverage": LAST_METADATA_DIAGNOSTICS,
         "market_cap_filter": decision_context.get("market_cap_filter_status"),
-        "candidate_count": int(len(canonical)),
+        "candidate_count": int(len(snapshot_candidates)),
         "candidate_logical_record_hash": hashlib.sha256(
             json.dumps(
-                _json_safe(canonical.to_dict("records")),
+                _json_safe(snapshot_candidates.to_dict("records")),
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode("utf-8")
@@ -3492,7 +3664,7 @@ def write_forward_snapshot(
         "current_heat_r": decision_context.get("current_heat_r"),
         "remaining_heat_r": decision_context.get("remaining_heat_r"),
     }
-    canonical.to_csv(target / "candidates.csv", index=False)
+    snapshot_candidates.to_csv(target / "candidates.csv", index=False)
     for name, payload in (
         ("market.json", market_payload),
         ("portfolio.json", portfolio_payload),
@@ -4709,18 +4881,16 @@ def apply_canonical_decision_pipeline(
     final_records = {
         index: record for index, record in enumerate(concentrated.to_dict("records"))
     }
+    allocation_eligible = {
+        index: record
+        for index, record in final_records.items()
+        if record.get("Final Decision") in {"FULL", "HALF"}
+    }
     priority = sorted(
-        final_records.items(),
-        key=lambda item: (
-            -float(pd.to_numeric(item[1].get("Final Score"), errors="coerce"))
-            if pd.notna(pd.to_numeric(item[1].get("Final Score"), errors="coerce"))
-            else float("inf"),
-            item[0],
-        ),
+        allocation_eligible.items(),
+        key=lambda item: candidate_business_priority(item[1]),
     )
     for index, record in priority:
-        if record.get("Final Decision") not in {"FULL", "HALF"}:
-            continue
         decision = canonical_candidate_decision(
             record,
             str(decision_context["market_regime"].regime),
@@ -5149,12 +5319,23 @@ def write_email_summary(
         ]
     )
 
-    lines.extend(["", "Top Action List"])
-    if top_action_list.empty:
-        lines.append("No action tickers.")
-    else:
-        for _, row in top_action_list.iterrows():
-            lines.append(f"{row['Ticker']} - {row['Action']}")
+    report_source = canonical if canonical is not None else top_action_list
+    classified = classify_pattern_discovery_sections(report_source)
+    for section, empty_text in (
+        (ACTIONABLE_NOW, "No canonically actionable candidates."),
+        (PATTERN_WATCHLIST, "No research-only pattern candidates."),
+        (AVOID_FAILED, "No avoid / failed candidates."),
+    ):
+        lines.extend(["", section])
+        section_rows = classified[classified["Report Section"].eq(section)]
+        if section_rows.empty:
+            lines.append(empty_text)
+            continue
+        for _, row in section_rows.iterrows():
+            lines.append(
+                f"{row.get('Ticker', '')} - {row.get('Final Decision', '')} - "
+                f"{row.get('Pattern Discovery Reason', '')}"
+            )
 
     lines.extend(["", "AI Commentary", ai_commentary])
     if canonical is not None:
@@ -5198,6 +5379,12 @@ def write_markdown(
     decision_context: dict[str, object] | None = None,
 ) -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    canonical = classify_pattern_discovery_sections(
+        combined_watchlist(categories).drop_duplicates("Ticker")
+    )
+    actionable_now, pattern_watchlist, avoid_failed = pattern_discovery_sections(
+        canonical
+    )
     lines = [
         "# Daily Watchlist",
         "",
@@ -5205,7 +5392,9 @@ def write_markdown(
         "",
         "## Executive Summary",
         "",
-        f"Market: {market_status}; Top Action candidates: {len(top_action_list)}.",
+        f"Market: {market_status}; Actionable Now candidates: {len(actionable_now)}; "
+        f"Pattern Watchlist candidates: {len(pattern_watchlist)}; "
+        f"Avoid / Failed candidates: {len(avoid_failed)}.",
         "",
         "## Market Status",
         "",
@@ -5217,7 +5406,9 @@ def write_markdown(
         "",
         markdown_daily_review_plan(top_action_list, daily_focus, market_status),
         "",
-        "## Top Action List",
+        "## Actionable Now",
+        "",
+        "Canonical production `FULL`/`HALF` decisions only.",
         "",
     ]
     if decision_context:
@@ -5230,10 +5421,36 @@ def write_markdown(
             f"{decision_context.get('metadata_diagnostics', {}).get('coverage_percentage', 'N/A')}%.",
             "",
         ]
-    if top_action_list.empty:
-        lines.extend(["No action tickers.", ""])
+    if actionable_now.empty:
+        lines.extend(["No canonically actionable candidates.", ""])
     else:
-        lines.extend([markdown_table(top_action_list), ""])
+        lines.extend([markdown_table(actionable_now), ""])
+
+    lines.extend(
+        [
+            "## Pattern Watchlist",
+            "",
+            "RESEARCH_ONLY chart-review candidates. This is not an alternative trade list.",
+            "",
+        ]
+    )
+    if pattern_watchlist.empty:
+        lines.extend(["No research-only pattern candidates.", ""])
+    else:
+        lines.extend([markdown_table(pattern_watchlist), ""])
+
+    lines.extend(
+        [
+            "## Avoid / Failed",
+            "",
+            "RESEARCH_ONLY records with explicit existing failure evidence.",
+            "",
+        ]
+    )
+    if avoid_failed.empty:
+        lines.extend(["No avoid / failed candidates.", ""])
+    else:
+        lines.extend([markdown_table(avoid_failed), ""])
 
     lines.extend(["## AI Commentary", "", ai_commentary, ""])
 
@@ -5316,7 +5533,12 @@ def write_html(
     decision_context: dict[str, object] | None = None,
 ) -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    canonical = combined_watchlist(categories).drop_duplicates("Ticker")
+    canonical = classify_pattern_discovery_sections(
+        combined_watchlist(categories).drop_duplicates("Ticker")
+    )
+    actionable_now, pattern_watchlist, avoid_failed = pattern_discovery_sections(
+        canonical
+    )
     summary_panel = html_summary_panel(
         canonical, market_status, len(top_action_list), decision_context
     )
@@ -5329,9 +5551,19 @@ def write_html(
     trend_panel = html_trend_panel(history_trend)
     review_plan = html_daily_review_plan(top_action_list, daily_focus, market_status)
     action_table = (
-        "<p>No action tickers.</p>"
-        if top_action_list.empty
-        else html_table(concise_decision_table(top_action_list))
+        "<p>No canonically actionable candidates.</p>"
+        if actionable_now.empty
+        else html_table(actionable_now)
+    )
+    pattern_table = (
+        "<p>No research-only pattern candidates.</p>"
+        if pattern_watchlist.empty
+        else html_table(pattern_watchlist)
+    )
+    avoid_table = (
+        "<p>No avoid / failed candidates.</p>"
+        if avoid_failed.empty
+        else html_table(avoid_failed)
     )
     full_rows = concise_decision_table(
         canonical[canonical["Final Decision"].eq("FULL")]
@@ -5359,12 +5591,20 @@ def write_html(
     )
 
     diagnostic_sections = [
+        "<h2>Canonical FULL — maximum 1.0R</h2>"
+        + full_table
+        + "<h2>Canonical HALF — maximum 0.5R</h2>"
+        + half_table
+        + "<h2>Canonical WATCH — zero risk</h2>"
+        + watch_table
+        + "<h2>Canonical NO TRADE — zero risk</h2>"
+        + blocked_table,
         "<h2>Full Qualified-Industry Calculations</h2>"
         + (
             "<p>No qualified industries.</p>"
             if top_industries.empty
             else top_industries.to_html(index=False)
-        )
+        ),
     ]
     isolated = top_industries.attrs.get(
         "isolated_industries", pd.DataFrame(columns=TOP_INDUSTRY_COLUMNS)
@@ -5502,11 +5742,9 @@ def write_html(
   {risk_panel}
   <h2>Market Status</h2><p>Status: {market_status}</p>{market_df.to_html(index=False)}
   {review_plan}
-  <h2>Top Action</h2>{action_table}
-  <h2>FULL — maximum 1.0R</h2>{full_table}
-  <h2>HALF — maximum 0.5R</h2>{half_table}
-  <h2>WATCH — zero risk</h2>{watch_table}
-  <h2>NO TRADE — zero risk</h2>{blocked_table}
+  <h2>Actionable Now</h2><p>Canonical production FULL/HALF decisions only.</p>{action_table}
+  <h2>Pattern Watchlist</h2><p>RESEARCH_ONLY chart-review candidates. This is not an alternative trade list.</p>{pattern_table}
+  <h2>Avoid / Failed</h2><p>RESEARCH_ONLY records with explicit existing failure evidence.</p>{avoid_table}
   <h2>Top Industries — Qualified Current Leaders</h2>{industry_table}
   <h2>Data and Logic Warnings</h2>{warnings_html}
   <h2>Expectancy</h2><p>Review the completed-trade journal analysis; no profitability claim is inferred from this watchlist.</p>
@@ -5615,7 +5853,10 @@ def export_results(
     decision_context = build_decision_context(
         canonical, market_df, market_status, market_metrics
     )
-    canonical = apply_canonical_decision_pipeline(canonical, decision_context)
+    canonical_production = apply_canonical_decision_pipeline(
+        canonical, decision_context
+    )
+    canonical = classify_pattern_discovery_sections(canonical_production)
     categories = {
         name: canonical[canonical["Category"].eq(name)].copy().reset_index(drop=True)
         for name in CATEGORY_PRIORITY
@@ -5710,7 +5951,7 @@ def export_results(
     )
     validate_exported_reports()
     LAST_FORWARD_SNAPSHOT = str(
-        write_forward_snapshot(canonical, market_df, decision_context)
+        write_forward_snapshot(canonical_production, market_df, decision_context)
     )
     save_last_good_reports()
     append_report_history(history_snapshot)
@@ -5772,17 +6013,23 @@ def prepare_preview_watchlist(frame: pd.DataFrame) -> pd.DataFrame:
     for column in numeric_columns:
         if column in table.columns:
             table[column] = pd.to_numeric(table[column], errors="coerce")
-    return table
+    return classify_pattern_discovery_sections(table)
 
 
 def build_categories_from_watchlist(watchlist: pd.DataFrame) -> dict[str, pd.DataFrame]:
     categories = {}
     for name in CATEGORY_PRIORITY:
         frame = watchlist[watchlist["Category"] == name].copy()
+        if frame.empty:
+            categories[name] = pd.DataFrame(columns=DISCOVERY_COLUMNS)
+            continue
+        canonical_states = frame.get(
+            "Final Decision", pd.Series("", index=frame.index, dtype="object")
+        ).isin(["FULL", "HALF", "WATCH", "NO TRADE"])
         categories[name] = (
-            add_action_column(frame)
-            if not frame.empty
-            else pd.DataFrame(columns=DISCOVERY_COLUMNS)
+            classify_pattern_discovery_sections(frame)
+            if canonical_states.all()
+            else add_action_column(frame)
         )
     return categories
 

@@ -1,0 +1,190 @@
+{
+  "experiment_id": "PORTFOLIO_RANKING_PHASE_A_V1",
+  "status": "ENGINEERING_INFRASTRUCTURE_ONLY_FORMAL_BLOCKED_DATA_NOT_READY",
+  "production_effect": "NONE",
+  "research_label": "RESEARCH_ONLY POINT-IN-TIME PORTFOLIO RANKING",
+  "hypothesis": "When canonical candidate eligibility and every non-ranking condition are held fixed, continuous point-in-time leadership and setup-quality rankings may allocate scarce portfolio heat differently from production Final Score.",
+  "eligibility": {
+    "source": "caller-supplied canonical eligibility and blocked reason",
+    "rule": "freeze once before ranking; rankers cannot add, remove, or repair eligible candidates"
+  },
+  "business_key": ["as_of_date", "ticker"],
+  "production_order_baseline": [
+    {"column": "Final Score", "direction": "DESC"},
+    {"column": "ticker", "direction": "ASC"}
+  ],
+  "random_baseline": {
+    "algorithm": "SHA-256",
+    "seed": 20260916,
+    "payload": "PORTFOLIO_RANKING_PHASE_A_V1|seed|YYYY-MM-DD|NORMALIZED_TICKER",
+    "direction": "ascending digest",
+    "prohibited": ["Python hash()", "unseeded RNG", "input row order"]
+  },
+  "factors": {
+    "recent_rs": "recent_rs_score",
+    "industry_strength": "industry_proxy_score",
+    "pivot_supply_quality": "pivot_supply_quality_score",
+    "volume_quality": "volume_quality_score"
+  },
+  "factor_formulas": {
+    "recent_rs_score": "causal cross-sectional weighted price-relative-strength percentile using 5, 20, 60, and 126-session returns",
+    "industry_proxy_score": "causal industry-relative score from bars through the as-of date; classification provenance must be disclosed",
+    "pivot_supply_quality_score": "10 minus pivot_supply_days_10d, where the latter counts distribution days near the causal 126-session pivot",
+    "volume_quality_score": "causal up_down_volume_ratio_50d"
+  },
+  "missing_factor_policy": "coerce NaN, positive infinity, and negative infinity to missing; preserve missing in raw audit and assign percentile 0, so missing ranks last without changing eligibility",
+  "arms": [
+    "production_final_score",
+    "deterministic_random",
+    "recent_rs",
+    "industry_strength",
+    "pivot_supply_quality",
+    "volume_quality",
+    "composite_equal_weight",
+    "loo_without_recent_rs",
+    "loo_without_industry_strength",
+    "loo_without_pivot_supply_quality",
+    "loo_without_volume_quality"
+  ],
+  "weights": {
+    "composite_equal_weight": {
+      "recent_rs": 0.25,
+      "industry_strength": 0.25,
+      "pivot_supply_quality": 0.25,
+      "volume_quality": 0.25
+    },
+    "leave_one_out": "exactly one third for each remaining factor"
+  },
+  "portfolio_evaluation": {
+    "engine": "research.engine.forward_portfolio.evaluate_portfolio_variants",
+    "state_rule": "accepted positions retain allocated heat through their effective exit; blocked candidates remain rejected",
+    "common_conditions": "risk, total heat, maximum positions, industry cap, execution, exit, costs, and market/regime limits are supplied once and shared unchanged by all arms",
+    "variable_heat_support": "an optional point-in-time effective-heat column is capped by the common portfolio ceiling and applied identically to every arm",
+    "runner_contract": {
+      "candidate_risk_source_column": "candidate_risk_r",
+      "maximum_positions": 4,
+      "maximum_heat_ceiling_r": 3.0,
+      "effective_heat_source_column": "effective_heat_limit_r",
+      "candidate_concentration": {
+        "industry_column": "Industry",
+        "sector_column": "Sector",
+        "industry_score_column": "Industry Composite Score",
+        "maximum_per_industry": 1,
+        "high_conviction_industry_score": 90.0,
+        "high_conviction_extra_positions": 1,
+        "maximum_per_sector": 5
+      },
+      "interpretation": "candidate_risk_r and effective_heat_limit_r must be captured before allocation from the unchanged canonical state; the 3.0R value is only the existing absolute ceiling and does not replace the row's effective regime heat limit"
+    }
+  },
+  "audit_columns_minimum": [
+    "as_of_date",
+    "ticker",
+    "ranker_name",
+    "raw factor values",
+    "factor percentiles",
+    "rank_score",
+    "rank_position",
+    "selected",
+    "blocked_reason",
+    "portfolio_heat_before",
+    "portfolio_heat_after"
+  ],
+  "portfolio_metrics": [
+    "eligible candidate count",
+    "accepted and mature accepted episode counts",
+    "blocked-reason counts",
+    "win rate",
+    "average win R",
+    "average loss R",
+    "expectancy R after costs",
+    "profit factor",
+    "total realised portfolio R",
+    "maximum mark-to-market drawdown R",
+    "average MFE R",
+    "average MAE R",
+    "trade frequency per year",
+    "active-session fraction",
+    "average and peak portfolio heat R",
+    "peak simultaneous positions",
+    "average holding sessions",
+    "ticker-cluster bootstrap interval"
+  ],
+  "automatic_champion_selection": false,
+  "formal_periods": {
+    "development": {
+      "signal_start": "2026-09-21",
+      "signal_end": "2027-09-17",
+      "outcomes_observed_through": "2027-11-19",
+      "status": "FUTURE_UNTOUCHED"
+    },
+    "validation": {
+      "signal_start": "2027-11-22",
+      "signal_end": "2028-05-19",
+      "outcomes_observed_through": "2028-07-21",
+      "status": "RESERVED_UNTOUCHED"
+    },
+    "holdout": {
+      "signal_start": "2028-07-24",
+      "signal_end": "2029-01-19",
+      "outcomes_observed_through": "2029-03-23",
+      "status": "RESERVED_UNTOUCHED_DO_NOT_ACCESS_IN_PHASE_A"
+    }
+  },
+  "stage_boundary_policy": {
+    "membership": "signal date must fall inside the stage window",
+    "future_entry": "a plan entry after outcomes_observed_through is not observable and remains unselected for that stage",
+    "crossing_exit": "a plan exit after outcomes_observed_through is censored to open at the cutoff; realised R, MFE, MAE, and holding sessions are null and cannot count as mature",
+    "portfolio_state": "a position open at the cutoff continues consuming heat through the cutoff"
+  },
+  "phase_b_advancement_gate": {
+    "purpose": "produce at most a two-ranker shortlist for human review; never name or promote a champion automatically",
+    "baseline_ranker": "production_final_score",
+    "excluded_rankers": ["deterministic_random"],
+    "required_stages": ["development", "validation"],
+    "primary_metric": "expectancy_r",
+    "minimum_mature_accepted_episodes_per_stage": 100,
+    "sample_floor_scope": "production baseline and every challenger must independently meet the floor in every required stage",
+    "minimum_expectancy_improvement_r": 0.05,
+    "secondary_requirements": [
+      "total_realised_r strictly greater than production_final_score in both stages",
+      "profit_factor not below production_final_score in either stage",
+      "maximum_drawdown_r no more than 1.0R worse than production_final_score in either stage"
+    ],
+    "maximum_drawdown_worsening_r": 1.0,
+    "maximum_phase_b_rankers": 2,
+    "shortlist_order": [
+      "validation expectancy improvement descending",
+      "validation maximum drawdown ascending",
+      "ranker_name ascending"
+    ],
+    "holdout_policy": "the Phase A shortlist cannot inspect the holdout; access requires a separately preregistered Phase B protocol",
+    "human_review_required": true,
+    "automatic_production_promotion": false
+  },
+  "runner": {
+    "module": "research.run_portfolio_ranking_phase_a",
+    "input_contract": "one point-in-time pre-allocation candidate row per as_of_date/ticker with frozen eligibility, original risk, heat limit, Final Score, Industry, Sector, Industry Composite Score, and frozen plan outcome fields",
+    "engineering_replay_policy": "explicit --engineering-replay may exercise the pipeline outside formal periods but cannot apply the advancement gate or provide validation evidence"
+  },
+  "formal_data_gate": {
+    "status": "BLOCKED_DATA_NOT_READY",
+    "classification_provenance": "CURRENT_NOT_EFFECTIVE_DATED",
+    "formal_runner_enabled": false,
+    "required_before_enablement": [
+      "point-in-time universe membership including delistings",
+      "durable adjusted OHLCV and benchmark archives with source/as-of provenance",
+      "effective-dated sector and industry classifications",
+      "verified formal classification loader and regression coverage"
+    ]
+  },
+  "frozen_benchmark_only_families": [
+    "stop/target grids",
+    "exposure grids",
+    "earnings blackout combinations",
+    "SMA/ATR offsets",
+    "RS thresholds",
+    "hard-filter combinations"
+  ],
+  "data_gate": "Point-in-time universe, classification, factor, price, and execution provenance remain mandatory. Current local historical data is NOT_READY."
+}

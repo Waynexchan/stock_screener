@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-15",
+  "updated_at": "2026-09-29",
   "status_definitions": {
     "VALIDATED": "Empirical evidence demonstrates economically meaningful incremental value over a simpler baseline.",
     "RESEARCH_ONLY": "Experimental and prohibited from affecting production decisions, sizing, reports, or email.",
@@ -654,6 +654,40 @@
       "max_drawdown_delta_r": null,
       "last_tested": "2026-09-13",
       "notes": "Do not promote. The permanent early-profit unlock did not control later-cycle exposure; a future redesign requires a new preregistered experiment."
+    },
+    {
+      "id": "portfolio_ranking_phase_a_v1",
+      "name": "Deterministic portfolio candidate ranking interface",
+      "category": "candidate_ranking_research",
+      "status": "RESEARCH_ONLY",
+      "production_effect": "NONE; research-only ranking and exit-aware portfolio allocation audit.",
+      "evidence_summary": "Engineering-only Phase A interface, causal factor builder, input-contract runner, stage-boundary censoring, per-ranker production concentration, strict shortlist gate, complete blocked-reason audit, and permutation regressions; no outcome sample has been evaluated and formal data remains blocked.",
+      "sample_size": null,
+      "discovery_result": null,
+      "validation_result": null,
+      "holdout_result": null,
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": "2026-09-18",
+      "notes": "Preregistered arms are production Final Score, deterministic SHA-256 random order, four continuous factors, an exact 25% composite, and four equal-weight leave-one-out variants. Candidate concentration is reapplied after each ranker orders candidates. Both baseline and challenger must meet the frozen sample floor. Formal execution rejects the current non-effective-dated classifications. No champion is selected automatically; formal Phase A, Phase B, and Phase C are not complete, and the point-in-time data gate remains NOT_READY."
+    },
+    {
+      "id": "pattern_discovery_reporting_phase_1",
+      "name": "Pattern Discovery report separation",
+      "category": "research_reporting",
+      "status": "RESEARCH_ONLY",
+      "production_effect": "NONE; post-canonical report classification only.",
+      "evidence_summary": "Engineering separation of Actionable Now, Pattern Watchlist, and Avoid / Failed. This is not trading-edge evidence.",
+      "sample_size": null,
+      "discovery_result": null,
+      "validation_result": null,
+      "holdout_result": null,
+      "expectancy_delta_r": null,
+      "profit_factor_delta": null,
+      "max_drawdown_delta_r": null,
+      "last_tested": null,
+      "notes": "Classification runs only after canonical production decisions. Missing entry, target, or R/R remains explicit; research fields cannot alter decision, actionability, risk, shares, or trade-plan values. Phase 2 setup lanes are not implemented."
     },
     {
       "id": "critical_data_freshness",

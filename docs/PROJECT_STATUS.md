@@ -4,6 +4,41 @@ Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
+- `PATTERN_DISCOVERY_REPORTING_PHASE_1` separates the post-canonical report into
+  Actionable Now, Pattern Watchlist, and Avoid / Failed. The latter two are
+  explicitly `RESEARCH_ONLY`; missing plan values remain missing, and the
+  classifier owns only report section/status/reason fields. Canonical
+  `FULL/HALF/WATCH/NO TRADE`, actionability, risk, shares, trade-plan values,
+  capacity, and concentration remain owned by the existing decision pipeline.
+  The three report-only fields are excluded from the discovery and forward-
+  snapshot schemas, and semantic validation rejects non-actionable rows placed
+  on the wrong side of the explicit failure-evidence boundary. Classifier and
+  validator agree that present non-finite entry/stop values are failures while
+  genuinely missing plan values remain eligible for Pattern Watchlist.
+  Phase 2 setup lanes are not implemented, and this reporting change makes no
+  trading-edge claim or production-promotion decision.
+- `PORTFOLIO_RANKING_PHASE_A_V1` has substantially implemented engineering
+  infrastructure, but formal Phase A infrastructure is not complete and no
+  evidence study has run. Phase B and Phase C are not implemented. Production
+  capacity ordering now uses the explicit business key Final Score descending,
+  then ticker ascending; input row order is no longer a tie-break. The
+  research-only interface freezes eligibility before ranking, provides the
+  production, deterministic-random, four single-factor, exact 25% composite,
+  and four equal-weight leave-one-out arms, and evaluates all arms through the
+  shared exit-aware portfolio state with a row-level heat audit. Non-finite
+  scores are missing-last, canonical eligibility blocks are included in metrics,
+  and a research runner can calculate the four frozen causal factors from a
+  valid pre-allocation candidate journal. Existing post-allocation reports
+  cannot reconstruct capacity-rejected candidates and are not valid runner
+  inputs. Formal future development/validation/holdout windows and the Phase B
+  shortlist gate are frozen in the preregistration. Stage outcomes crossing an
+  observation cutoff are censored and cannot count as mature; both baseline and
+  challenger must meet the sample floor. Candidate concentration is reapplied
+  after each ranker orders candidates, using the frozen production industry,
+  high-conviction, and sector limits. Formal execution fails before loading
+  current classifications while the data gate is blocked. Historical data
+  remains `NOT_READY`, no champion was selected, and production thresholds,
+  eligibility, entry/stop/exit rules, heat, and market regime are unchanged.
 - Forward-test hardening on 2026-09-16 keeps the six-date, 313-row history as
   `ENGINEERING_PILOT_NOT_FORMAL`. Future schema-v2 snapshots include verifiable
   payload hashes, provider version, explicit earnings/market-cap enforcement
@@ -433,15 +468,16 @@ See `docs/RESEARCH_RESULTS_FILTER_EDGE_SEQUENCED_V1.md`.
 
 ## Next recommended task
 
-Acquire and provenance-check point-in-time universe and listing history,
-delisted symbols, classifications, earnings schedules, and fundamental
-histories. On genuinely new data, prioritize a small preregistered one-factor
-candidate-order experiment—MarketSmith-style proxy, industry strength,
-setup/pivot quality, and volume quality—followed by one frozen composite and
-leave-one-factor-out neighbors. Apply fixed heat and the declared industry cap
-only after the ranking comparison. The current fixed-2R portfolio admits
-roughly 0.3%–0.5% of executable candidates and its default tie-break is ticker
-order. Do not retune filters or ranking weights on reused 2017-2025 history.
+Complete the remaining formal Phase A infrastructure and data-readiness work;
+do not recreate the ranking interface that is already implemented. Acquire and
+provenance-check point-in-time universe/listing history, delisted symbols,
+effective-dated classifications, earnings schedules, and required fundamental
+history, then verify the pre-allocation candidate journal and formal data gate.
+Only after those inputs are `READY` may the already frozen one-factor,
+deterministic-random, composite, and leave-one-out arms run on their declared
+future development/validation windows. Production capacity ordering is Final
+Score descending, then normalized ticker ascending; input row order is not a
+tie-break. Do not retune filters or ranking weights on reused 2017-2025 history.
 
 Do not retune the completed V1 paths or promote any result without explicit
 instruction and governance review.

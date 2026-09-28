@@ -39,6 +39,20 @@ scripts/run_daily_production.ps1
 
 AI commentary is optional. It receives the validated Top Action List and may assist presentation/prioritisation, but it is not decision authority.
 
+After canonical decisions are complete, Pattern Discovery reporting adds only
+`Report Section`, `Pattern Discovery Status`, and `Pattern Discovery Reason`.
+`Actionable Now` is exactly canonical FULL/HALF. `Pattern Watchlist` and
+`Avoid / Failed` are `RESEARCH_ONLY`, zero-authority views over already decided
+records; they cannot change decision, risk, shares, entry, stop, target, R/R,
+confirmation, capacity, or concentration. See
+`docs/PATTERN_DISCOVERY_PHASE_1.md`.
+These fields do not belong to `DISCOVERY_COLUMNS` or immutable forward
+snapshots. CSV semantic validation independently enforces the classifier's
+explicit failure-evidence precedence so consistently misclassified reports do
+not pass merely because their manifests agree. Present non-finite entry/stop
+values are explicit failure evidence; genuinely missing plan values remain
+waiting evidence rather than being imputed or treated as valid.
+
 Compatibility functions (`size_trade_candidate`, `decide_candidate`) and older review/ranking helpers remain. Production exports currently overwrite preliminary guidance with the canonical pipeline and validate the result, but this extra surface is a maintenance risk and should not be allowed to become an alternate decision path.
 
 The research layer is separate from production:
@@ -91,6 +105,8 @@ Get-Content .\logs\production.log -Tail 100
 - `research/config/model_0.json`: versioned minimal baseline assumptions; it is independent of production configuration.
 - `research/experiments/recent_rs.json`: predeclared Recent RS buckets and horizons; prepared but not run.
 - `docs/RESEARCH_ARCHITECTURE.md` and `docs/DATA_READINESS.md`: dependency/reuse audit and verified data limitations.
+- `docs/PATTERN_DISCOVERY_PHASE_1.md`: Phase 1 post-canonical report separation,
+  acceptance criteria, and explicit Phase 2 non-goals.
 - `scripts/verify_research.ps1`: focused research verification and production-file hash-isolation gate.
 - `BACKTEST_REQUIREMENTS.md`: requirements for a future point-in-time replay engine; it is not an implemented backtest.
 
@@ -820,3 +836,45 @@ Post-fix research verification passed 171 tests plus Ruff, mypy,
 data-readiness, and production-isolation gates. Full verification passed 360
 pytest tests and 118 legacy unittest tests plus every integration, invariant,
 offline dry-run, and semantic-validation stage.
+
+## 2026-09-16 portfolio-ranking Phase A
+
+`PORTFOLIO_RANKING_PHASE_A_V1` replaces production capacity tie-breaking by
+input row position with Final Score descending and normalized ticker ascending.
+Candidate eligibility is frozen before research scoring. The isolated research
+interface includes production Final Score, a SHA-256 fixed-seed/date/ticker
+random baseline, four individual point-in-time factors, an exact 25% composite,
+and four equal-weight leave-one-out variants. All arms delegate selection to the
+shared exit-aware forward portfolio engine, which now audits heat before and
+after every accepted or blocked candidate and reports the preregistered balanced
+portfolio metrics. Duplicate as-of/ticker keys fail closed rather than gaining a
+hidden row-order tie-break.
+
+Non-finite Final Score and factor values are treated as missing-last. Aggregate
+blocked-reason metrics are derived from the complete audit, including canonical
+ineligibility. The Phase A runner calculates the four fixed causal factors from
+a validated pre-allocation candidate journal and refuses to treat an existing
+post-allocation report as a substitute. It supports explicitly labelled
+engineering replay, while formal development/validation windows and an untouched
+holdout remain frozen. The `0.05R` expectancy-improvement/sample/drawdown/profit-
+factor gate can create at most a two-ranker Phase B review shortlist; it does
+not select a champion.
+
+Follow-up review found that formal stage cutoffs did not censor later outcomes,
+the runner could use current classifications despite a blocked data gate, and
+production candidate concentration was absent. Stage-crossing exits are now
+censored to open positions with null outcomes, so they consume heat without
+counting as mature. Formal execution fails before loading current mappings.
+Each ranker now applies the frozen production candidate-list industry,
+high-conviction, and sector limits after establishing its own order, avoiding
+both omitted concentration and production-order lock-in. The advancement gate
+also requires the production baseline to meet the independent sample floor and
+strictly rejects boolean, fractional, non-finite, or negative settings.
+
+This phase contains no historical performance run, no automatic champion, and
+no production strategy change. Engineering Phase A infrastructure is
+substantially implemented, but formal Phase A infrastructure is not complete;
+Phase B and Phase C are not implemented. The data gate remains `NOT_READY`.
+Stop/target,
+exposure, earnings-blackout, SMA/ATR-offset, RS-threshold, and hard-filter
+families are frozen as benchmarks and are not reopened by this work.

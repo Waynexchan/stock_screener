@@ -189,14 +189,20 @@ def evaluate_portfolio_variants(
         selected = episodes.loc[_eligibility_mask(episodes, variant)].copy()
         selected["_entry"] = pd.to_datetime(selected["plan_entry_date"])
         selected["_exit"] = pd.to_datetime(selected["plan_exit_date"], errors="coerce")
-        snapshot_order = (
-            selected["snapshot_row_order"]
-            if "snapshot_row_order" in selected
-            else pd.Series(np.inf, index=selected.index)
+        duplicate_keys = selected.duplicated(
+            ["_entry", "signal_date", "ticker"], keep=False
         )
-        selected["_snapshot_order"] = pd.to_numeric(
-            snapshot_order, errors="coerce"
-        ).fillna(np.inf)
+        if duplicate_keys.any():
+            duplicates = selected.loc[
+                duplicate_keys, ["_entry", "signal_date", "ticker"]
+            ].head(5)
+            raise ValueError(
+                f"variant {variant_id} has duplicate entry/signal/ticker rows: "
+                + ", ".join(
+                    f"{row._entry.date()}/{row.signal_date}/{row.ticker}"
+                    for row in duplicates.itertuples(index=False)
+                )
+            )
         ordering = variant.get("ordering", [])
         sort_columns = ["_entry"]
         ascending = [True]
@@ -211,10 +217,13 @@ def evaluate_portfolio_variants(
                 raise ValueError(
                     f"variant {variant_id} ordering direction is invalid: {direction}"
                 )
-            sort_columns.append(column)
-            ascending.append(direction == "ASC")
-        sort_columns.extend(["signal_date", "ticker", "_snapshot_order"])
-        ascending.extend([True, True, True])
+            if column not in sort_columns:
+                sort_columns.append(column)
+                ascending.append(direction == "ASC")
+        for column in ("signal_date", "ticker"):
+            if column not in sort_columns:
+                sort_columns.append(column)
+                ascending.append(True)
         selected = selected.sort_values(
             sort_columns, ascending=ascending, kind="stable"
         )
@@ -227,6 +236,14 @@ def evaluate_portfolio_variants(
         if not np.isfinite(maximum_heat_r) or maximum_heat_r <= 0:
             raise ValueError(
                 f"variant {variant_id} maximum_heat_r must be finite and positive"
+            )
+        heat_limit_source = str(
+            portfolio.get("maximum_heat_r_source_column", "")
+        ).strip()
+        if heat_limit_source and heat_limit_source not in selected:
+            raise ValueError(
+                f"variant {variant_id} heat-limit column is missing: "
+                f"{heat_limit_source}"
             )
         industry_cap = portfolio.get("maximum_positions_per_industry")
         if industry_cap is not None:
@@ -243,7 +260,17 @@ def evaluate_portfolio_variants(
             open_rows = [
                 item for item in accepted if entry <= item["effective_exit_date"]
             ]
+            heat_before = sum(float(item["allocated_r"]) for item in open_rows)
             risk_r = _risk_for_row(row, variant)
+            candidate_heat_limit_r = maximum_heat_r
+            if heat_limit_source:
+                source_limit = _number(row.get(heat_limit_source))
+                if source_limit is None or source_limit < 0:
+                    raise ValueError(
+                        f"variant {variant_id} heat limit is invalid for "
+                        f"{row.get('signal_date')}/{row.get('ticker')}"
+                    )
+                candidate_heat_limit_r = min(maximum_heat_r, source_limit)
             reason = "ACCEPTED"
             industry = str(row.get("Industry", "")).strip()
             if risk_r is None:
@@ -254,7 +281,7 @@ def evaluate_portfolio_variants(
                 reason = "MAX_POSITIONS"
             elif (
                 sum(float(item["allocated_r"]) for item in open_rows) + risk_r
-                > maximum_heat_r + 1e-12
+                > candidate_heat_limit_r + 1e-12
             ):
                 reason = "MAX_HEAT"
             elif industry_cap is not None and industry.casefold() in {
@@ -284,6 +311,13 @@ def evaluate_portfolio_variants(
                     if reason == "ACCEPTED"
                     else reason,
                     "allocated_r": risk_r,
+                    "portfolio_heat_limit_r": candidate_heat_limit_r,
+                    "portfolio_heat_before": heat_before,
+                    "portfolio_heat_after": heat_before
+                    + (risk_r if reason == "ACCEPTED" and risk_r is not None else 0.0),
+                    "open_positions_before": len(open_rows),
+                    "open_positions_after": len(open_rows)
+                    + (1 if reason == "ACCEPTED" else 0),
                 }
             )
             ledger_rows.append(record)
@@ -312,9 +346,7 @@ def evaluate_portfolio_variants(
         ledger = pd.DataFrame(ledger_rows)
         if not ledger.empty:
             ledger_frames.append(
-                ledger.drop(
-                    columns=["_entry", "_exit", "_snapshot_order"], errors="ignore"
-                )
+                ledger.drop(columns=["_entry", "_exit"], errors="ignore")
             )
         accepted_rows = (
             ledger[ledger["portfolio_accepted"].eq(True)].copy()
@@ -405,6 +437,26 @@ def evaluate_portfolio_variants(
         )
         wins = realised[realised > 0]
         losses = realised[realised <= 0]
+        mfe = pd.to_numeric(
+            mature.get("plan_mfe_r", pd.Series(np.nan, index=mature.index)),
+            errors="coerce",
+        )
+        mae = pd.to_numeric(
+            mature.get("plan_mae_r", pd.Series(np.nan, index=mature.index)),
+            errors="coerce",
+        )
+        holding = pd.to_numeric(
+            mature.get("plan_holding_sessions", pd.Series(np.nan, index=mature.index)),
+            errors="coerce",
+        )
+        allocated_realised = (
+            pd.to_numeric(
+                mature.get("allocated_r", pd.Series(np.nan, index=mature.index)),
+                errors="coerce",
+            )
+            * realised
+        )
+        calendar_years = len(curve) / 252.0 if not curve.empty else None
         metric_rows.append(
             {
                 "variant_id": variant_id,
@@ -418,10 +470,31 @@ def evaluate_portfolio_variants(
                 if not accepted_rows.empty
                 else 0,
                 "expectancy_r": float(realised.mean()) if len(realised) else None,
+                "average_win_r": float(wins.mean()) if len(wins) else None,
+                "average_loss_r": float(losses.mean()) if len(losses) else None,
                 "profit_factor": float(wins.sum() / abs(losses.sum()))
                 if len(losses) and losses.sum() != 0
                 else None,
                 "win_rate": float((realised > 0).mean()) if len(realised) else None,
+                "total_realised_r": float(allocated_realised.sum())
+                if len(allocated_realised)
+                else None,
+                "average_mfe_r": float(mfe.mean()) if mfe.notna().any() else None,
+                "average_mae_r": float(mae.mean()) if mae.notna().any() else None,
+                "average_holding_sessions": float(holding.mean())
+                if holding.notna().any()
+                else None,
+                "trade_frequency_per_year": (
+                    float(len(mature) / calendar_years)
+                    if calendar_years is not None and calendar_years > 0
+                    else None
+                ),
+                "active_session_fraction": float(curve["initial_heat_r"].gt(0).mean())
+                if not curve.empty
+                else None,
+                "average_portfolio_heat_r": float(curve["initial_heat_r"].mean())
+                if not curve.empty
+                else None,
                 "maximum_drawdown_r": float(curve["drawdown_r"].max())
                 if not curve.empty
                 else None,

@@ -47,13 +47,38 @@ leadership samples reduce confidence and appear under Data and Logic Warnings.
 
 The system screens long-only US momentum swing opportunities, validates trade plans, monitors open risk, records completed trades, and reports evidence. It does not predict prices, guarantee profits, execute trades, invent missing values, or replace chart review.
 
+The main candidate report separates three different uses:
+
+- **Actionable Now** contains only canonical `FULL` and `HALF` production
+  decisions. These are the only rows permitted to show non-zero new-trade risk
+  or shares.
+- **Pattern Watchlist** is `RESEARCH_ONLY`. It contains discovered charts worth
+  reviewing that are not currently actionable and do not have an explicit
+  Phase 1 failure condition. A row may be waiting for an entry, observed target,
+  complete structural R/R, confirmation, market permission, or portfolio
+  capacity. Missing values stay missing; this section is not an alternative
+  trade list.
+- **Avoid / Failed** is `RESEARCH_ONLY`. It contains non-actionable rows with
+  existing explicit failure evidence such as failed setup integrity, excessive
+  extension, stale/warned critical price data, or invalid present stop geometry.
+
+These report sections are derived only after the canonical production decision.
+They cannot change `FULL/HALF/WATCH/NO TRADE`, actionability, risk, shares,
+entry, stop, target, or R/R. A structurally interesting candidate blocked by
+portfolio heat may therefore remain in Pattern Watchlist while its canonical
+decision remains `NO TRADE` with zero risk.
+Immutable forward snapshots retain the untouched canonical production frame;
+the three Pattern Discovery report fields are not added to snapshot candidates.
+
 ## Daily workflow
 
 1. Update `data/open_positions.csv` with ticker, entry date, entry price, initial stop, active stop, shares, and status.
 2. Run `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_dry_run.ps1` after development changes.
 3. Run `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_production.ps1` only for the verified production workflow.
 4. Read Market Regime and Portfolio Risk before candidates.
-5. Review `FULL`, then `HALF`, then `WATCH`, then the highest-quality `NO TRADE` reasons.
+5. Review Actionable Now first, use Pattern Watchlist only for chart discovery,
+   and inspect Avoid / Failed plus the diagnostic canonical states for rejection
+   reasons.
 6. Make all trade decisions manually.
 
 ## Risk terms
@@ -183,8 +208,8 @@ as unavailable rather than zero. Copy `data/open_positions_template.csv` as an
 example and remove its EXAMPLE row before use.
 
 The main HTML is deliberately short: read the Executive Summary, Market &
-Portfolio Risk, FULL, HALF, WATCH, NO TRADE, and Qualified Current Industries. It
-shows at most eight blocked names to explain the strongest rejected ideas. Full
+Portfolio Risk, Actionable Now, Pattern Watchlist, Avoid / Failed, and Qualified
+Current Industries. Canonical FULL/HALF/WATCH/NO TRADE detail plus full
 candidate, industry, score, and history tables remain in the collapsed
 **Diagnostic Appendix** for audit and debugging.
 The email body contains only the human-readable summary. The machine-readable

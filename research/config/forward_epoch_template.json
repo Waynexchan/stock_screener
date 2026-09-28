@@ -25,7 +25,7 @@
   },
   "ranking_and_tie_break": [
     {"column": "Final Score", "direction": "DESC"},
-    {"column": "snapshot_row_order", "direction": "ASC"}
+    {"column": "Ticker", "direction": "ASC"}
   ],
   "plan_execution": {
     "entry_valid_sessions": 5,
@@ -63,7 +63,7 @@
         },
         "ordering": [
           {"column": "Final Score", "direction": "DESC"},
-          {"column": "snapshot_row_order", "direction": "ASC"}
+          {"column": "ticker", "direction": "ASC"}
         ]
       },
       {
@@ -79,7 +79,7 @@
         },
         "ordering": [
           {"column": "Final Score", "direction": "DESC"},
-          {"column": "snapshot_row_order", "direction": "ASC"}
+          {"column": "ticker", "direction": "ASC"}
         ]
       }
     ]

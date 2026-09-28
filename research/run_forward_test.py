@@ -284,6 +284,11 @@ def _validate_variant_columns(
             source_column = str(risk.get("source_column", "")).strip()
             if source_column and source_column not in frame:
                 missing.append(f"{variant.get('variant_id')}:risk:{source_column}")
+            heat_source_column = str(
+                variant.get("portfolio", {}).get("maximum_heat_r_source_column", "")
+            ).strip()
+            if heat_source_column and heat_source_column not in frame:
+                missing.append(f"{variant.get('variant_id')}:heat:{heat_source_column}")
     if missing:
         raise ValueError("variant columns missing: " + ", ".join(missing))
 
