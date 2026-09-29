@@ -15,8 +15,16 @@ Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJE
   on the wrong side of the explicit failure-evidence boundary. Classifier and
   validator agree that present non-finite entry/stop values are failures while
   genuinely missing plan values remain eligible for Pattern Watchlist.
-  Phase 2 setup lanes are not implemented, and this reporting change makes no
-  trading-edge claim or production-promotion decision.
+  `PATTERN_DISCOVERY_SETUP_LANES_PHASE_2` adds three independent post-canonical
+  `RESEARCH_ONLY` chart-review lanes: Tight Base / VCP, Pullback to Support, and
+  Breakout Retest / High Flag. Each has separate membership, fixed score,
+  missing-last deterministic rank, reason, and missing-factor evidence. The
+  bounded breakout lookback distinguishes same-day unconfirmed breakouts from
+  held/consolidating or invalidated recent breakouts; a persistent Phase 4 state
+  machine is not implemented. Lane inputs/outputs are excluded from forward
+  snapshots and cannot alter canonical decisions, production score, allocation,
+  risk, shares, or trade-plan values. No trading-edge claim or production
+  promotion is made.
 - `PORTFOLIO_RANKING_PHASE_A_V1` has substantially implemented engineering
   infrastructure, but formal Phase A infrastructure is not complete and no
   evidence study has run. Phase B and Phase C are not implemented. Production

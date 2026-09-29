@@ -39,15 +39,25 @@ scripts/run_daily_production.ps1
 
 AI commentary is optional. It receives the validated Top Action List and may assist presentation/prioritisation, but it is not decision authority.
 
-After canonical decisions are complete, Pattern Discovery reporting adds only
-`Report Section`, `Pattern Discovery Status`, and `Pattern Discovery Reason`.
+After canonical decisions are complete, Pattern Discovery reporting first adds
+the Phase 1 section/status/reason and then applies the Phase 2 `RESEARCH_ONLY`
+setup lanes on a copy of Pattern Watchlist rows.
 `Actionable Now` is exactly canonical FULL/HALF. `Pattern Watchlist` and
 `Avoid / Failed` are `RESEARCH_ONLY`, zero-authority views over already decided
 records; they cannot change decision, risk, shares, entry, stop, target, R/R,
 confirmation, capacity, or concentration. See
-`docs/PATTERN_DISCOVERY_PHASE_1.md`.
-These fields do not belong to `DISCOVERY_COLUMNS` or immutable forward
-snapshots. CSV semantic validation independently enforces the classifier's
+`docs/PATTERN_DISCOVERY_PHASE_1.md` and
+`docs/PATTERN_DISCOVERY_PHASE_2.md`.
+The Phase 2 Tight Base / VCP, Pullback to Support, and Breakout Retest / High
+Flag lanes have independent membership, fixed scores, missing-last ranks,
+reasons, and deterministic ticker tie-breaks. Multi-lane membership represents
+multiple chart-review hypotheses for one canonical record, not multiple trades.
+The breakout lane uses a bounded rolling price-history lookback; the persistent
+Phase 4 lifecycle remains unimplemented.
+
+Report/lane fields do not belong to `DISCOVERY_COLUMNS`; narrow Phase 2 OHLCV
+evidence may be calculated during discovery but it and all lane outputs are
+removed from immutable forward snapshots. CSV semantic validation independently enforces the classifier's
 explicit failure-evidence precedence so consistently misclassified reports do
 not pass merely because their manifests agree. Present non-finite entry/stop
 values are explicit failure evidence; genuinely missing plan values remain

@@ -17,6 +17,7 @@ from run_screener import (
     classify_pattern_discovery_sections,
     decision_manifest_records,
     pattern_discovery_sections,
+    pattern_watchlist_lane_sections,
 )
 
 OUTPUT = Path("daily_watchlist_dry_run.html")
@@ -203,6 +204,15 @@ def build_sample_report(output: Path = OUTPUT) -> tuple[pd.DataFrame, str]:
     no_trade = frame[frame["Final Decision"] == "NO TRADE"]
     actionable_now, pattern_watchlist, avoid_failed = pattern_discovery_sections(frame)
     manifest = decision_manifest_records(frame)
+    lane_html = "".join(
+        f"<h3>{escape(lane)}</h3>"
+        + (
+            "<p>No candidates.</p>"
+            if lane_rows.empty
+            else lane_rows.to_html(index=False)
+        )
+        for lane, lane_rows in pattern_watchlist_lane_sections(pattern_watchlist)
+    )
     html = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Dry Run</title></head><body>"
         "<h2>Executive Summary</h2><p>Four-state decision and sizing regression.</p>"
@@ -212,7 +222,7 @@ def build_sample_report(output: Path = OUTPUT) -> tuple[pd.DataFrame, str]:
         "<h2>Actionable Now</h2>"
         + actionable_now.to_html(index=False)
         + "<h2>Pattern Watchlist</h2>"
-        + pattern_watchlist.to_html(index=False)
+        + lane_html
         + "<h2>Avoid / Failed</h2>"
         + avoid_failed.to_html(index=False)
         + "<h2>FULL</h2>"
@@ -257,6 +267,10 @@ def validate_sample_report(frame: pd.DataFrame, html: str) -> list[str]:
             "WATCH",
             "NO TRADE",
             "Pattern Watchlist",
+            "Tight Base / VCP",
+            "Pullback to Support",
+            "Breakout Retest / High Flag",
+            "Unassigned / Insufficient Lane Evidence",
             "Actionable Now",
             "Avoid / Failed",
             "Data and Logic Warnings",

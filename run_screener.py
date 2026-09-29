@@ -53,6 +53,16 @@ from decision_system import (
     entry_timing_for_candidate,
 )
 from ai_analysis import AIAnalysisResult, analyse_top_action_list
+from research.setup_lanes import (
+    BREAKOUT_LANE,
+    LANE_NAMES,
+    LANE_OUTPUT_FIELDS,
+    PHASE2_RESEARCH_FIELDS,
+    PULLBACK_LANE,
+    TIGHT_BASE_LANE,
+    annotate_setup_lanes,
+    calculate_phase2_history_features,
+)
 
 
 OUTPUT_CSV = "daily_watchlist.csv"
@@ -87,7 +97,8 @@ PATTERN_REPORT_FIELDS = (
     "Report Section",
     "Pattern Discovery Status",
     "Pattern Discovery Reason",
-)
+) + LANE_OUTPUT_FIELDS
+FORWARD_SNAPSHOT_EXCLUDED_FIELDS = PATTERN_REPORT_FIELDS + PHASE2_RESEARCH_FIELDS
 DISCOVERY_COLUMNS = [
     "Generated At",
     "Signal Date",
@@ -135,6 +146,7 @@ DISCOVERY_COLUMNS = [
     "ADR60 %",
     "VCP Ratio",
     "VCP Label",
+    *PHASE2_RESEARCH_FIELDS,
     "Pullback Quality",
     "Extension Status",
     "Risk/Reward Quality",
@@ -2084,6 +2096,14 @@ def candidate_row(
     vcp_ratio = adr20 / adr60 if not pd.isna(adr60) and adr60 != 0 else np.nan
     quality = pullback_quality(distance_50ma_atr, distance_30wma_atr)
     support_signal = strongest_support_signal(latest)
+    research_features = (
+        calculate_phase2_history_features(
+            history,
+            as_of=latest.get("SIGNAL_DATE") or latest.get("PRICE_DATA_AS_OF"),
+        )
+        if history is not None
+        else {field: None for field in PHASE2_RESEARCH_FIELDS}
+    )
     row = {
         "Generated At": latest.get("GENERATED_AT", ""),
         "Signal Date": latest.get("SIGNAL_DATE", ""),
@@ -2140,6 +2160,7 @@ def candidate_row(
         "ADR60 %": round(adr60, 2),
         "VCP Ratio": round(vcp_ratio, 2),
         "VCP Label": vcp_label(vcp_ratio),
+        **research_features,
         "Pullback Quality": pullback_quality_label(quality),
         "Extension Status": status,
         "Risk/Reward Quality": "Not Available",
@@ -3290,6 +3311,24 @@ def concise_decision_table(frame: pd.DataFrame) -> pd.DataFrame:
         "Report Section": "Report Section",
         "Pattern Discovery Status": "Pattern Status",
         "Pattern Discovery Reason": "Pattern / Waiting Reason",
+        "Setup Lanes": "Setup Lanes",
+        f"{TIGHT_BASE_LANE} Member": f"{TIGHT_BASE_LANE} Member",
+        f"{TIGHT_BASE_LANE} Rank": f"{TIGHT_BASE_LANE} Rank",
+        f"{TIGHT_BASE_LANE} Score": f"{TIGHT_BASE_LANE} Score",
+        f"{TIGHT_BASE_LANE} Reason": f"{TIGHT_BASE_LANE} Reason",
+        f"{TIGHT_BASE_LANE} Missing": f"{TIGHT_BASE_LANE} Missing",
+        f"{PULLBACK_LANE} Member": f"{PULLBACK_LANE} Member",
+        f"{PULLBACK_LANE} Rank": f"{PULLBACK_LANE} Rank",
+        f"{PULLBACK_LANE} Score": f"{PULLBACK_LANE} Score",
+        "Pullback Lane Quality": "Pullback Lane Quality",
+        f"{PULLBACK_LANE} Reason": f"{PULLBACK_LANE} Reason",
+        f"{PULLBACK_LANE} Missing": f"{PULLBACK_LANE} Missing",
+        f"{BREAKOUT_LANE} Member": f"{BREAKOUT_LANE} Member",
+        f"{BREAKOUT_LANE} Rank": f"{BREAKOUT_LANE} Rank",
+        f"{BREAKOUT_LANE} Score": f"{BREAKOUT_LANE} Score",
+        "Breakout Lane State": "Breakout Lane State",
+        f"{BREAKOUT_LANE} Reason": f"{BREAKOUT_LANE} Reason",
+        f"{BREAKOUT_LANE} Missing": f"{BREAKOUT_LANE} Missing",
         "Final Decision": "Final Decision",
         "Actionable": "Actionable",
         "Setup Integrity": "Setup Integrity",
@@ -3345,7 +3384,7 @@ def _append_report_field_reasons(reasons: list[str], value: object) -> None:
 
 
 def classify_pattern_discovery_sections(frame: pd.DataFrame) -> pd.DataFrame:
-    """Add deterministic Phase 1 report fields after canonical decisions.
+    """Add deterministic Phase 1 sections and Phase 2 lanes post-canonical.
 
     The function returns a copy, overwrites all incoming research/report fields,
     and never mutates canonical production fields.  It does not discover new
@@ -3357,7 +3396,7 @@ def classify_pattern_discovery_sections(frame: pd.DataFrame) -> pd.DataFrame:
         classified["Report Section"] = pd.Series(dtype="object")
         classified["Pattern Discovery Status"] = pd.Series(dtype="object")
         classified["Pattern Discovery Reason"] = pd.Series(dtype="object")
-        return classified
+        return annotate_setup_lanes(classified)
 
     sections: list[str] = []
     statuses: list[str] = []
@@ -3441,7 +3480,38 @@ def classify_pattern_discovery_sections(frame: pd.DataFrame) -> pd.DataFrame:
     classified["Report Section"] = sections
     classified["Pattern Discovery Status"] = statuses
     classified["Pattern Discovery Reason"] = explanations
-    return classified
+    return annotate_setup_lanes(classified)
+
+
+def pattern_watchlist_lane_sections(
+    pattern_watchlist: pd.DataFrame,
+) -> list[tuple[str, pd.DataFrame]]:
+    """Return independently ordered Phase 2 lane views plus unassigned rows."""
+    sections: list[tuple[str, pd.DataFrame]] = []
+    assigned = pd.Series(False, index=pattern_watchlist.index, dtype=bool)
+    for lane in LANE_NAMES:
+        member_column = f"{lane} Member"
+        rank_column = f"{lane} Rank"
+        if member_column not in pattern_watchlist:
+            lane_rows = pattern_watchlist.iloc[0:0].copy()
+        else:
+            members = pattern_watchlist[member_column].apply(
+                lambda value: value is True or str(value).strip().lower() == "true"
+            )
+            assigned = assigned | members
+            lane_rows = pattern_watchlist[members].copy()
+            if rank_column in lane_rows:
+                lane_rows = lane_rows.sort_values(
+                    [rank_column, "Ticker"], ascending=[True, True], na_position="last"
+                )
+        sections.append((lane, lane_rows.reset_index(drop=True)))
+    unassigned = pattern_watchlist[~assigned].copy()
+    if not unassigned.empty and "Ticker" in unassigned:
+        unassigned = unassigned.sort_values("Ticker")
+    sections.append(
+        ("Unassigned / Insufficient Lane Evidence", unassigned.reset_index(drop=True))
+    )
+    return sections
 
 
 def pattern_discovery_sections(
@@ -3476,6 +3546,20 @@ def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
         risk = pd.to_numeric(row.get("Maximum Risk R"), errors="coerce")
         risk_dollars = pd.to_numeric(row.get("Maximum Risk Dollars"), errors="coerce")
         shares = pd.to_numeric(row.get("Maximum Shares"), errors="coerce")
+        lane_members = {
+            lane: truth(row.get(f"{lane} Member", False)) for lane in LANE_NAMES
+        }
+        lane_scores = {}
+        lane_ranks = {}
+        lane_reasons = {}
+        lane_missing = {}
+        for lane in LANE_NAMES:
+            score = pd.to_numeric(row.get(f"{lane} Score"), errors="coerce")
+            rank = pd.to_numeric(row.get(f"{lane} Rank"), errors="coerce")
+            lane_scores[lane] = None if pd.isna(score) else float(score)
+            lane_ranks[lane] = None if pd.isna(rank) else int(rank)
+            lane_reasons[lane] = str(row.get(f"{lane} Reason", ""))
+            lane_missing[lane] = str(row.get(f"{lane} Missing", ""))
         records.append(
             {
                 "ticker": str(row.get("Ticker", "")),
@@ -3497,6 +3581,14 @@ def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
                 "pattern_discovery_reason": str(
                     row.get("Pattern Discovery Reason", "")
                 ),
+                "setup_lanes": str(row.get("Setup Lanes", "")),
+                "lane_members": lane_members,
+                "lane_scores": lane_scores,
+                "lane_ranks": lane_ranks,
+                "lane_reasons": lane_reasons,
+                "lane_missing": lane_missing,
+                "pullback_lane_quality": str(row.get("Pullback Lane Quality", "")),
+                "breakout_lane_state": str(row.get("Breakout Lane State", "")),
             }
         )
     return records
@@ -3537,7 +3629,7 @@ def write_forward_snapshot(
 ) -> Path:
     """Write a new immutable-by-construction forward-test evidence bundle."""
     snapshot_candidates = canonical.drop(
-        columns=list(PATTERN_REPORT_FIELDS), errors="ignore"
+        columns=list(FORWARD_SNAPSHOT_EXCLUDED_FIELDS), errors="ignore"
     ).copy()
     reference = generated_at or datetime.now(timezone.utc)
     if reference.tzinfo is None:
@@ -5323,8 +5415,6 @@ def write_email_summary(
     classified = classify_pattern_discovery_sections(report_source)
     for section, empty_text in (
         (ACTIONABLE_NOW, "No canonically actionable candidates."),
-        (PATTERN_WATCHLIST, "No research-only pattern candidates."),
-        (AVOID_FAILED, "No avoid / failed candidates."),
     ):
         lines.extend(["", section])
         section_rows = classified[classified["Report Section"].eq(section)]
@@ -5332,6 +5422,44 @@ def write_email_summary(
             lines.append(empty_text)
             continue
         for _, row in section_rows.iterrows():
+            lines.append(
+                f"{row.get('Ticker', '')} - {row.get('Final Decision', '')} - "
+                f"{row.get('Pattern Discovery Reason', '')}"
+            )
+
+    lines.extend(
+        [
+            "",
+            PATTERN_WATCHLIST,
+            "RESEARCH_ONLY; lane appearances are chart-review hypotheses for one canonical record.",
+        ]
+    )
+    pattern_rows = classified[classified["Report Section"].eq(PATTERN_WATCHLIST)]
+    if pattern_rows.empty:
+        lines.append("No research-only pattern candidates.")
+    for lane, lane_rows in pattern_watchlist_lane_sections(pattern_rows):
+        lines.extend(["", lane])
+        if lane_rows.empty:
+            lines.append("No candidates.")
+            continue
+        for _, row in lane_rows.iterrows():
+            rank = row.get(f"{lane} Rank", "") if lane in LANE_NAMES else ""
+            score = row.get(f"{lane} Score", "") if lane in LANE_NAMES else ""
+            reason = (
+                row.get(f"{lane} Reason", "")
+                if lane in LANE_NAMES
+                else row.get("Pattern Discovery Reason", "")
+            )
+            lines.append(
+                f"{row.get('Ticker', '')} - rank {rank} - score {score} - {reason}"
+            )
+
+    lines.extend(["", AVOID_FAILED])
+    avoid_rows = classified[classified["Report Section"].eq(AVOID_FAILED)]
+    if avoid_rows.empty:
+        lines.append("No avoid / failed candidates.")
+    else:
+        for _, row in avoid_rows.iterrows():
             lines.append(
                 f"{row.get('Ticker', '')} - {row.get('Final Decision', '')} - "
                 f"{row.get('Pattern Discovery Reason', '')}"
@@ -5437,7 +5565,18 @@ def write_markdown(
     if pattern_watchlist.empty:
         lines.extend(["No research-only pattern candidates.", ""])
     else:
-        lines.extend([markdown_table(pattern_watchlist), ""])
+        lines.extend(
+            [
+                "A ticker may appear in multiple lanes; it remains one canonical record with unchanged production risk.",
+                "",
+            ]
+        )
+    for lane, lane_rows in pattern_watchlist_lane_sections(pattern_watchlist):
+        lines.extend([f"### {lane}", ""])
+        if lane_rows.empty:
+            lines.extend(["No candidates.", ""])
+        else:
+            lines.extend([markdown_table(lane_rows), ""])
 
     lines.extend(
         [
@@ -5555,11 +5694,19 @@ def write_html(
         if actionable_now.empty
         else html_table(actionable_now)
     )
-    pattern_table = (
-        "<p>No research-only pattern candidates.</p>"
-        if pattern_watchlist.empty
-        else html_table(pattern_watchlist)
-    )
+    pattern_parts = [
+        (
+            "<p>No research-only pattern candidates.</p>"
+            if pattern_watchlist.empty
+            else "<p>A ticker may appear in multiple lanes; it remains one canonical record with unchanged production risk.</p>"
+        )
+    ]
+    for lane, lane_rows in pattern_watchlist_lane_sections(pattern_watchlist):
+        pattern_parts.append(f"<h3>{escape(lane)}</h3>")
+        pattern_parts.append(
+            "<p>No candidates.</p>" if lane_rows.empty else html_table(lane_rows)
+        )
+    pattern_table = "".join(pattern_parts)
     avoid_table = (
         "<p>No avoid / failed candidates.</p>"
         if avoid_failed.empty

@@ -57,7 +57,10 @@ The main candidate report separates three different uses:
   Phase 1 failure condition. A row may be waiting for an entry, observed target,
   complete structural R/R, confirmation, market permission, or portfolio
   capacity. Missing values stay missing; this section is not an alternative
-  trade list.
+  trade list. Phase 2 organises these rows into three independent chart-review
+  lanes: **Tight Base / VCP**, **Pullback to Support**, and **Breakout Retest /
+  High Flag**. A ticker can appear in more than one lane while remaining one
+  canonical record with one unchanged production decision and risk amount.
 - **Avoid / Failed** is `RESEARCH_ONLY`. It contains non-actionable rows with
   existing explicit failure evidence such as failed setup integrity, excessive
   extension, stale/warned critical price data, or invalid present stop geometry.
@@ -68,7 +71,33 @@ entry, stop, target, or R/R. A structurally interesting candidate blocked by
 portfolio heat may therefore remain in Pattern Watchlist while its canonical
 decision remains `NO TRADE` with zero risk.
 Immutable forward snapshots retain the untouched canonical production frame;
-the three Pattern Discovery report fields are not added to snapshot candidates.
+the Pattern Discovery report/lane fields and narrow Phase 2 research evidence
+are not added to snapshot candidates.
+
+### Reading Phase 2 setup lanes
+
+Each lane has its own membership, score, rank, reason, and missing-factor list.
+Ranks are deterministic: candidates with fewer missing factors come first, then
+higher lane score, then ticker alphabetically. Scores are for chart-review
+ordering only and never feed `Final Score`, canonical decisions, portfolio
+capacity, risk, or shares.
+
+- **Tight Base / VCP** emphasises contraction, ADR20 versus ADR60, volume dry-up,
+  pivot/high proximity, RS, and a narrow prior-advance proxy.
+- **Pullback to Support** separates constructive pullbacks from ambiguous or
+  broken structure using support distance, reclaim evidence, ATR depth,
+  higher-low preservation, volume, close strength, and prior advance. Merely
+  touching a moving average is not top-quality evidence.
+- **Breakout Retest / High Flag** distinguishes near-pivot, same-day unconfirmed
+  breakout, bounded post-breakout hold/consolidation, and invalidation from a
+  rolling lookback. It is not a persistent state machine. A same-day breakout
+  is explicitly not a confirmed retest or high flag. Required OHLCV sessions
+  are never deleted or replaced by older rows: incomplete event-search history
+  is shown as `BREAKOUT_WINDOW_INCOMPLETE`, and incomplete post-breakout history
+  as `RECENT_BREAKOUT_DATA_INCOMPLETE`; both are unranked.
+
+Missing evidence stays missing and is reported. An unassigned Pattern Watchlist
+row remains visible under **Unassigned / Insufficient Lane Evidence**.
 
 ## Daily workflow
 
@@ -76,9 +105,9 @@ the three Pattern Discovery report fields are not added to snapshot candidates.
 2. Run `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_dry_run.ps1` after development changes.
 3. Run `powershell -ExecutionPolicy Bypass -File .\scripts\run_daily_production.ps1` only for the verified production workflow.
 4. Read Market Regime and Portfolio Risk before candidates.
-5. Review Actionable Now first, use Pattern Watchlist only for chart discovery,
-   and inspect Avoid / Failed plus the diagnostic canonical states for rejection
-   reasons.
+5. Review Actionable Now for canonical trade eligibility. Use the three Pattern
+   Watchlist lanes only to decide which charts to open, and inspect Avoid /
+   Failed plus the diagnostic canonical states for rejection reasons.
 6. Make all trade decisions manually.
 
 ## Risk terms

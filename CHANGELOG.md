@@ -1,5 +1,22 @@
 # Project Changelog
 
+## 2026-09-29 - Pattern Discovery setup lanes Phase 2
+
+- Added three independent, deterministic `RESEARCH_ONLY` Pattern Watchlist
+  lanes: Tight Base / VCP, Pullback to Support, and Breakout Retest / High Flag.
+- Added fixed lane-specific scoring, explicit missing-factor treatment,
+  deterministic ticker tie-breaks, lane reasons, multi-lane membership, and an
+  unassigned/insufficient-evidence view without changing canonical production
+  decisions, allocation, risk, shares, stops, targets, or R/R.
+- Added narrow point-in-time OHLCV evidence for contraction, pullback structure,
+  and a bounded recent-breakout lookback. Same-day breakouts remain explicitly
+  unconfirmed; the persistent Phase 4 state machine remains deferred.
+- Hardened missing-data handling so fixed-session features never backfill from
+  older rows and incomplete breakout search/lifecycle windows remain unranked.
+- Updated CSV, Markdown, HTML, email, legacy preview, decision manifests,
+  semantic validation, forward-snapshot exclusion, user guidance, registry,
+  and regression coverage. No performance or trading-edge claim is made.
+
 ## 2026-09-29 - Pattern Discovery reporting Phase 1
 
 - Added a post-canonical, `RESEARCH_ONLY` report classification that separates

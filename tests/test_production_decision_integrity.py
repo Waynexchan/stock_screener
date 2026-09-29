@@ -852,6 +852,30 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
                         "Initial Stop": 101.0,
                     },
                 ),
+                candidate(
+                    "PATTERN_MULTI",
+                    **{
+                        "Category": "Developing Base Candidates",
+                        "Sector": "Consumer Cyclical",
+                        "Industry": "Specialty Retail",
+                        "Theme": "Industry: Specialty Retail",
+                        "Realistic Target": np.nan,
+                        "Realistic Target Source": "",
+                        "Reward/Risk Ratio": np.nan,
+                        "10 Day Range %": 7.0,
+                        "20 Day Range %": 13.0,
+                        "ADR20 %": 3.0,
+                        "ADR60 %": 4.2,
+                        "VCP Ratio": 0.71,
+                        "Research Prior Advance 60D %": 22.0,
+                        "Research Pullback Depth ATR": 2.1,
+                        "Research Pullback Volume Ratio": 0.68,
+                        "Research Higher Low Preserved": True,
+                        "Research Close Strength %": 78.0,
+                        "Research Volume Dry-Up Ratio": 0.66,
+                        "Research Breakout Evidence": "NEAR_PIVOT_UNCONFIRMED",
+                    },
+                ),
             ]
         ),
         context(),
@@ -917,6 +941,16 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
         assert heading in html
         assert heading in markdown
         assert heading in email
+    for lane in (
+        "Tight Base / VCP",
+        "Pullback to Support",
+        "Breakout Retest / High Flag",
+        "Unassigned / Insufficient Lane Evidence",
+    ):
+        assert lane in html
+        assert lane in markdown
+        assert lane in email
+    assert canonical.loc[canonical["Ticker"].eq("PATTERN_MULTI"), "Setup Lanes"].iloc[0]
 
     expected_manifest = run_screener.decision_manifest_records(canonical)
     assert read_html_manifest(html) == expected_manifest
@@ -945,6 +979,70 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
             assert str(row["Pattern Discovery Reason"]) in block
         for ticker in unexpected_rows["Ticker"].astype(str):
             assert ticker not in block
+
+
+def test_reports_render_all_phase2_lane_headings_when_pattern_watchlist_is_empty(
+    tmp_path: Path,
+):
+    canonical = run_screener.classify_pattern_discovery_sections(
+        run_screener.apply_canonical_decision_pipeline(
+            pd.DataFrame([candidate("ONLY_ACTIONABLE")]), context()
+        )
+    )
+    assert set(canonical["Report Section"]) == {"Actionable Now"}
+    categories = {
+        name: canonical[canonical["Category"].eq(name)].copy()
+        for name in run_screener.CATEGORY_PRIORITY
+    }
+    html_path = tmp_path / "empty_pattern.html"
+    markdown_path = tmp_path / "empty_pattern.md"
+    email_path = tmp_path / "empty_pattern_email.txt"
+    csv_path = tmp_path / "empty_pattern.csv"
+    canonical.to_csv(csv_path, index=False)
+    common = (
+        canonical,
+        canonical,
+        categories,
+        pd.DataFrame(columns=run_screener.TOP_INDUSTRY_COLUMNS),
+        pd.DataFrame(columns=run_screener.MARKET_COLUMNS),
+        "Strong",
+        "Deterministic test commentary",
+    )
+    run_screener.write_html(*common, str(html_path))
+    run_screener.write_markdown(*common, str(markdown_path))
+    run_screener.write_email_summary(
+        canonical,
+        canonical,
+        pd.DataFrame(),
+        "Strong",
+        "Deterministic test commentary",
+        str(email_path),
+        canonical=canonical,
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_report.py",
+            str(html_path),
+            str(csv_path),
+            str(email_path),
+        ],
+        cwd=Path(run_screener.__file__).resolve().parent,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    for path in (html_path, markdown_path, email_path):
+        text = path.read_text(encoding="utf-8")
+        for lane in (
+            "Tight Base / VCP",
+            "Pullback to Support",
+            "Breakout Retest / High Flag",
+            "Unassigned / Insufficient Lane Evidence",
+        ):
+            assert lane in text
 
 
 def test_email_body_hides_machine_readable_decision_manifest(

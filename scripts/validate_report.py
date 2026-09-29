@@ -12,6 +12,11 @@ import sys
 
 STATES = {"FULL", "HALF", "WATCH", "NO TRADE"}
 REPORT_SECTIONS = {"Actionable Now", "Pattern Watchlist", "Avoid / Failed"}
+LANES = (
+    "Tight Base / VCP",
+    "Pullback to Support",
+    "Breakout Retest / High Flag",
+)
 
 
 def truth(value: object) -> bool:
@@ -32,6 +37,13 @@ def is_present_nonfinite_number(value: object) -> bool:
     except (TypeError, ValueError):
         return False
     return not math.isnan(parsed) and not math.isfinite(parsed)
+
+
+def rank_number(value: object) -> int | None:
+    parsed = number(value)
+    if parsed is None:
+        return None
+    return int(parsed) if parsed.is_integer() else -1
 
 
 def report_text(value: object) -> str:
@@ -68,6 +80,51 @@ def manifest_record(row: dict[str, object]) -> dict[str, object]:
         row.get("Maximum Risk Dollars", row.get("maximum_risk_dollars"))
     )
     shares = number(row.get("Maximum Shares", row.get("maximum_shares")))
+    lane_members_raw = row.get("lane_members")
+    lane_scores_raw = row.get("lane_scores")
+    lane_ranks_raw = row.get("lane_ranks")
+    lane_reasons_raw = row.get("lane_reasons")
+    lane_missing_raw = row.get("lane_missing")
+    lane_members = {
+        lane: truth(
+            lane_members_raw.get(lane, False)
+            if isinstance(lane_members_raw, dict)
+            else row.get(f"{lane} Member", False)
+        )
+        for lane in LANES
+    }
+    lane_scores = {
+        lane: number(
+            lane_scores_raw.get(lane)
+            if isinstance(lane_scores_raw, dict)
+            else row.get(f"{lane} Score")
+        )
+        for lane in LANES
+    }
+    lane_ranks = {
+        lane: rank_number(
+            lane_ranks_raw.get(lane)
+            if isinstance(lane_ranks_raw, dict)
+            else row.get(f"{lane} Rank")
+        )
+        for lane in LANES
+    }
+    lane_reasons = {
+        lane: str(
+            lane_reasons_raw.get(lane, "")
+            if isinstance(lane_reasons_raw, dict)
+            else row.get(f"{lane} Reason", "")
+        )
+        for lane in LANES
+    }
+    lane_missing = {
+        lane: str(
+            lane_missing_raw.get(lane, "")
+            if isinstance(lane_missing_raw, dict)
+            else row.get(f"{lane} Missing", "")
+        )
+        for lane in LANES
+    }
     return {
         "ticker": str(row.get("Ticker", row.get("ticker", ""))),
         "decision": str(row.get("Final Decision", row.get("decision", ""))),
@@ -89,6 +146,18 @@ def manifest_record(row: dict[str, object]) -> dict[str, object]:
         ),
         "pattern_discovery_reason": str(
             row.get("Pattern Discovery Reason", row.get("pattern_discovery_reason", ""))
+        ),
+        "setup_lanes": str(row.get("Setup Lanes", row.get("setup_lanes", ""))),
+        "lane_members": lane_members,
+        "lane_scores": lane_scores,
+        "lane_ranks": lane_ranks,
+        "lane_reasons": lane_reasons,
+        "lane_missing": lane_missing,
+        "pullback_lane_quality": str(
+            row.get("Pullback Lane Quality", row.get("pullback_lane_quality", ""))
+        ),
+        "breakout_lane_state": str(
+            row.get("Breakout Lane State", row.get("breakout_lane_state", ""))
         ),
     }
 
@@ -121,11 +190,11 @@ def read_email_manifest(path: Path) -> list[dict[str, object]]:
 
 def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
     errors: list[str] = []
-    tickers = [str(row.get("ticker", "")) for row in rows]
+    normalized = [manifest_record(row) for row in rows]
+    tickers = [str(row.get("ticker", "")) for row in normalized]
     if len(tickers) != len(set(tickers)):
         errors.append("duplicate tickers in decision manifest")
-    for raw in rows:
-        row = manifest_record(raw)
+    for row in normalized:
         ticker = row["ticker"] or "<missing ticker>"
         state = row["decision"]
         risk = row["maximum_risk_r"]
@@ -136,6 +205,9 @@ def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
         report_section = str(row["report_section"])
         pattern_status = str(row["pattern_discovery_status"])
         pattern_reason = str(row["pattern_discovery_reason"]).strip()
+        setup_lanes = {
+            item.strip() for item in str(row["setup_lanes"]).split(";") if item.strip()
+        }
         if state not in STATES:
             errors.append(f"{ticker}: unsupported state {state}")
             continue
@@ -184,6 +256,36 @@ def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
                 )
         if not pattern_reason:
             errors.append(f"{ticker}: pattern discovery reason missing")
+        unknown_lanes = setup_lanes.difference(LANES)
+        if unknown_lanes:
+            errors.append(f"{ticker}: unsupported setup lane")
+        for lane in LANES:
+            member = bool(row["lane_members"][lane])
+            score = row["lane_scores"][lane]
+            rank = row["lane_ranks"][lane]
+            reason = str(row["lane_reasons"][lane]).strip()
+            if member != (lane in setup_lanes):
+                errors.append(
+                    f"{ticker}: setup lane summary contradicts {lane} membership"
+                )
+            if member and report_section != "Pattern Watchlist":
+                errors.append(
+                    f"{ticker}: lane membership is only valid in Pattern Watchlist"
+                )
+            if member and (score is None or rank is None or rank < 1 or not reason):
+                errors.append(f"{ticker}: {lane} member lacks score/rank/reason")
+            if not member and (score is not None or rank is not None):
+                errors.append(f"{ticker}: non-member has {lane} score or rank")
+            if report_section != "Pattern Watchlist" and reason:
+                errors.append(f"{ticker}: non-pattern row has {lane} reason")
+    for lane in LANES:
+        ranks = sorted(
+            int(row["lane_ranks"][lane])
+            for row in normalized
+            if row["lane_members"][lane] and row["lane_ranks"][lane] is not None
+        )
+        if ranks != list(range(1, len(ranks) + 1)):
+            errors.append(f"{lane}: ranks must be unique and contiguous")
     return errors
 
 
@@ -264,6 +366,10 @@ def main(argv: list[str] | None = None) -> int:
         "WATCH",
         "NO TRADE",
         "Pattern Watchlist",
+        "Tight Base / VCP",
+        "Pullback to Support",
+        "Breakout Retest / High Flag",
+        "Unassigned / Insufficient Lane Evidence",
         "Actionable Now",
         "Avoid / Failed",
         "Data and Logic Warnings",
