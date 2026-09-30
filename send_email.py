@@ -12,7 +12,8 @@ from pathlib import Path
 HTML_ATTACHMENT = "daily_watchlist.html"
 EMAIL_SUMMARY = "email_summary.txt"
 SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
+SMTP_PORT = 465
+SMTP_TIMEOUT_SECONDS = 30
 SUBJECT = "Daily US Stock Watchlist"
 DATA_FAILURE_SUBJECT = "Stock Screener Data Failure"
 DATA_FAILURE_BODY = (
@@ -86,6 +87,13 @@ def build_data_failure_message(sender: str, recipient: str) -> EmailMessage:
     return message
 
 
+def deliver_message(message: EmailMessage, address: str, password: str) -> None:
+    """Deliver one message over Gmail implicit TLS without automatic retries."""
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+        smtp.login(address, password)
+        smtp.send_message(message)
+
+
 def send_email(test_mode: bool = False) -> int:
     load_dotenv_if_available()
 
@@ -105,10 +113,7 @@ def send_email(test_mode: bool = False) -> int:
         return 0
 
     message = build_message(gmail_address, gmail_address, attachment_path)
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-        smtp.starttls()
-        smtp.login(gmail_address, gmail_app_password)
-        smtp.send_message(message)
+    deliver_message(message, gmail_address, gmail_app_password)
 
     print("Email sent.")
     return 0
@@ -128,10 +133,7 @@ def send_data_failure_email(test_mode: bool = False) -> int:
         return 0
 
     message = build_data_failure_message(gmail_address, gmail_address)
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-        smtp.starttls()
-        smtp.login(gmail_address, gmail_app_password)
-        smtp.send_message(message)
+    deliver_message(message, gmail_address, gmail_app_password)
 
     print("Data failure email sent.")
     return 0

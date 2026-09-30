@@ -1732,8 +1732,19 @@ def get_market_condition(
     )
 
 
+def usable_close_prices(history: pd.DataFrame) -> pd.Series:
+    """Return finite numeric closes, or an empty series for malformed history."""
+    if not isinstance(history, pd.DataFrame) or "Close" not in history.columns:
+        return pd.Series(dtype=float)
+    close_values = history["Close"]
+    if not isinstance(close_values, pd.Series):
+        return pd.Series(dtype=float)
+    numeric = pd.to_numeric(close_values, errors="coerce")
+    return numeric[numeric.map(np.isfinite)]
+
+
 def period_return(history: pd.DataFrame, trading_days: int) -> float:
-    closes = history["Close"].dropna()
+    closes = usable_close_prices(history)
     if len(closes) <= trading_days:
         return np.nan
     return pct(closes.iloc[-1] - closes.iloc[-trading_days], closes.iloc[-trading_days])
@@ -1742,7 +1753,7 @@ def period_return(history: pd.DataFrame, trading_days: int) -> float:
 def period_return_as_of(
     history: pd.DataFrame, trading_days: int, end_offset: int = 0
 ) -> float:
-    closes = history["Close"].dropna()
+    closes = usable_close_prices(history)
     end_index = len(closes) - 1 - end_offset
     start_index = end_index - trading_days
     if start_index < 0 or end_index <= start_index:
@@ -1857,18 +1868,19 @@ def calculate_recent_rs_metrics(
     rows = []
     for ticker in tickers:
         history = histories.get(ticker, pd.DataFrame())
-        values = {
+        relative_values = {
             f"Relative Return {days}D": relative_return(history, spy_history, days)
             for days in (5, 10, 20, 30, 60, 126)
         }
+        if all(pd.isna(value) for value in relative_values.values()):
+            continue
+        values = dict(relative_values)
         values.update(
             {
                 f"Return {days}D": period_return_as_of(history, days)
                 for days in (5, 10, 20, 30)
             }
         )
-        if all(pd.isna(value) for value in values.values()):
-            continue
         rows.append({"Ticker": ticker, **values})
     if not rows:
         return {}
@@ -6271,10 +6283,10 @@ def run_report_preview_command(
     return 0
 
 
-def send_watchlist_email() -> None:
+def send_watchlist_email() -> int:
     if not config.EMAIL_ENABLED:
         print("Email sending disabled.")
-        return
+        return 0
 
     try:
         subprocess.run(
@@ -6282,16 +6294,18 @@ def send_watchlist_email() -> None:
             check=True,
             text=True,
         )
+        return 0
     except subprocess.CalledProcessError as exc:
         print(f"Email sending failed: {exc}")
     except OSError as exc:
         print(f"Email sending failed: {exc}")
+    return 1
 
 
-def send_data_failure_email() -> None:
+def send_data_failure_email() -> int:
     if not config.EMAIL_ENABLED:
         print("Data failure email disabled.")
-        return
+        return 0
 
     try:
         subprocess.run(
@@ -6299,10 +6313,12 @@ def send_data_failure_email() -> None:
             check=True,
             text=True,
         )
+        return 0
     except subprocess.CalledProcessError as exc:
         print(f"Data failure email failed: {exc}")
     except OSError as exc:
         print(f"Data failure email failed: {exc}")
+    return 1
 
 
 def print_category_summary(
@@ -6956,7 +6972,7 @@ def main(argv: list[str] | None = None) -> int:
         market_result.metrics,
     )
     print_ai_status(ai_result)
-    send_watchlist_email()
+    email_exit_code = send_watchlist_email()
 
     print("\nMarket Status")
     print(f"Status: {market_result.status}")
@@ -6999,7 +7015,7 @@ def main(argv: list[str] | None = None) -> int:
             else top_industries.to_string(index=False)
         )
     print(f"\nExported {OUTPUT_CSV}, {OUTPUT_MD}, and {OUTPUT_HTML}")
-    return 0
+    return email_exit_code
 
 
 if __name__ == "__main__":

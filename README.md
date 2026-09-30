@@ -309,6 +309,12 @@ Before exporting or emailing a normal watchlist, the screener validates:
 - At least one of SPY or QQQ has valid market data.
 - Price download success rate is at least 70%.
 
+An individual price history with no usable `Close` field is treated as missing
+evidence: return and RS calculations remain unavailable for that symbol and the
+symbol cannot become actionable from invented data. The malformed history must
+not crash the whole run; the aggregate run-quality checks still decide whether
+the remaining data is sufficient for a normal report.
+
 The console prints:
 
 - Universe Count
@@ -361,6 +367,12 @@ The screener first keeps liquid Stage 2-style stocks:
 
 `run_screener.py` writes `email_summary.txt` and calls `send_email.py`.
 
+Delivery uses Gmail implicit TLS on port 465 with a finite connection timeout.
+When email is enabled, a connection, authentication, or send failure makes the
+production command fail so Task Scheduler records the problem. Delivery is
+attempted once; the sender does not switch transports automatically because an
+ambiguous timeout could otherwise duplicate a message.
+
 The email body includes:
 
 - Market Status
@@ -386,9 +398,13 @@ On Windows Task Scheduler:
 1. Create a basic task.
 2. Trigger it after the daily market close or before your review session.
 3. Set the action to start a program.
-4. Program/script: path to `python.exe`.
-5. Add arguments: `run_screener.py`.
+4. Program/script: `powershell.exe`.
+5. Add arguments: `-NoProfile -ExecutionPolicy Bypass -File "<project>\scripts\run_daily_production.ps1"`.
 6. Start in: the full path to this project folder.
+
+The scheduled task must invoke the production wrapper, which verifies the
+project before enabling a normal run. It must not call `run_screener.py`
+directly.
 7. Store secrets in Windows environment variables or a local `.env` file.
 
 ## How AI Commentary Works

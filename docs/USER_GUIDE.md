@@ -247,6 +247,13 @@ HTML report, but is not printed as JSON in the message body.
 The primary table separates incomplete secondary confirmation from genuine hard
 invalidation and does not repeat the combined diagnostic reason text.
 
+Email delivery uses Gmail implicit TLS on port 465 with a finite connection
+timeout. If email is enabled and delivery fails, the generated report remains
+available locally but the production command exits unsuccessfully so Windows
+Task Scheduler exposes the failure. The sender attempts delivery once and does
+not automatically fall back to another SMTP transport, avoiding duplicate
+messages after an ambiguous timeout.
+
 Never lower an active stop without a documented override reason. Record completed trades in `data/completed_trades.csv` using actual realised R, fees, and slippage. Expectancy remains `Insufficient sample` until the configured minimum sample is reached. One or two losses do not justify changing rules; rule changes require tests and an adequate completed-trade sample.
 
 ## Verification failures and configuration
