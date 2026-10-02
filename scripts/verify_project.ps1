@@ -30,9 +30,9 @@ function Invoke-Stage {
 Set-Location $projectRoot
 Invoke-Stage "Python syntax" { python -m compileall -q -x "[\\/]\.yfinance_cache|[\\/]logs" . }
 if (-not $SkipTooling) {
-    Invoke-Stage "Ruff format check" { python -m ruff format --check config.py decision_system.py run_screener.py ai_analysis.py send_email.py sample_daily_run.py tests }
-    Invoke-Stage "Ruff lint" { python -m ruff check config.py decision_system.py run_screener.py ai_analysis.py send_email.py sample_daily_run.py tests }
-    Invoke-Stage "mypy" { python -m mypy decision_system.py sample_daily_run.py --ignore-missing-imports --disable-error-code import-untyped }
+    Invoke-Stage "Ruff format check" { python -m ruff format --check config.py decision_system.py run_screener.py production_monitor.py ai_analysis.py send_email.py sample_daily_run.py tests }
+    Invoke-Stage "Ruff lint" { python -m ruff check config.py decision_system.py run_screener.py production_monitor.py ai_analysis.py send_email.py sample_daily_run.py tests }
+    Invoke-Stage "mypy" { python -m mypy decision_system.py sample_daily_run.py production_monitor.py --ignore-missing-imports --disable-error-code import-untyped }
 }
 Invoke-Stage "Unit and regression tests" { python -m pytest -q }
 Invoke-Stage "Legacy unittest suite" { cmd.exe /d /c "python -m unittest 2>&1" }

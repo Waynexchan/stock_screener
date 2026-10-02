@@ -31,15 +31,18 @@ function Get-ProtectedState {
         "config.py",
         "decision_system.py",
         "run_screener.py",
+        "production_monitor.py",
         "ai_analysis.py",
         "send_email.py",
         "scripts\run_daily_production.ps1",
+        "scripts\check_daily_run.ps1",
         "daily_watchlist.csv",
         "daily_watchlist.md",
         "daily_watchlist.html",
         "daily_watchlist_last_good.csv",
         "daily_watchlist_last_good.md",
         "daily_watchlist_last_good.html",
+        "daily_watchlist_publish.json",
         "email_summary.txt",
         "summary_history.csv"
     )

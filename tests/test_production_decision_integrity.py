@@ -440,7 +440,7 @@ def test_export_path_classifies_after_canonical_decision(tmp_path: Path, monkeyp
         captured["canonical"] = args[7].copy()
 
     monkeypatch.setattr(run_screener, "write_email_summary", capture_email)
-    monkeypatch.setattr(run_screener, "validate_exported_reports", lambda: None)
+    monkeypatch.setattr(run_screener, "publish_staged_reports", lambda *args: None)
 
     def capture_snapshot(*args):
         captured["snapshot"] = args[0].copy()

@@ -97,6 +97,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1
 # Inspect latest logs
 Get-Content .\logs\verify_project.log -Tail 100
 Get-Content .\logs\production.log -Tail 100
+
+# Independently verify the expected-session production run and report bundle
+powershell -ExecutionPolicy Bypass -File .\scripts\check_daily_run.ps1
 ```
 
 ## Key files
@@ -107,6 +110,15 @@ Get-Content .\logs\production.log -Tail 100
 - `ai_analysis.py`: optional AI commentary and ranking guardrails.
 - `send_email.py`: Gmail SMTP delivery of the generated HTML report and failure notices.
 - `scripts/verify_project.ps1`: authoritative verification workflow.
+- `production_monitor.py`: production status lifecycle, deduplicated operational
+  failure alerts with cross-process serialized delivery/recovery and runtime-
+  generation revalidation, plus expected-session report freshness/integrity
+  checks.
+- `scripts/check_daily_run.ps1`: watchdog entry point for a separate Scheduled
+  Task or external automation; it never runs production.
+- `scripts/run_daily_production.ps1`: production entry point; owns a
+  project-specific Windows mutex for the complete run and rejects concurrent
+  invocations before status or report state can change.
 - `scripts/validate_report.py`: CSV/HTML/email manifest and semantic validation.
 - `sample_daily_run.py`: deterministic offline sample report.
 - `tests/` and `test_data_quality.py`: behavior, regression, integration, data-quality, and production-integrity coverage.
@@ -122,7 +134,14 @@ Get-Content .\logs\production.log -Tail 100
 
 ## Runtime and historical artifacts
 
-Runtime files include `daily_watchlist*`, `email_summary.txt`, `summary_history.csv`, universe and metadata caches, `.yfinance_cache/`, `logs/`, and `data/`. Immutable forward evidence is stored under `output/forward_snapshots/<signal-date>/<run-id>/`. Local open positions, account equity, and completed trades live under `data/`. These are ignored and must not be casually committed or rewritten.
+Runtime files include `daily_watchlist*`, `email_summary.txt`,
+`summary_history.csv`, `data_failure_report.txt`, per-run/status/alert logs,
+universe and metadata caches, `.yfinance_cache/`, `logs/`, and `data/`.
+`daily_watchlist_publish.json` binds the current CSV, Markdown, HTML, and email
+summary to one production run and trading date by content hash. Immutable
+forward evidence is stored under `output/forward_snapshots/<signal-date>/<run-id>/`.
+Local open positions, account equity, and completed trades live under `data/`.
+These are ignored and must not be casually committed or rewritten.
 
 ## Important historical bugs and concerns
 

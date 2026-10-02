@@ -16,6 +16,7 @@ SMTP_PORT = 465
 SMTP_TIMEOUT_SECONDS = 30
 SUBJECT = "Daily US Stock Watchlist"
 DATA_FAILURE_SUBJECT = "Stock Screener Data Failure"
+OPERATIONAL_FAILURE_SUBJECT = "Stock Screener Production Failure"
 DATA_FAILURE_BODY = (
     "The stock screener could not obtain enough valid Yahoo Finance data.\n"
     "The previous valid watchlist has been preserved.\n"
@@ -87,6 +88,17 @@ def build_data_failure_message(sender: str, recipient: str) -> EmailMessage:
     return message
 
 
+def build_operational_failure_message(
+    sender: str, recipient: str, report_body: str
+) -> EmailMessage:
+    message = EmailMessage()
+    message["From"] = sender
+    message["To"] = recipient
+    message["Subject"] = OPERATIONAL_FAILURE_SUBJECT
+    message.set_content(report_body)
+    return message
+
+
 def deliver_message(message: EmailMessage, address: str, password: str) -> None:
     """Deliver one message over Gmail implicit TLS without automatic retries."""
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
@@ -139,8 +151,36 @@ def send_data_failure_email(test_mode: bool = False) -> int:
     return 0
 
 
+def send_operational_failure_email(
+    report_path: str | Path = "data_failure_report.txt", test_mode: bool = False
+) -> int:
+    load_dotenv_if_available()
+
+    path = Path(report_path)
+    if not path.is_file():
+        print(f"Error: {path} does not exist.")
+        return 1
+    gmail_address = os.environ.get("GMAIL_ADDRESS")
+    gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
+    if not gmail_address or not gmail_app_password:
+        print("Error: GMAIL_ADDRESS and GMAIL_APP_PASSWORD must be set.")
+        return 1
+    if test_mode:
+        print("Operational failure email test passed.")
+        return 0
+
+    message = build_operational_failure_message(
+        gmail_address, gmail_address, path.read_text(encoding="utf-8")
+    )
+    deliver_message(message, gmail_address, gmail_app_password)
+    print("Operational failure email sent.")
+    return 0
+
+
 def main() -> int:
     args = set(sys.argv[1:])
+    if "operational_failure" in args:
+        return send_operational_failure_email(test_mode="test" in args)
     if "data_failure" in args:
         return send_data_failure_email(test_mode="test" in args)
     return send_email(test_mode="test" in args)

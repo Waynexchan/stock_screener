@@ -12,10 +12,12 @@ import sys
 import time
 import shutil
 import logging
+import tempfile
 from dataclasses import asdict, dataclass, field, is_dataclass, replace
 from html import escape
 from datetime import date, datetime, time as datetime_time, timezone
 from pathlib import Path
+from typing import Callable
 from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 
@@ -74,6 +76,7 @@ LAST_GOOD_CSV = "daily_watchlist_last_good.csv"
 LAST_GOOD_MD = "daily_watchlist_last_good.md"
 LAST_GOOD_HTML = "daily_watchlist_last_good.html"
 DATA_FAILURE_REPORT = "data_failure_report.txt"
+REPORT_PUBLISH_MANIFEST = "daily_watchlist_publish.json"
 SUMMARY_HISTORY_CSV = "summary_history.csv"
 LAST_ELIGIBLE_UNIVERSE = pd.DataFrame()
 LAST_METADATA_DIAGNOSTICS: dict[str, object] = {}
@@ -5505,6 +5508,71 @@ def validate_exported_reports(
         raise RuntimeError(f"Exported report semantic validation failed: {detail}")
 
 
+def publish_staged_reports(
+    staged_paths: dict[str, Path],
+    public_paths: dict[str, Path],
+    manifest_path: str | Path,
+    signal_trading_date: str,
+    validator: Callable[[], None],
+    generated_at: datetime | None = None,
+    run_id: str | None = None,
+) -> None:
+    """Validate a staged report bundle, then atomically replace public files.
+
+    The manifest is replaced last.  A process interruption during replacement
+    is therefore detectable by the watchdog through its content hashes.
+    """
+    required = ("csv", "markdown", "html", "email")
+    if set(staged_paths) != set(required) or set(public_paths) != set(required):
+        raise ValueError("report bundle must contain csv, markdown, html, and email")
+    validator()
+    missing = [key for key in required if not Path(staged_paths[key]).is_file()]
+    if missing:
+        raise RuntimeError(f"staged report bundle is incomplete: {', '.join(missing)}")
+
+    published_at = generated_at or datetime.now(timezone.utc)
+    if published_at.tzinfo is None:
+        published_at = published_at.replace(tzinfo=timezone.utc)
+    manifest_target = Path(manifest_path)
+    manifest_target.parent.mkdir(parents=True, exist_ok=True)
+    manifest_temporary = Path(staged_paths["csv"]).parent / (
+        manifest_target.name + ".tmp"
+    )
+    payload = {
+        "schema_version": 1,
+        "published_at": published_at.isoformat(),
+        "signal_trading_date": signal_trading_date,
+        "run_id": run_id
+        if run_id is not None
+        else os.environ.get("PRODUCTION_RUN_ID", ""),
+        "files": {
+            Path(public_paths[key]).name: _sha256_file(Path(staged_paths[key]))
+            for key in required
+        },
+    }
+    manifest_temporary.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    for key in required:
+        destination = Path(public_paths[key])
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(Path(staged_paths[key]), destination)
+    os.replace(manifest_temporary, manifest_target)
+
+
+def report_signal_trading_date(
+    canonical: pd.DataFrame, generated_at: datetime | None = None
+) -> str:
+    values = [
+        str(value)
+        for value in canonical.get("Signal Date", pd.Series(dtype=str)).dropna()
+        if str(value).strip()
+    ]
+    return (
+        max(values) if values else expected_latest_us_session(generated_at).isoformat()
+    )
+
+
 def write_markdown(
     top_action_list: pd.DataFrame,
     daily_focus: pd.DataFrame,
@@ -6071,44 +6139,72 @@ def export_results(
     history_delta = report_history_delta(history_snapshot, load_last_report_history())
     history_trend = report_history_trend(history_snapshot)
     watchlist = combined_watchlist(categories)
-    watchlist.to_csv(OUTPUT_CSV, index=False)
-    write_markdown(
-        top_action_list,
-        daily_focus,
-        categories,
-        top_industries,
-        market_df,
-        market_status,
-        ai_commentary,
-        OUTPUT_MD,
-        history_delta,
-        history_trend,
-        decision_context,
-    )
-    write_html(
-        top_action_list,
-        daily_focus,
-        categories,
-        top_industries,
-        market_df,
-        market_status,
-        ai_commentary,
-        OUTPUT_HTML,
-        history_delta,
-        history_trend,
-        decision_context,
-    )
-    write_email_summary(
-        top_action_list,
-        daily_focus,
-        top_industries,
-        market_status,
-        ai_commentary,
-        EMAIL_SUMMARY,
-        decision_context,
-        canonical,
-    )
-    validate_exported_reports()
+    staging_root = Path("logs")
+    staging_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix="daily_watchlist_publish_", dir=staging_root
+    ) as staging_directory:
+        staging = Path(staging_directory)
+        staged_paths = {
+            "csv": staging / Path(OUTPUT_CSV).name,
+            "markdown": staging / Path(OUTPUT_MD).name,
+            "html": staging / Path(OUTPUT_HTML).name,
+            "email": staging / Path(EMAIL_SUMMARY).name,
+        }
+        public_paths = {
+            "csv": Path(OUTPUT_CSV),
+            "markdown": Path(OUTPUT_MD),
+            "html": Path(OUTPUT_HTML),
+            "email": Path(EMAIL_SUMMARY),
+        }
+        watchlist.to_csv(staged_paths["csv"], index=False)
+        write_markdown(
+            top_action_list,
+            daily_focus,
+            categories,
+            top_industries,
+            market_df,
+            market_status,
+            ai_commentary,
+            str(staged_paths["markdown"]),
+            history_delta,
+            history_trend,
+            decision_context,
+        )
+        write_html(
+            top_action_list,
+            daily_focus,
+            categories,
+            top_industries,
+            market_df,
+            market_status,
+            ai_commentary,
+            str(staged_paths["html"]),
+            history_delta,
+            history_trend,
+            decision_context,
+        )
+        write_email_summary(
+            top_action_list,
+            daily_focus,
+            top_industries,
+            market_status,
+            ai_commentary,
+            str(staged_paths["email"]),
+            decision_context,
+            canonical,
+        )
+        publish_staged_reports(
+            staged_paths,
+            public_paths,
+            REPORT_PUBLISH_MANIFEST,
+            report_signal_trading_date(canonical_production),
+            lambda: validate_exported_reports(
+                str(staged_paths["html"]),
+                str(staged_paths["csv"]),
+                str(staged_paths["email"]),
+            ),
+        )
     LAST_FORWARD_SNAPSHOT = str(
         write_forward_snapshot(canonical_production, market_df, decision_context)
     )
@@ -6961,7 +7057,6 @@ def main(argv: list[str] | None = None) -> int:
     if not run_quality.valid:
         write_data_failure_report(run_quality)
         print("DATA FAILURE: Previous valid watchlist preserved.")
-        send_data_failure_email()
         return 1
 
     watchlist, top_action_list, daily_focus, categories, ai_result = export_results(

@@ -4,6 +4,19 @@ Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJE
 
 ## Current state
 
+- Production-run resilience now records `STARTED`/`FAILED`/`SUCCEEDED` status,
+  preserves an independent UTF-8 log for every attempt, routes verification,
+  Python, and unexpected wrapper failures through one deduplicated notification
+  handler, clears recovered alert state, and marks stale failure content resolved
+  after success. Report CSV, Markdown, HTML, and email-summary files are staged
+  and semantically validated before same-filesystem replacement; a manifest
+  written last binds their hashes, trading date, and production run ID. The
+  watchdog uses the expected US trading-session lifecycle rather than a London
+  calendar-date equality check. The production wrapper owns a project-specific
+  Windows mutex before any status or production work. `scripts/check_daily_run.ps1`
+  is the independent watchdog entry point for a separate Scheduled Task or
+  external automation. No Windows Scheduled Task was created or modified, and
+  no screening, decision, sizing, or research rule changed.
 - `PATTERN_DISCOVERY_REPORTING_PHASE_1` separates the post-canonical report into
   Actionable Now, Pattern Watchlist, and Avoid / Failed. The latter two are
   explicitly `RESEARCH_ONLY`; missing plan values remain missing, and the
@@ -228,6 +241,20 @@ Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-second-review production-run-resilience verification on 2026-10-02: PASS —
+the alert lifecycle now serializes claim/state/delivery/clear across threads and
+processes, and watchdog outcomes revalidate both runtime generation and alert
+revision before applying.  Failure summaries are normalized and bounded in the
+wrapper, then transferred through a unique UTF-8 temporary file rather than a
+command-line payload.  Focused resilience/email/integrity checks passed 85
+tests without changing production runtime artifacts.  The canonical FULL gate
+passed Python syntax, Ruff, mypy, 480 pytest tests, 118 legacy unittest tests,
+integration/invariant checks, the offline sample dry run, and semantic report
+validation.  The research gate passed 196 tests, expected gated MODEL_0
+`BLOCKED_DATA_NOT_READY`, and production isolation.  Post-fix diff review found
+no remaining P0/P1/P2 issue.  This uncommitted evidence grants no commit, merge,
+push, Scheduled Task modification, release, email, or production-run authority.
 
 Post-review-governance-fix verification on 2026-09-24: PASS — the canonical
 FULL gate passed 386 pytest tests, 118 legacy unittest tests, Python syntax,

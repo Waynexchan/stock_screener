@@ -81,6 +81,22 @@ def test_data_failure_email_uses_implicit_tls_once(monkeypatch):
     assert len(smtp.messages) == 1
 
 
+def test_operational_failure_email_uses_report_body_once(tmp_path: Path, monkeypatch):
+    RecordingSMTP.instances.clear()
+    report = tmp_path / "failure.txt"
+    report.write_text("production crashed at python stage", encoding="utf-8")
+    monkeypatch.setenv("GMAIL_ADDRESS", "sender@example.com")
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "app-password")
+    monkeypatch.setattr(send_email.smtplib, "SMTP_SSL", RecordingSMTP)
+
+    assert send_email.send_operational_failure_email(report) == 0
+
+    assert len(RecordingSMTP.instances) == 1
+    message = RecordingSMTP.instances[0].messages[0]
+    assert message["Subject"] == send_email.OPERATIONAL_FAILURE_SUBJECT
+    assert "production crashed at python stage" in message.get_content()
+
+
 def test_smtp_failure_propagates_without_retry(tmp_path: Path, monkeypatch):
     FailingSMTP.instances.clear()
     (tmp_path / send_email.HTML_ATTACHMENT).write_text(

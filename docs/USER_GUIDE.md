@@ -110,6 +110,43 @@ row remains visible under **Unassigned / Insufficient Lane Evidence**.
    Failed plus the diagnostic canonical states for rejection reasons.
 6. Make all trade decisions manually.
 
+The production wrapper records a machine-readable result in
+`logs/production_status.json` and keeps one UTF-8 log per attempt under
+`logs/production_runs/`. `logs/production.log` points to and mirrors the latest
+attempt for compatibility. Any verification failure, Python crash, or non-zero
+production exit writes `data_failure_report.txt` and attempts one deduplicated
+failure email when email is enabled. A successful run marks the previous
+failure report resolved.
+
+Run the independent freshness watchdog after the expected production time:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check_daily_run.ps1
+```
+
+Configure that command as a separate Scheduled Task or external automation. It
+checks that the latest run belongs to the expected US trading-session lifecycle
+and succeeded, that the published watchlist uses that session, and that CSV,
+Markdown, HTML, and email summary hashes and semantics still agree. The window
+uses New York market-close time, so a valid run may cross London midnight and
+remain current over regular weekends and full-day US market holidays. A healthy
+check clears the prior alert lifecycle so a later recurrence can alert again.
+Alert delivery and recovery clearing share a cross-process lock, and the
+watchdog revalidates the observed status/report generation before clearing, so
+it cannot retire an in-flight or newly changed incident. It never starts or
+retries production. Exceptional exchange closures require manual awareness.
+Creating or changing the Scheduled Task remains an explicit operator action.
+
+The production wrapper holds a project-specific Windows mutex before it writes
+status or starts verification. If another scheduled or manual invocation is
+already active, the second process exits with code `75` and does not overwrite
+the active run's status or reports.
+
+Failure output is whitespace-normalized and limited before it is logged. The
+wrapper transfers that summary to the failure monitor through a unique UTF-8
+temporary file, avoiding the Windows command-line length limit even when a tool
+emits unusually large or option-like text.
+
 ## Risk terms
 
 Initial Risk is entry minus initial stop, multiplied by shares. It is fixed for trade R and expectancy. Current Open Risk is current price minus the active stop, multiplied by shares. P&L at Stop is the projected trade result if the active stop fills exactly. Portfolio Heat sums Effective Open Risk, including the overnight gap floor. Market Regime determines maximum heat and whether new risk is permitted.
@@ -259,6 +296,12 @@ Never lower an active stop without a documented override reason. Record complete
 ## Verification failures and configuration
 
 If verification fails, do not run or email the normal report. Read `logs/verify_project.log`, correct the root cause, rerun the failed stage, then rerun the complete verification script. Change thresholds only in `config.py`, add tests explaining the intended behaviour, and rerun verification.
+
+Reports are generated in a staging directory and semantically validated before
+publication. `daily_watchlist_publish.json` is written last and contains the
+production run ID, expected trading date, and content hashes used by the
+watchdog. A mismatch means the report bundle must be treated as failed even if
+individual files are readable.
 
 ## Research-only portfolio backtest
 

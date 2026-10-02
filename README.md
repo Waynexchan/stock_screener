@@ -186,6 +186,7 @@ The script exports:
 - `daily_watchlist.csv`
 - `daily_watchlist.md`
 - `daily_watchlist.html`
+- `daily_watchlist_publish.json`
 - `daily_watchlist_preview.html` when `--report-preview` is used
 - `email_summary.txt`
 - `summary_history.csv`
@@ -196,7 +197,7 @@ After a validated successful run, the script also saves last-known-good reports:
 - `daily_watchlist_last_good.md`
 - `daily_watchlist_last_good.html`
 
-If Yahoo Finance data quality fails validation, the current daily watchlist files are not overwritten. The script writes `data_failure_report.txt` and sends a warning email instead of an empty watchlist.
+If Yahoo Finance data quality fails validation, the current daily watchlist files are not overwritten. The script writes `data_failure_report.txt`; the production wrapper records the failed run and routes that report through its single deduplicated operational-failure notification instead of publishing an empty watchlist.
 
 Generated report and universe files are local runtime outputs and should not be committed to Git.
 
