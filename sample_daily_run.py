@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html import escape
+import hashlib
 import json
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from decision_system import (
 from run_screener import (
     classify_pattern_discovery_sections,
     decision_manifest_records,
+    markdown_table,
     pattern_discovery_sections,
     pattern_watchlist_lane_sections,
 )
@@ -23,6 +25,7 @@ from run_screener import (
 OUTPUT = Path("daily_watchlist_dry_run.html")
 OUTPUT_CSV = Path("daily_watchlist_dry_run.csv")
 OUTPUT_EMAIL = Path("daily_watchlist_dry_run_email.txt")
+OUTPUT_MARKDOWN = Path("daily_watchlist_dry_run.md")
 
 
 def _candidate(ticker: str, **updates: object) -> dict[str, object]:
@@ -252,6 +255,51 @@ def build_sample_report(output: Path = OUTPUT) -> tuple[pd.DataFrame, str]:
         + ["End Decision Manifest"]
     )
     email_output.write_text("\n".join(email_lines), encoding="utf-8")
+    markdown_lines = [
+        "# Sample Daily Watchlist Dry Run",
+        "",
+        "## Actionable Now",
+        "",
+        markdown_table(actionable_now),
+        "",
+        "## Pattern Watchlist",
+        "",
+        markdown_table(pattern_watchlist),
+        "",
+    ]
+    for lane, lane_rows in pattern_watchlist_lane_sections(pattern_watchlist):
+        markdown_lines.extend(
+            [
+                f"### {lane}",
+                "",
+                f"Members: {len(lane_rows)}.",
+                "",
+            ]
+        )
+    markdown_lines.extend(
+        [
+            "## Avoid / Failed",
+            "",
+            markdown_table(avoid_failed),
+            "",
+            "## AI Commentary",
+            "",
+            "Disabled for deterministic dry run.",
+        ]
+    )
+    markdown_body = "\n".join(markdown_lines)
+    markdown_prefix = markdown_body + "\n\n"
+    markdown_payload = {
+        "body_sha256": hashlib.sha256(markdown_prefix.encode("utf-8")).hexdigest(),
+        "records": manifest,
+    }
+    output.with_suffix(".md").write_text(
+        markdown_prefix
+        + "<!-- decision-manifest\n"
+        + json.dumps(markdown_payload, sort_keys=True, separators=(",", ":"))
+        + "\n-->\n",
+        encoding="utf-8",
+    )
     return frame, html
 
 

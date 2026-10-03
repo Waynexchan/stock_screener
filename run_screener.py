@@ -3346,7 +3346,10 @@ def concise_decision_table(frame: pd.DataFrame) -> pd.DataFrame:
         f"{BREAKOUT_LANE} Missing": f"{BREAKOUT_LANE} Missing",
         "Final Decision": "Final Decision",
         "Actionable": "Actionable",
+        "Confirmed Setup": "Confirmed Setup",
         "Setup Integrity": "Setup Integrity",
+        "Review Tier": "Review Tier",
+        "Action": "Action",
         "Maximum Risk R": "Maximum Risk R",
         "Maximum Risk Dollars": "Maximum Risk Dollars",
         "Final Score": "Final Score",
@@ -3398,6 +3401,27 @@ def _append_report_field_reasons(reasons: list[str], value: object) -> None:
         _append_report_reason(reasons, item)
 
 
+def _report_numeric_state(value: object) -> tuple[str, float | None]:
+    """Classify a report numeric without collapsing invalid data into missing."""
+    if value is None:
+        return "MISSING", None
+    try:
+        if pd.isna(value):
+            return "MISSING", None
+    except (TypeError, ValueError):
+        return "INVALID_PRESENT", None
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "null"}:
+        return "MISSING", None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return "INVALID_PRESENT", None
+    if not np.isfinite(parsed):
+        return "INVALID_PRESENT", None
+    return "VALID_FINITE", parsed
+
+
 def classify_pattern_discovery_sections(frame: pd.DataFrame) -> pd.DataFrame:
     """Add deterministic Phase 1 sections and Phase 2 lanes post-canonical.
 
@@ -3435,18 +3459,26 @@ def classify_pattern_discovery_sections(frame: pd.DataFrame) -> pd.DataFrame:
         if _report_text(row.get("Price Data Warning")):
             _append_report_reason(avoid_reasons, "critical price/data warning")
 
-        entry = pd.to_numeric(row.get("Planned Entry"), errors="coerce")
-        stop = pd.to_numeric(row.get("Initial Stop"), errors="coerce")
-        nonfinite_plan_value = any(
-            pd.notna(value) and not np.isfinite(float(value)) for value in (entry, stop)
-        )
+        entry_state, entry = _report_numeric_state(row.get("Planned Entry"))
+        stop_state, stop = _report_numeric_state(row.get("Initial Stop"))
+        target_state, target = _report_numeric_state(row.get("Realistic Target"))
+        rr_state, reward_risk = _report_numeric_state(row.get("Reward/Risk Ratio"))
+        if entry_state == "INVALID_PRESENT":
+            _append_report_reason(avoid_reasons, "invalid planned entry")
+        if stop_state == "INVALID_PRESENT":
+            _append_report_reason(avoid_reasons, "invalid structural stop")
+        if target_state == "INVALID_PRESENT":
+            _append_report_reason(avoid_reasons, "invalid observed structural target")
+        if rr_state == "INVALID_PRESENT":
+            _append_report_reason(avoid_reasons, "invalid structural R/R")
         invalid_stop_geometry = (
-            pd.notna(entry)
-            and pd.notna(stop)
-            and not nonfinite_plan_value
-            and float(stop) >= float(entry)
+            entry_state == "VALID_FINITE"
+            and stop_state == "VALID_FINITE"
+            and stop is not None
+            and entry is not None
+            and stop >= entry
         )
-        if nonfinite_plan_value or invalid_stop_geometry:
+        if invalid_stop_geometry:
             _append_report_reason(avoid_reasons, "invalid structural stop")
 
         extension = _report_text(row.get("Extension Status"))
@@ -3463,20 +3495,18 @@ def classify_pattern_discovery_sections(frame: pd.DataFrame) -> pd.DataFrame:
             continue
 
         waiting_reasons: list[str] = []
-        if pd.isna(entry):
+        if entry_state == "MISSING":
             _append_report_reason(waiting_reasons, "valid entry missing")
-        if pd.isna(stop):
+        if stop_state == "MISSING":
             _append_report_reason(waiting_reasons, "structural stop missing")
 
-        target = pd.to_numeric(row.get("Realistic Target"), errors="coerce")
         target_source = _report_text(row.get("Realistic Target Source"))
-        if pd.isna(target) or target_source == "model 2R feasibility target":
+        if target_state == "MISSING" or target_source == "model 2R feasibility target":
             _append_report_reason(waiting_reasons, "observed structural target missing")
 
-        reward_risk = pd.to_numeric(row.get("Reward/Risk Ratio"), errors="coerce")
-        if pd.isna(reward_risk):
+        if rr_state == "MISSING":
             _append_report_reason(waiting_reasons, "structural R/R unavailable")
-        elif float(reward_risk) < config.MIN_REWARD_RISK_ALLOWED:
+        elif reward_risk is not None and reward_risk < config.MIN_REWARD_RISK_ALLOWED:
             _append_report_reason(waiting_reasons, "structural R/R below 2")
 
         _append_report_field_reasons(
@@ -5494,11 +5524,19 @@ def validate_exported_reports(
     html_path: str = OUTPUT_HTML,
     csv_path: str = OUTPUT_CSV,
     email_path: str = EMAIL_SUMMARY,
+    markdown_path: str = OUTPUT_MD,
 ) -> None:
     """Block publication/history/snapshots when report semantics diverge."""
     validator = Path(__file__).resolve().parent / "scripts" / "validate_report.py"
     result = subprocess.run(
-        [sys.executable, str(validator), html_path, csv_path, email_path],
+        [
+            sys.executable,
+            str(validator),
+            html_path,
+            csv_path,
+            email_path,
+            markdown_path,
+        ],
         cwd=Path(__file__).resolve().parent,
         capture_output=True,
         text=True,
@@ -5649,14 +5687,13 @@ def write_markdown(
             [
                 "A ticker may appear in multiple lanes; it remains one canonical record with unchanged production risk.",
                 "",
+                markdown_table(pattern_watchlist),
+                "",
             ]
         )
     for lane, lane_rows in pattern_watchlist_lane_sections(pattern_watchlist):
         lines.extend([f"### {lane}", ""])
-        if lane_rows.empty:
-            lines.extend(["No candidates.", ""])
-        else:
-            lines.extend([markdown_table(lane_rows), ""])
+        lines.extend([f"Members: {len(lane_rows)}.", ""])
 
     lines.extend(
         [
@@ -5735,7 +5772,17 @@ def write_markdown(
             "",
         ]
     )
-    Path(path).write_text("\n".join(lines), encoding="utf-8")
+    body = "\n".join(lines)
+    body_with_separator = body + "\n\n"
+    manifest_payload = {
+        "body_sha256": hashlib.sha256(body_with_separator.encode("utf-8")).hexdigest(),
+        "records": decision_manifest_records(canonical),
+    }
+    manifest = json.dumps(manifest_payload, sort_keys=True, separators=(",", ":"))
+    Path(path).write_text(
+        body_with_separator + f"<!-- decision-manifest\n{manifest}\n-->\n",
+        encoding="utf-8",
+    )
 
 
 def write_html(
@@ -6203,6 +6250,7 @@ def export_results(
                 str(staged_paths["html"]),
                 str(staged_paths["csv"]),
                 str(staged_paths["email"]),
+                str(staged_paths["markdown"]),
             ),
         )
     LAST_FORWARD_SNAPSHOT = str(

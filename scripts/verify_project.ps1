@@ -39,7 +39,7 @@ Invoke-Stage "Legacy unittest suite" { cmd.exe /d /c "python -m unittest 2>&1" }
 Invoke-Stage "Industry integration tests" { python run_screener.py --industry-test }
 Invoke-Stage "Report invariants" { python run_screener.py --report-test }
 Invoke-Stage "Sample Daily Watchlist dry run" { python sample_daily_run.py }
-Invoke-Stage "Generated HTML and semantic validation" { python scripts/validate_report.py daily_watchlist_dry_run.html daily_watchlist_dry_run.csv daily_watchlist_dry_run_email.txt }
+Invoke-Stage "Generated HTML and semantic validation" { python scripts/validate_report.py daily_watchlist_dry_run.html daily_watchlist_dry_run.csv daily_watchlist_dry_run_email.txt daily_watchlist_dry_run.md }
 Add-Content -LiteralPath $logPath -Value "`nVerification PASSED: $(Get-Date -Format o)"
 Write-Host "Verification PASSED. Log: $logPath"
 exit 0

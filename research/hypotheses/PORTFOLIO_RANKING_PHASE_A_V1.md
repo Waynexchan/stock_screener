@@ -90,6 +90,11 @@ the data/classification path remains blocked, and Phase B and Phase C are not
 implemented.**
 
 The historical decision fields remain unset until a separately authorized run.
-Production is unchanged. Stop/target grids, exposure grids, earnings-blackout
+The research arms do not change production. However, the production baseline's
+Final Score/ticker ordering is already used by the canonical allocator and can
+change which ticker receives scarce capacity. That production behaviour is
+governed separately by `docs/PRODUCTION_CANDIDATE_ORDERING.md`; its explicit
+approval record remains unverified and it must not be attributed to this
+research experiment or Pattern Discovery Phase 1. Stop/target grids, exposure grids, earnings-blackout
 combinations, SMA/ATR offsets, RS thresholds, and hard-filter combinations are
 frozen benchmark-only families and must not be optimized again here.

@@ -568,6 +568,8 @@ def canonical_candidate_decision(
     entry = pd.to_numeric(row.get("Planned Entry"), errors="coerce")
     stop = pd.to_numeric(row.get("Initial Stop"), errors="coerce")
     target = pd.to_numeric(row.get("Realistic Target"), errors="coerce")
+    reported_rr_raw = row.get("Reward/Risk Ratio")
+    reported_rr = pd.to_numeric(reported_rr_raw, errors="coerce")
     rr = calculate_reward_risk(entry, stop, target)
     timing = str(row.get("Entry Timing") or entry_timing_for_candidate(row))
     trend = str(row.get("RS Trend", ""))
@@ -593,6 +595,13 @@ def canonical_candidate_decision(
         or str(row.get("Realistic Target Source", "")) == "model 2R feasibility target"
     ):
         hard.append("model 2R target requires chart-confirmed resistance")
+    if (
+        reported_rr_raw is not None
+        and not pd.isna(reported_rr_raw)
+        and str(reported_rr_raw).strip()
+        and (pd.isna(reported_rr) or not np.isfinite(float(reported_rr)))
+    ):
+        hard.append("reported structural R/R is invalid")
     if not rr.valid:
         hard.append("actual structural R/R below 2 or unavailable")
     if timing == "OVEREXTENDED" or str(row.get("Extension Status")) == "Overextended":
@@ -1218,6 +1227,8 @@ def calculate_reward_risk(
         return RewardRisk(None, "Not Available", False, "structural stop missing")
     if target is None or pd.isna(target):
         return RewardRisk(None, "Not Available", False, "realistic target missing")
+    if not all(np.isfinite(float(value)) for value in (entry, stop, target)):
+        return RewardRisk(None, "Invalid", False, "trade-plan values must be finite")
     if stop >= entry:
         return RewardRisk(
             None, "Invalid", False, "initial stop must be below planned entry"

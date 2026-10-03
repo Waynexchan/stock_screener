@@ -394,7 +394,7 @@ def main() -> int:
             else "FORMAL_WINDOWS_NO_AUTOMATIC_CHAMPION"
         ),
         "advancement_gate_status": gate_status,
-        "production_effect": "NONE",
+        "production_effect": experiment["production_effect"],
         "phase_b_implemented": False,
         "phase_c_implemented": False,
         "classification_limitation": (

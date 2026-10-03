@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -39,6 +40,24 @@ def is_present_nonfinite_number(value: object) -> bool:
     return not math.isnan(parsed) and not math.isfinite(parsed)
 
 
+def numeric_state(value: object) -> tuple[str, float | None]:
+    """Return MISSING, VALID_FINITE, or INVALID_PRESENT for report numerics."""
+    if value is None:
+        return "MISSING", None
+    if isinstance(value, float) and math.isnan(value):
+        return "MISSING", None
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "null"}:
+        return "MISSING", None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return "INVALID_PRESENT", None
+    if not math.isfinite(parsed):
+        return "INVALID_PRESENT", None
+    return "VALID_FINITE", parsed
+
+
 def rank_number(value: object) -> int | None:
     parsed = number(value)
     if parsed is None:
@@ -61,9 +80,16 @@ def has_pattern_failure_evidence(row: dict[str, object]) -> bool:
         return True
     if report_text(row.get("Price Data Warning")):
         return True
-    if is_present_nonfinite_number(row.get("Planned Entry")) or (
-        is_present_nonfinite_number(row.get("Initial Stop"))
-    ):
+    plan_states = {
+        field: numeric_state(row.get(field))[0]
+        for field in (
+            "Planned Entry",
+            "Initial Stop",
+            "Realistic Target",
+            "Reward/Risk Ratio",
+        )
+    }
+    if "INVALID_PRESENT" in plan_states.values():
         return True
     entry = number(row.get("Planned Entry"))
     stop = number(row.get("Initial Stop"))
@@ -188,6 +214,104 @@ def read_email_manifest(path: Path) -> list[dict[str, object]]:
     return [json.loads(line) for line in lines[start:end] if line.strip()]
 
 
+def read_markdown_manifest(
+    text: str,
+) -> tuple[list[dict[str, object]], str]:
+    match = re.search(
+        r"<!-- decision-manifest\s*(\{.*?\})\s*-->",
+        text,
+        flags=re.DOTALL,
+    )
+    if not match:
+        raise ValueError("Markdown decision manifest missing")
+    if text[match.end() :].strip():
+        raise ValueError("Markdown decision manifest must be terminal content")
+    payload = json.loads(match.group(1))
+    body_hash = payload.get("body_sha256")
+    records = payload.get("records")
+    if not isinstance(body_hash, str) or not body_hash:
+        raise ValueError("Markdown body hash missing")
+    if not isinstance(records, list):
+        raise ValueError("Markdown decision records missing")
+    actual_hash = hashlib.sha256(text[: match.start()].encode("utf-8")).hexdigest()
+    if actual_hash != body_hash:
+        raise ValueError("Markdown body hash mismatch")
+    body_records = read_markdown_body_records(text[: match.start()])
+    normalized_records = [manifest_record(row) for row in records]
+    if body_records != normalized_records:
+        raise ValueError("Markdown visible decisions differ from manifest")
+    return records, body_hash
+
+
+def _markdown_table_rows(section: str) -> list[dict[str, str]]:
+    lines = section.splitlines()
+    rows: list[dict[str, str]] = []
+    index = 0
+    while index + 1 < len(lines):
+        header_line = lines[index].strip()
+        separator_line = lines[index + 1].strip()
+        if not header_line.startswith("|") or not separator_line.startswith("|"):
+            index += 1
+            continue
+        headers = [cell.strip() for cell in header_line.strip("|").split("|")]
+        separators = [cell.strip() for cell in separator_line.strip("|").split("|")]
+        if len(headers) != len(separators) or not all(
+            re.fullmatch(r":?-{3,}:?", cell) for cell in separators
+        ):
+            index += 1
+            continue
+        index += 2
+        while index < len(lines) and lines[index].strip().startswith("|"):
+            values = [
+                cell.strip() for cell in lines[index].strip().strip("|").split("|")
+            ]
+            if len(values) != len(headers):
+                raise ValueError("Markdown table row has an unexpected column count")
+            rows.append(dict(zip(headers, values, strict=True)))
+            index += 1
+    return rows
+
+
+def read_markdown_body_records(body: str) -> list[dict[str, object]]:
+    """Reconstruct canonical records from the visible Phase 1 section tables."""
+    section_names = ("Actionable Now", "Pattern Watchlist", "Avoid / Failed")
+    visible_to_source = {
+        "Pattern Status": "Pattern Discovery Status",
+        "Pattern / Waiting Reason": "Pattern Discovery Reason",
+    }
+    by_ticker: dict[str, dict[str, object]] = {}
+    for offset, section_name in enumerate(section_names):
+        start_marker = f"## {section_name}"
+        try:
+            start = body.index(start_marker) + len(start_marker)
+        except ValueError as exc:
+            raise ValueError(f"Markdown section missing: {section_name}") from exc
+        next_markers = [
+            body.find(f"## {later}", start) for later in section_names[offset + 1 :]
+        ]
+        next_markers.append(body.find("## AI Commentary", start))
+        ends = [position for position in next_markers if position >= 0]
+        end = min(ends) if ends else len(body)
+        for visible_row in _markdown_table_rows(body[start:end]):
+            if "Ticker" not in visible_row:
+                continue
+            source_row = {
+                visible_to_source.get(key, key): value
+                for key, value in visible_row.items()
+            }
+            normalized = manifest_record(source_row)
+            if normalized["report_section"] != section_name:
+                raise ValueError(
+                    "Markdown visible section conflicts with row classification: "
+                    f"{normalized['ticker']}"
+                )
+            ticker = str(normalized["ticker"])
+            if ticker in by_ticker:
+                raise ValueError(f"Markdown duplicate visible ticker: {ticker}")
+            by_ticker[ticker] = normalized
+    return [by_ticker[ticker] for ticker in sorted(by_ticker)]
+
+
 def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
     errors: list[str] = []
     normalized = [manifest_record(row) for row in rows]
@@ -310,6 +434,7 @@ def validate_csv_semantics(rows: list[dict[str, object]]) -> list[str]:
         recent = number(row.get("Recent RS Score"))
         entry = number(row.get("Planned Entry"))
         stop = number(row.get("Initial Stop"))
+        target = number(row.get("Realistic Target"))
         rr = number(row.get("Reward/Risk Ratio"))
         if recent is None:
             errors.append(f"{ticker}: Missing Recent RS is actionable")
@@ -319,6 +444,8 @@ def validate_csv_semantics(rows: list[dict[str, object]]) -> list[str]:
             errors.append(f"{ticker}: stale price data is actionable")
         if entry is None or stop is None or stop >= entry:
             errors.append(f"{ticker}: invalid stop is actionable")
+        if target is None or entry is None or target <= entry:
+            errors.append(f"{ticker}: invalid target is actionable")
         if rr is None or rr < 2:
             errors.append(f"{ticker}: invalid R/R is actionable")
         if row.get("Extension Status") == "Overextended":
@@ -352,6 +479,7 @@ def main(argv: list[str] | None = None) -> int:
         if len(args) > 2
         else html_path.with_name(html_path.stem + "_email.txt")
     )
+    markdown_path = Path(args[3]) if len(args) > 3 else html_path.with_suffix(".md")
     if not html_path.exists():
         print(f"Missing report: {html_path}")
         return 1
@@ -407,6 +535,20 @@ def main(argv: list[str] | None = None) -> int:
             errors.append(str(exc))
     elif len(args) > 2:
         errors.append(f"missing email: {email_path}")
+
+    if markdown_path.exists():
+        try:
+            markdown_manifest, _ = read_markdown_manifest(
+                markdown_path.read_text(encoding="utf-8")
+            )
+            normalized_markdown = [manifest_record(row) for row in markdown_manifest]
+            errors.extend(validate_manifest(normalized_markdown))
+            if normalized_markdown != html_manifest:
+                errors.append("Markdown and HTML decisions differ")
+        except (ValueError, json.JSONDecodeError) as exc:
+            errors.append(str(exc))
+    else:
+        errors.append(f"missing Markdown: {markdown_path}")
 
     if errors:
         print("Report semantic validation FAIL: " + "; ".join(dict.fromkeys(errors)))

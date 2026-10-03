@@ -155,6 +155,33 @@ def test_structural_and_portfolio_hard_blocks():
     )
 
 
+def test_nonfinite_trade_plan_values_fail_closed():
+    normal = calculate_drawdown_state(100_000, 100_000)
+    for field in ("Planned Entry", "Initial Stop", "Realistic Target"):
+        for value in (np.inf, -np.inf):
+            result = size_trade_candidate(
+                _sizing_row(**{field: value}),
+                "Strong",
+                normal,
+                _empty_portfolio(),
+                0,
+            )
+            assert result.state == "NO TRADE"
+            assert result.maximum_risk_r == 0
+            assert result.maximum_shares == 0
+
+    for values in (
+        (np.inf, 95.0, 110.0),
+        (100.0, -np.inf, 110.0),
+        (100.0, 95.0, np.inf),
+        (100.0, 95.0, -np.inf),
+    ):
+        reward_risk = calculate_reward_risk(*values)
+        assert reward_risk.valid is False
+        assert reward_risk.ratio is None
+        assert reward_risk.reason == "trade-plan values must be finite"
+
+
 def test_drawdown_modes_and_effective_heat():
     normal = calculate_drawdown_state(100_000, 100_000)
     reduced = calculate_drawdown_state(100_000 - 2 * 587, 100_000)

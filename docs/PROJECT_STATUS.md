@@ -1,6 +1,6 @@
 # Project Status
 
-Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-10-02. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
@@ -26,8 +26,16 @@ Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJE
   The three report-only fields are excluded from the discovery and forward-
   snapshot schemas, and semantic validation rejects non-actionable rows placed
   on the wrong side of the explicit failure-evidence boundary. Classifier and
-  validator agree that present non-finite entry/stop values are failures while
-  genuinely missing plan values remain eligible for Pattern Watchlist.
+  validator agree that present invalid entry/stop/target/R/R values are failures
+  while genuinely missing plan values remain eligible for Pattern Watchlist.
+  Independent-review fixes also reject non-finite observed targets before
+  allocation, reconstruct canonical records from visible Markdown tables for
+  runtime semantic parity, integrity-bind the Markdown body, and verify complete
+  canonical snapshot payload parity after declared exclusions. Follow-up review
+  hardening requires the Markdown manifest to be terminal content, rejects every
+  duplicate visible ticker row, renders multi-lane candidates once, and retries
+  bounded transient Windows atomic JSON replacement denial while preserving
+  fail-closed exhaustion.
   `PATTERN_DISCOVERY_SETUP_LANES_PHASE_2` adds three independent post-canonical
   `RESEARCH_ONLY` chart-review lanes: Tight Base / VCP, Pullback to Support, and
   Breakout Retest / High Flag. Each has separate membership, fixed score,
@@ -60,6 +68,11 @@ Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJE
   current classifications while the data gate is blocked. Historical data
   remains `NOT_READY`, no champion was selected, and production thresholds,
   eligibility, entry/stop/exit rules, heat, and market regime are unchanged.
+  The production Final Score/ticker ordering itself can change scarce-capacity
+  allocation and is now governed separately by
+  `docs/PRODUCTION_CANDIDATE_ORDERING.md`; an explicit approval record has not
+  been verified and the effect is no longer described as `NONE` in the research
+  manifest.
 - Forward-test hardening on 2026-09-16 keeps the six-date, 313-row history as
   `ENGINEERING_PILOT_NOT_FORMAL`. Future schema-v2 snapshots include verifiable
   payload hashes, provider version, explicit earnings/market-cap enforcement
@@ -241,6 +254,37 @@ Fast handoff as of 2026-09-24. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-second-independent-review-fix verification on 2026-10-03: PASS — the
+Markdown manifest must now be terminal non-whitespace content, duplicate visible
+ticker rows fail even when identical, and Markdown renders multi-lane Pattern
+Watchlist candidates as one canonical row with lane member counts. Atomic JSON
+destination replacement now retries bounded transient permission denial and
+still propagates exhaustion. The two affected modules passed 85 tests, the four
+affected modules passed 192 tests, and the original concurrent atomic-writer
+case passed 20 consecutive isolated stress runs. The canonical FULL gate passed
+Python syntax, Ruff, mypy, 489 pytest tests, 118 legacy unittest tests,
+integration/invariant checks, the offline sample dry run, and four-output
+semantic validation. Pre/post FULL fingerprints matched for the complete
+unstaged diff, staged diff, and untracked production-ordering specification.
+This uncommitted evidence grants no commit, merge, push, production-run,
+release, or research-promotion authority.
+
+Post-Phase-1-review-fix verification on 2026-10-02: PASS — non-finite
+trade-plan values now fail closed before allocation; present invalid plan values
+are distinct from genuinely missing values; Markdown joins CSV, HTML, and email
+in the runtime semantic-parity gate with visible-body integrity; and snapshot
+tests compare the complete canonical payload after the declared exclusions. The
+canonical FULL gate passed Python syntax, Ruff, mypy, 485 pytest tests, 118
+legacy unittest tests, integration/invariant checks, the offline sample dry run,
+and four-output semantic validation. The research gate passed 197 tests, the
+expected `BLOCKED_DATA_NOT_READY` baseline, and production isolation. One
+existing atomic-writer concurrency test produced a transient Windows
+`PermissionError` in a combined focused run; its module, isolated reruns, the
+subsequent 188-test affected set, and FULL all passed. The Final Score/ticker
+production ordering is now disclosed separately; its historical approval record
+remains unverified. This uncommitted evidence grants no commit, merge, push,
+production-run, release, or research-promotion authority.
 
 Post-second-review production-run-resilience verification on 2026-10-02: PASS —
 the alert lifecycle now serializes claim/state/delivery/clear across threads and

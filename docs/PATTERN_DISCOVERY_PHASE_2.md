@@ -284,11 +284,14 @@ One CSV row remains the canonical record for one ticker. Phase 2 adds:
 - pullback quality and breakout-evidence state; and
 - the narrow research input evidence listed above.
 
-HTML, Markdown, and email render three lane subsections under Pattern Watchlist,
-ordered by each lane's independent rank. A multi-lane ticker may appear in more
-than one subsection and is labelled as one canonical record with unchanged
-production risk. Pattern Watchlist rows that do not meet any lane membership
-remain visible in an `Unassigned / Insufficient Lane Evidence` subsection.
+HTML and email may render three lane subsections under Pattern Watchlist,
+ordered by each lane's independent rank. Markdown renders every Pattern
+Watchlist ticker exactly once in one canonical table; its `Setup Lanes` summary
+and separate per-lane membership, score, rank, reason, and missing-factor
+columns preserve multi-lane semantics without duplicate visible ticker rows.
+Markdown retains all lane headings with member counts, including the
+`Unassigned / Insufficient Lane Evidence` count. A multi-lane ticker remains
+one canonical record with unchanged production risk.
 
 The shared machine-readable manifest includes lane membership, scores, ranks,
 and breakout/pullback labels so CSV, HTML, and email can be compared. Legacy CSV
@@ -340,8 +343,8 @@ entry points, and canonical state names remain unchanged.
 21. Pattern Watchlist shows lane membership and preserves unassigned rows.
 22. Actionable Now remains exactly canonical `FULL`/`HALF`; Avoid / Failed
     remains governed by Phase 1 failure evidence.
-23. Multi-lane membership is explicit and creates no duplicate CSV or manifest
-    record and no additional risk.
+23. Multi-lane membership is explicit and creates no duplicate CSV, Markdown
+    canonical row, or manifest record and no additional risk.
 24. CSV, HTML, Markdown, and email present consistent lane semantics; the
     validator rejects cross-output disagreement and invalid lane placement.
 25. Phase 2 fields are absent from forward-snapshot candidates.
@@ -370,8 +373,8 @@ entry points, and canonical state names remain unchanged.
   fixed-window missing-data cases prove that older complete sessions never
   backfill a Phase 2 feature, and an incomplete prior-50 event window remains
   unranked instead of using near-pivot fallback.
-- Reporting tests inspect each lane subsection, one-row-per-ticker manifest,
-  multi-lane rendering, and validator rejection paths.
+- Reporting tests inspect lane headings/counts, one-row-per-ticker Markdown and
+  manifest output, multi-lane fields, and validator rejection paths.
 - Snapshot tests use a complete discovery-shaped record and assert every Phase
   2 field is excluded.
 - The tests establish software behaviour and isolation only. They do not

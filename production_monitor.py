@@ -29,6 +29,8 @@ FAILURE_REPORT_PATH = Path("data_failure_report.txt")
 PUBLISH_MANIFEST_PATH = Path("daily_watchlist_publish.json")
 MAX_ERROR_SUMMARY_LENGTH = 1000
 ALERT_PREPARED_TTL_SECONDS = 300
+ATOMIC_REPLACE_ATTEMPTS = 20
+ATOMIC_REPLACE_RETRY_SECONDS = 0.025
 PRODUCTION_SESSION_START_LEAD_HOURS = 2
 PRODUCTION_LOCKED_EXIT_CODE = 75
 REQUIRED_REPORTS = (
@@ -80,7 +82,14 @@ def _atomic_write_json(path: Path, payload: dict[str, object]) -> None:
             handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
-        temporary.replace(path)
+        for attempt in range(ATOMIC_REPLACE_ATTEMPTS):
+            try:
+                temporary.replace(path)
+                break
+            except PermissionError:
+                if attempt + 1 >= ATOMIC_REPLACE_ATTEMPTS:
+                    raise
+                time.sleep(ATOMIC_REPLACE_RETRY_SECONDS)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -543,10 +552,19 @@ def _default_session_close(session: date) -> datetime:
     return close.astimezone(timezone.utc)
 
 
-def _default_semantic_validator(html: Path, csv: Path, email: Path) -> None:
+def _default_semantic_validator(
+    html: Path, csv: Path, email: Path, markdown: Path
+) -> None:
     validator = Path(__file__).resolve().parent / "scripts" / "validate_report.py"
     result = subprocess.run(
-        [sys.executable, str(validator), str(html), str(csv), str(email)],
+        [
+            sys.executable,
+            str(validator),
+            str(html),
+            str(csv),
+            str(email),
+            str(markdown),
+        ],
         cwd=Path(__file__).resolve().parent,
         capture_output=True,
         text=True,
@@ -563,7 +581,7 @@ def check_daily_run(
     expected_session_provider: Callable[[datetime], date] = _default_expected_session,
     session_close_provider: Callable[[date], datetime] = _default_session_close,
     semantic_validator: Callable[
-        [Path, Path, Path], None
+        [Path, Path, Path, Path], None
     ] = _default_semantic_validator,
 ) -> WatchdogResult:
     project_root = Path(root)
@@ -668,6 +686,7 @@ def check_daily_run(
             project_root / "daily_watchlist.html",
             project_root / "daily_watchlist.csv",
             project_root / "email_summary.txt",
+            project_root / "daily_watchlist.md",
         )
     except Exception as exc:
         reasons.append(f"semantic validation failed: {_bounded_summary(str(exc))}")

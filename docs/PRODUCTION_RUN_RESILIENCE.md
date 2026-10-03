@@ -60,12 +60,20 @@ All of these are ignored runtime files and must not be committed.
 ## Atomic report publication
 
 CSV, Markdown, HTML, and email-summary outputs are generated in a temporary
-directory on the report filesystem.  Cross-output semantic validation must pass
-against those staged files before any public report path is replaced.  Each
+directory on the report filesystem. Cross-output semantic validation, including
+canonical records reconstructed from the visible Markdown tables and its
+integrity-bound decision manifest, must pass against those staged files before
+any public report path is replaced. The manifest is the terminal non-whitespace
+Markdown content, and duplicate visible canonical ticker rows are invalid. Each
 replacement uses an atomic same-filesystem operation.  The publish manifest is
 written last.  Failure before replacement preserves the complete previous
 bundle; failure during replacement is detected later because the previous
 manifest hashes no longer match.
+
+JSON runtime-state writers use a unique same-directory temporary file and a
+bounded retry for transient destination replacement permission failures. A
+permanent replacement failure still propagates and cannot be reported as a
+successful atomic write.
 
 Forward snapshots, last-good copies, report history, and email delivery occur
 only after the validated report bundle has been published.
@@ -85,7 +93,7 @@ when any of these checks fail:
 - the publish manifest trading date is not the latest completed regular US
   trading session;
 - a required report is absent or its hash differs from the manifest; or
-- CSV, HTML, and email semantic validation fails.
+- CSV, Markdown, HTML, and email semantic validation fails.
 
 The accepted lifecycle begins shortly before the expected session's New York
 close, permits completion after London midnight, and remains current until the
@@ -127,6 +135,9 @@ active alert state and retired claims without sending email.
     spaces, pipes, dashes, NULs, and non-ASCII text, reaches the monitor through
     a file, is normalized/bounded, and still produces failure status without
     argument splitting.
+14. Concurrent JSON state writers use distinct temporary files, tolerate a
+    bounded transient destination replacement denial, and leave one complete
+    valid JSON object; an exhausted replacement retry remains an error.
 
 ## Non-goals
 

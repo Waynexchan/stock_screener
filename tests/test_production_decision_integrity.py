@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from io import StringIO
+import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import config
+import sample_daily_run
 from decision_system import (
     PortfolioRisk,
     calculate_drawdown_state,
@@ -24,6 +29,7 @@ from scripts.validate_report import (
     read_csv_rows,
     read_email_manifest,
     read_html_manifest,
+    read_markdown_manifest,
     validate_csv_semantics,
 )
 
@@ -229,6 +235,71 @@ def test_missing_observed_target_is_research_only_pattern_without_fabrication():
     assert (
         "observed structural target missing" in classified["Pattern Discovery Reason"]
     )
+
+
+def test_nonfinite_target_cannot_be_actionable_or_pass_report_validation():
+    for target in (np.inf, -np.inf):
+        canonical = run_screener.apply_canonical_decision_pipeline(
+            pd.DataFrame(
+                [candidate("NONFINITE_TARGET", **{"Realistic Target": target})]
+            ),
+            context(),
+        )
+        classified = run_screener.classify_pattern_discovery_sections(canonical)
+        row = classified.iloc[0]
+
+        assert row["Final Decision"] == "NO TRADE"
+        assert row["Maximum Risk R"] == 0
+        assert row["Maximum Shares"] == 0
+        assert not row["Actionable"]
+        assert row["Report Section"] == "Avoid / Failed"
+        assert "invalid observed structural target" in row["Pattern Discovery Reason"]
+        assert validate_csv_semantics(classified.to_dict("records")) == []
+
+        tampered = dict(row)
+        tampered.update(
+            {
+                "Final Decision": "FULL",
+                "Maximum Risk R": 1.0,
+                "Maximum Risk Dollars": 587.0,
+                "Maximum Shares": 117,
+                "Actionable": True,
+                "Confirmed Setup": True,
+                "Review Tier": "Review Now",
+                "Action": "Actionable now — FULL",
+                "Report Section": "Actionable Now",
+                "Pattern Discovery Status": "NOT_APPLICABLE",
+            }
+        )
+        errors = " | ".join(validate_csv_semantics([tampered]))
+        assert "invalid target is actionable" in errors
+
+
+def test_invalid_present_plan_values_are_not_treated_as_missing():
+    cases = (
+        ("Planned Entry", "bad", "invalid planned entry"),
+        ("Initial Stop", "bad", "invalid structural stop"),
+        ("Realistic Target", "bad", "invalid observed structural target"),
+        ("Reward/Risk Ratio", "bad", "invalid structural R/R"),
+    )
+    for field, value, reason in cases:
+        canonical = run_screener.apply_canonical_decision_pipeline(
+            pd.DataFrame([candidate(f"BAD_{field}", **{field: value})]), context()
+        )
+        classified = run_screener.classify_pattern_discovery_sections(canonical)
+        row = classified.iloc[0]
+
+        assert row["Final Decision"] == "NO TRADE"
+        assert row["Report Section"] == "Avoid / Failed"
+        assert reason in row["Pattern Discovery Reason"]
+        assert validate_csv_semantics(classified.to_dict("records")) == []
+
+    for field in ("Planned Entry", "Initial Stop", "Realistic Target"):
+        canonical = run_screener.apply_canonical_decision_pipeline(
+            pd.DataFrame([candidate(f"MISSING_{field}", **{field: np.nan})]), context()
+        )
+        classified = run_screener.classify_pattern_discovery_sections(canonical)
+        assert classified.iloc[0]["Report Section"] == "Pattern Watchlist"
 
 
 def test_canonical_full_and_half_map_to_actionable_now_unchanged():
@@ -954,6 +1025,9 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
 
     expected_manifest = run_screener.decision_manifest_records(canonical)
     assert read_html_manifest(html) == expected_manifest
+    markdown_manifest, markdown_body_hash = read_markdown_manifest(markdown)
+    assert markdown_manifest == expected_manifest
+    assert markdown_body_hash
     assert read_email_manifest(email_path) == expected_manifest
     assert (
         sorted(
@@ -979,6 +1053,136 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
             assert str(row["Pattern Discovery Reason"]) in block
         for ticker in unexpected_rows["Ticker"].astype(str):
             assert ticker not in block
+
+    markdown_path.write_text(
+        markdown.replace(
+            "Canonical production `FULL`/`HALF` decisions only.",
+            "Contradictory actionable section injected after generation.",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    tampered = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_report.py",
+            str(html_path),
+            str(csv_path),
+            str(email_path),
+            str(markdown_path),
+        ],
+        cwd=Path(run_screener.__file__).resolve().parent,
+        capture_output=True,
+        text=True,
+    )
+    assert tampered.returncode != 0
+    assert "Markdown body hash mismatch" in tampered.stdout + tampered.stderr
+
+    original = markdown_path.read_text(encoding="utf-8")
+    manifest_match = re.search(
+        r"<!-- decision-manifest\s*(\{.*?\})\s*-->", original, flags=re.DOTALL
+    )
+    assert manifest_match is not None
+    payload = json.loads(manifest_match.group(1))
+    body = original[: manifest_match.start()]
+    body = re.sub(r"\|\s*FULL\s*\|", "| NO TRADE |", body, count=1)
+    payload["body_sha256"] = hashlib.sha256(body.encode("utf-8")).hexdigest()
+    markdown_path.write_text(
+        body
+        + "<!-- decision-manifest\n"
+        + json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        + "\n-->\n",
+        encoding="utf-8",
+    )
+    semantic_tamper = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_report.py",
+            str(html_path),
+            str(csv_path),
+            str(email_path),
+            str(markdown_path),
+        ],
+        cwd=Path(run_screener.__file__).resolve().parent,
+        capture_output=True,
+        text=True,
+    )
+    assert semantic_tamper.returncode != 0
+    assert "Markdown visible decisions differ" in (
+        semantic_tamper.stdout + semantic_tamper.stderr
+    )
+
+
+def test_markdown_manifest_must_be_terminal_content(tmp_path: Path):
+    output = tmp_path / "report.html"
+    sample_daily_run.build_sample_report(output)
+    markdown = output.with_suffix(".md").read_text(encoding="utf-8")
+
+    with pytest.raises(ValueError, match="terminal content"):
+        read_markdown_manifest(markdown + "\nVISIBLE CONTENT AFTER MANIFEST\n")
+
+
+def test_markdown_rejects_identical_duplicate_visible_ticker(tmp_path: Path):
+    output = tmp_path / "report.html"
+    sample_daily_run.build_sample_report(output)
+    markdown = output.with_suffix(".md").read_text(encoding="utf-8")
+    manifest_match = re.search(
+        r"<!-- decision-manifest\s*(\{.*?\})\s*-->", markdown, flags=re.DOTALL
+    )
+    assert manifest_match is not None
+    duplicate_payload = json.loads(manifest_match.group(1))
+    body_lines = markdown[: manifest_match.start()].splitlines(keepends=True)
+    for index in range(len(body_lines) - 2):
+        if "Ticker" not in body_lines[index] or not body_lines[index].startswith("|"):
+            continue
+        duplicate_at = index + 2
+        assert body_lines[duplicate_at].startswith("|")
+        body_lines.insert(duplicate_at + 1, body_lines[duplicate_at])
+        break
+    else:  # pragma: no cover - fixture contract
+        raise AssertionError("Markdown canonical table not found")
+    duplicate_body = "".join(body_lines)
+    duplicate_payload["body_sha256"] = hashlib.sha256(
+        duplicate_body.encode("utf-8")
+    ).hexdigest()
+    duplicate_markdown = (
+        duplicate_body
+        + "<!-- decision-manifest\n"
+        + json.dumps(duplicate_payload, sort_keys=True, separators=(",", ":"))
+        + "\n-->\n"
+    )
+    with pytest.raises(ValueError, match="duplicate visible ticker"):
+        read_markdown_manifest(duplicate_markdown)
+
+
+def test_runtime_report_validator_includes_markdown_path(tmp_path: Path, monkeypatch):
+    paths = {
+        "html": tmp_path / "report.html",
+        "csv": tmp_path / "report.csv",
+        "email": tmp_path / "report_email.txt",
+        "markdown": tmp_path / "report.md",
+    }
+    captured: list[str] = []
+
+    def fake_run(command, **kwargs):
+        captured.extend(str(item) for item in command)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(run_screener.subprocess, "run", fake_run)
+
+    run_screener.validate_exported_reports(
+        str(paths["html"]),
+        str(paths["csv"]),
+        str(paths["email"]),
+        str(paths["markdown"]),
+    )
+
+    assert captured[-4:] == [
+        str(paths["html"]),
+        str(paths["csv"]),
+        str(paths["email"]),
+        str(paths["markdown"]),
+    ]
 
 
 def test_reports_render_all_phase2_lane_headings_when_pattern_watchlist_is_empty(
@@ -1196,9 +1400,15 @@ def test_real_discovery_schema_snapshot_excludes_pattern_report_fields(
         datetime(2026, 9, 29, 10, tzinfo=timezone.utc),
         tmp_path,
     )
-    columns = set(pd.read_csv(snapshot / "candidates.csv").columns)
+    snapshot_rows = pd.read_csv(snapshot / "candidates.csv")
+    columns = set(snapshot_rows.columns)
+    expected = canonical.drop(
+        columns=list(run_screener.FORWARD_SNAPSHOT_EXCLUDED_FIELDS), errors="ignore"
+    )
+    expected_rows = pd.read_csv(StringIO(expected.to_csv(index=False)))
 
     assert PATTERN_REPORT_FIELDS.isdisjoint(columns)
+    pd.testing.assert_frame_equal(snapshot_rows, expected_rows, check_dtype=True)
 
 
 def test_forward_snapshots_are_unique_and_never_overwritten(tmp_path: Path):

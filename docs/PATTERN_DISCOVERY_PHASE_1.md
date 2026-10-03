@@ -43,9 +43,10 @@ mutate any canonical production field or feed back into production decisions.
 - Contains non-actionable discovered candidates with existing explicit failure
   evidence: setup integrity `FAIL`, `Extended` or `Overextended` status, stale
   or incomplete critical price data, a non-empty critical price/data warning,
-  present non-finite entry/stop values, or present finite entry/stop values whose
-  stop is not below entry. Missing entry/stop values remain waiting evidence,
-  not failure evidence.
+  present invalid entry/stop/target/R/R values, or present finite entry/stop
+  values whose stop is not below entry. Invalid-present includes non-numeric and
+  non-finite values. Missing plan values remain waiting evidence, not failure
+  evidence.
 - Uses only those existing states and values. Phase 1 introduces no new setup
   threshold or production gate.
 - Is labelled `RESEARCH_ONLY` and remains zero-risk/non-actionable.
@@ -69,7 +70,10 @@ mutate any canonical production field or feed back into production decisions.
 
 - CSV adds the three Phase 1 fields while preserving existing canonical columns
   and values.
-- HTML, Markdown, and email expose the three sections clearly. Existing raw
+- HTML, Markdown, and email expose the three sections clearly. Validation
+  reconstructs canonical records from Markdown's visible section tables,
+  compares them with its integrity-bound machine-readable decision manifest,
+  and includes Markdown in runtime cross-output parity validation. Existing raw
   setup-category and four-state diagnostic views remain available in the
   diagnostic/detail portion of the report where applicable.
 - The machine-readable decision manifest includes report classification so CSV,
@@ -107,6 +111,19 @@ mutate any canonical production field or feed back into production decisions.
    schema and immutable forward-snapshot candidate payload, including when the
    input candidate was constructed from the complete production discovery
    schema.
+10. Entry, stop, target, and R/R classification distinguishes `MISSING`,
+    `VALID_FINITE`, and `INVALID_PRESENT`; invalid-present data cannot be
+    described as merely waiting for a missing plan value.
+11. A non-finite observed target cannot become actionable and is independently
+    rejected by report semantic validation.
+12. CSV, HTML, Markdown, and email manifests agree, canonical records parsed
+    from the visible Markdown section tables agree with its manifest, the body
+    is integrity-bound, and the snapshot preserves every canonical field/value
+    except the explicitly excluded report and research fields.
+13. The Markdown decision manifest is the terminal non-whitespace content; no
+    visible or machine-readable payload may follow it. Across the three
+    canonical Markdown sections, each ticker has exactly one visible canonical
+    row. Duplicate rows fail validation even when their values are identical.
 
 ## Test scenarios and design review
 
@@ -119,9 +136,14 @@ mutate any canonical production field or feed back into production decisions.
 | Injected research override | AC6, AC8 | Incoming `Actionable Now`/favourable reason values are deterministically overwritten and cannot affect production fields. |
 | Repeated classification | AC6 | Same input yields identical section/status/reason output and stable row order. |
 | Cross-output fixture | AC7 | Updated semantic validator passes a consistent report and rejects a contradictory section/status mapping. |
-| Failure-precedence tampering | AC7 | Validator rejects stale, warned, finite invalid-stop, non-finite entry/stop, extended, and failed-integrity rows mislabeled Pattern Watchlist, and rejects a capacity-only row mislabeled Avoid / Failed. |
+| Failure-precedence tampering | AC7 | Validator rejects stale, warned, finite invalid-stop, invalid-present entry/stop/target/R/R, extended, and failed-integrity rows mislabeled Pattern Watchlist, and rejects a capacity-only row mislabeled Avoid / Failed. |
 | Real discovery-schema snapshot | AC9 | A candidate built from the complete `DISCOVERY_COLUMNS` schema passes through the canonical pipeline and snapshot writer without any report-only field in `candidates.csv`. |
 | Legacy preview input | compatibility | Missing Phase 1 columns are derived from existing canonical fields without recalculating decisions. |
+| Non-finite observed target | AC3, AC8, AC11 | Canonical decision is `NO TRADE` with zero risk/shares, report section is `Avoid / Failed`, and semantic validation rejects any tampered actionable row. |
+| Invalid-present plan text | AC3, AC10 | Non-numeric entry/stop/target/R/R is `INVALID_PRESENT` and maps to `Avoid / Failed`; blank/null/NaN remains `MISSING`. |
+| Markdown body or manifest tampering | AC7, AC12 | Publication validation rejects a Markdown manifest that differs from HTML/CSV/email, visible-body changes that invalidate the stored body hash, and changed visible canonical table values even if the body hash is recomputed. |
+| Markdown suffix or duplicate row | AC7, AC13 | Publication validation rejects non-whitespace content after the terminal manifest and rejects a second visible row for the same ticker even when both rows are identical and the body hash is recomputed. |
+| Complete snapshot parity | AC9, AC12 | Reloaded `candidates.csv` equals every canonical field/value after removing only the declared snapshot exclusions. |
 
 Test-design review:
 
@@ -140,5 +162,13 @@ Test-design review:
 - Snapshot coverage uses the complete production discovery schema rather than a
   reduced fixture, preventing report-field leakage from being hidden by test
   construction.
+- The numeric-state matrix covers genuine missing values, non-numeric text,
+  positive/negative infinity, and valid finite values so coercion cannot collapse
+  invalid-present data into missing.
+- Markdown tests alter visible canonical table data separately from the embedded
+  manifest and recompute the body hash, preventing integrity-only coverage or a
+  shared-writer test from masking a semantic parity defect.
+- Snapshot parity compares the complete expected payload rather than testing
+  only that excluded fields are absent.
 - No scenario introduces Phase 2 setup-lane semantics or claims discovery or
   trading performance.

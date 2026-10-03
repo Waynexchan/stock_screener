@@ -59,9 +59,20 @@ Report/lane fields do not belong to `DISCOVERY_COLUMNS`; narrow Phase 2 OHLCV
 evidence may be calculated during discovery but it and all lane outputs are
 removed from immutable forward snapshots. CSV semantic validation independently enforces the classifier's
 explicit failure-evidence precedence so consistently misclassified reports do
-not pass merely because their manifests agree. Present non-finite entry/stop
-values are explicit failure evidence; genuinely missing plan values remain
-waiting evidence rather than being imputed or treated as valid.
+not pass merely because their manifests agree. Present non-numeric or non-finite
+entry, stop, target, and R/R values are explicit failure evidence; genuinely
+missing plan values remain waiting evidence rather than being imputed or treated
+as valid. The canonical R/R calculation rejects every non-finite
+entry/stop/target before allocation. The validator reconstructs canonical
+records from Markdown's visible section tables, compares them with its
+integrity-bound decision manifest, and joins CSV, HTML, and email in runtime semantic parity.
+Forward-snapshot regression coverage compares the complete canonical payload
+after only the declared report/research exclusions.
+The Markdown manifest is terminal non-whitespace content, and visible canonical
+sections contain exactly one row per ticker. Multi-lane Pattern Watchlist state
+is represented in that one row rather than duplicating the ticker across lane
+tables. Runtime JSON state writes use unique temporary files plus bounded
+replacement retry; persistent permission denial remains an error.
 
 Compatibility functions (`size_trade_candidate`, `decide_candidate`) and older review/ranking helpers remain. Production exports currently overwrite preliminary guidance with the canonical pipeline and validate the result, but this extra surface is a maintenance risk and should not be allowed to become an alternate decision path.
 
@@ -870,6 +881,10 @@ offline dry-run, and semantic-validation stage.
 
 `PORTFOLIO_RANKING_PHASE_A_V1` replaces production capacity tie-breaking by
 input row position with Final Score descending and normalized ticker ascending.
+This ordering can change which ticker receives scarce production capacity. It
+is governed separately by `docs/PRODUCTION_CANDIDATE_ORDERING.md`; no explicit
+approval record was located during the 2026-10-02 Phase 1 review-fix task, so it
+must not be represented as a no-production-effect research change.
 Candidate eligibility is frozen before research scoring. The isolated research
 interface includes production Final Score, a SHA-256 fixed-seed/date/ticker
 random baseline, four individual point-in-time factors, an exact 25% composite,

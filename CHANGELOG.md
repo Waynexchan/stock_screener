@@ -1,5 +1,31 @@
 # Project Changelog
 
+## 2026-10-02 - Phase 1 independent-review safety fixes
+
+- Closed a canonical allocation defect where a non-finite observed target could
+  produce infinite R/R and receive FULL risk. Entry, stop, and target must now
+  be finite before structural R/R can be valid, and report validation checks the
+  target independently.
+- Distinguished genuinely missing plan values from present invalid numeric data
+  in Pattern Discovery. Non-numeric or non-finite entry, stop, target, and R/R
+  evidence maps to Avoid / Failed instead of Pattern Watchlist.
+- Added visible-table-derived Markdown canonical validation plus an
+  integrity-bound decision manifest to runtime cross-output validation and the
+  watchdog path. Publication now requires CSV, Markdown, HTML, and email parity.
+- Closed two follow-up Markdown bypasses: the manifest must be terminal content,
+  and a ticker may appear only once across visible canonical section rows.
+  Markdown now renders one Pattern Watchlist row per ticker while retaining
+  multi-lane membership, scores, ranks, reasons, and lane member counts.
+- Added bounded retry around atomic JSON destination replacement so transient
+  Windows sharing/access denial cannot make the required FULL gate
+  timing-dependent; exhausted replacement denial still fails closed.
+- Strengthened snapshot regression coverage from excluded-field checks to full
+  canonical payload parity after the declared report/research exclusions.
+- Separated the existing production Final Score/ticker allocation ordering from
+  the research-ranking record. The ordering has a real scarce-capacity effect;
+  its explicit approval evidence remains unverified and is documented in
+  `docs/PRODUCTION_CANDIDATE_ORDERING.md`.
+
 ## 2026-09-29 - Pattern Discovery setup lanes Phase 2
 
 - Added three independent, deterministic `RESEARCH_ONLY` Pattern Watchlist

@@ -137,6 +137,16 @@ it cannot retire an in-flight or newly changed incident. It never starts or
 retries production. Exceptional exchange closures require manual awareness.
 Creating or changing the Scheduled Task remains an explicit operator action.
 
+Trade-plan values are fail-closed. A blank/null entry, stop, target, or R/R is
+reported as missing; a present non-numeric or non-finite value is invalid data.
+Invalid-present values cannot become actionable or be presented as merely
+waiting for evidence in Pattern Watchlist.
+
+Markdown shows each candidate exactly once in its canonical report section.
+Pattern Watchlist candidates that belong to several research lanes retain all
+lane fields in that one row; the lane headings show membership counts without
+duplicating a ticker. Content after the decision manifest is invalid.
+
 The production wrapper holds a project-specific Windows mutex before it writes
 status or starts verification. If another scheduled or manual invocation is
 already active, the second process exits with code `75` and does not overwrite

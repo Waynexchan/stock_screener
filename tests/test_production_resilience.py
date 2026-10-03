@@ -408,9 +408,11 @@ def test_atomic_json_writers_do_not_share_temporary_path(
     original_replace = Path.replace
     errors: list[BaseException] = []
     replace_sources: list[Path] = []
+    synchronized_sources: set[Path] = set()
 
     def synchronized_replace(self: Path, destination: Path):
-        if destination == target:
+        if destination == target and self not in synchronized_sources:
+            synchronized_sources.add(self)
             replace_sources.append(self)
             barrier.wait(timeout=5)
         return original_replace(self, destination)
@@ -432,6 +434,52 @@ def test_atomic_json_writers_do_not_share_temporary_path(
     assert len(set(replace_sources)) == 2
     assert not errors
     assert json.loads(target.read_text(encoding="utf-8"))["value"] in {1, 2}
+
+
+def test_atomic_json_writer_retries_transient_replace_permission_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    target = tmp_path / "state.json"
+    original_replace = Path.replace
+    attempts = 0
+
+    def transient_replace(self: Path, destination: Path):
+        nonlocal attempts
+        if destination == target:
+            attempts += 1
+            if attempts == 1:
+                raise PermissionError("simulated transient destination contention")
+        return original_replace(self, destination)
+
+    monkeypatch.setattr(Path, "replace", transient_replace)
+    monkeypatch.setattr(production_monitor.time, "sleep", lambda _: None)
+
+    production_monitor._atomic_write_json(target, {"value": 1})
+
+    assert attempts == 2
+    assert json.loads(target.read_text(encoding="utf-8")) == {"value": 1}
+
+
+def test_atomic_json_writer_propagates_exhausted_replace_permission_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    target = tmp_path / "state.json"
+    attempts = 0
+
+    def denied_replace(self: Path, destination: Path):
+        nonlocal attempts
+        if destination == target:
+            attempts += 1
+        raise PermissionError("simulated persistent destination contention")
+
+    monkeypatch.setattr(Path, "replace", denied_replace)
+    monkeypatch.setattr(production_monitor.time, "sleep", lambda _: None)
+
+    with pytest.raises(PermissionError, match="persistent destination contention"):
+        production_monitor._atomic_write_json(target, {"value": 1})
+
+    assert attempts >= 2
+    assert not target.exists()
 
 
 def test_alert_lifecycle_lock_serializes_separate_processes(tmp_path: Path):

@@ -529,6 +529,24 @@ def test_formal_runner_fails_closed_before_current_classifications_are_used() ->
         validate_runner_data_gate(declared_ready, engineering_replay=False)
 
 
+def test_experiment_discloses_separate_production_ordering_effect() -> None:
+    experiment = json.loads(
+        (
+            Path(__file__).parents[1]
+            / "experiments"
+            / "portfolio_ranking_phase_a_v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    hypothesis = (
+        Path(__file__).parents[1] / "hypotheses" / "PORTFOLIO_RANKING_PHASE_A_V1.md"
+    ).read_text(encoding="utf-8")
+
+    assert experiment["production_effect"] != "NONE"
+    assert "EXISTING_PRODUCTION_BASELINE_ORDERING" in experiment["production_effect"]
+    assert "Production is unchanged." not in hypothesis
+    assert "docs/PRODUCTION_CANDIDATE_ORDERING.md" in hypothesis
+
+
 def test_preregistered_concentration_matches_production_constants() -> None:
     experiment_path = (
         Path(__file__).parents[1] / "experiments" / "portfolio_ranking_phase_a_v1.json"

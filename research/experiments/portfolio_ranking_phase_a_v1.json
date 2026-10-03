@@ -1,7 +1,7 @@
 {
   "experiment_id": "PORTFOLIO_RANKING_PHASE_A_V1",
   "status": "ENGINEERING_INFRASTRUCTURE_ONLY_FORMAL_BLOCKED_DATA_NOT_READY",
-  "production_effect": "NONE",
+  "production_effect": "RESEARCH_ARMS_NONE; EXISTING_PRODUCTION_BASELINE_ORDERING_HAS_SEPARATE_BEHAVIOUR_EFFECT_AND_UNVERIFIED_APPROVAL",
   "research_label": "RESEARCH_ONLY POINT-IN-TIME PORTFOLIO RANKING",
   "hypothesis": "When canonical candidate eligibility and every non-ranking condition are held fixed, continuous point-in-time leadership and setup-quality rankings may allocate scarce portfolio heat differently from production Final Score.",
   "eligibility": {

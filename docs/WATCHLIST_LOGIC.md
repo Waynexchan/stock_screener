@@ -3,9 +3,10 @@
 Production has one authoritative candidate pipeline:
 
 1. Validate critical stock, market, price-freshness, and portfolio data.
-2. Require primary edge: valid Recent RS and trend, setup, entry, structural
-   stop, observed structural target, actual R/R of at least 2, acceptable timing,
-   liquidity, and no overextension.
+2. Require primary edge: valid Recent RS and trend, setup, finite entry, finite
+   structural stop, finite observed structural target, finite actual R/R of at
+   least 2, acceptable timing, liquidity, and no overextension. A present but
+   non-numeric or non-finite trade-plan value is invalid data, not missing data.
 3. Classify Setup Integrity as `PASS`, `MARGINAL`, or `FAIL` from deterministic
    setup fields.
 4. Apply explicit market/portfolio permission, drawdown, open-position,
@@ -25,7 +26,11 @@ Production has one authoritative candidate pipeline:
    An existing signal-date directory with no run directory is also an incomplete
    ledger, not evidence of zero prior authorisations.
 8. Export the unchanged canonical decision to CSV, Markdown, HTML, email, and
-   the immutable forward snapshot.
+   the immutable forward snapshot. Publication requires semantic parity across
+   all four human-facing outputs. The validator reconstructs canonical records
+   from the visible Markdown section tables and compares them with its
+   integrity-bound machine-readable decision manifest, so internally
+   contradictory Markdown cannot pass merely by recomputing a file hash.
 
 `FULL` is actionable now at no more than 1R. `HALF` is actionable now at no more
 than 0.5R. `WATCH` is interesting but not ready, with 0R and zero shares.
@@ -58,9 +63,12 @@ future-dated and cannot be actionable. Exceptional exchange closures are not
 represented by the current calendar.
 
 Before a valid production run is preserved, the row-level validator verifies
-state/risk/share/actionability semantics and confirms that CSV, HTML, and email
-carry the same canonical manifest. Only after that succeeds is a unique bundle
-written under `output/forward_snapshots`; existing bundles are never overwritten.
+state/risk/share/actionability semantics, finite observed-target validity, and
+confirms that CSV, Markdown, HTML, and email carry the same canonical manifest.
+Only after that succeeds is a unique bundle written under
+`output/forward_snapshots`; existing bundles are never overwritten. The
+snapshot candidate payload must equal the complete post-decision canonical
+payload after removing only the explicitly excluded report/research fields.
 
 AI sees validated records only. It can rank or describe them, but it cannot
 change decisions, setup integrity, confirmation, R/R, risk, or shares.

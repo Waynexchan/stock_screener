@@ -660,7 +660,7 @@
       "name": "Deterministic portfolio candidate ranking interface",
       "category": "candidate_ranking_research",
       "status": "RESEARCH_ONLY",
-      "production_effect": "NONE; research-only ranking and exit-aware portfolio allocation audit.",
+      "production_effect": "Research arms have no production effect; the existing Final Score/ticker production baseline ordering separately changes scarce-capacity allocation and its explicit approval record is unverified.",
       "evidence_summary": "Engineering-only Phase A interface, causal factor builder, input-contract runner, stage-boundary censoring, per-ranker production concentration, strict shortlist gate, complete blocked-reason audit, and permutation regressions; no outcome sample has been evaluated and formal data remains blocked.",
       "sample_size": null,
       "discovery_result": null,
@@ -670,7 +670,7 @@
       "profit_factor_delta": null,
       "max_drawdown_delta_r": null,
       "last_tested": "2026-09-18",
-      "notes": "Preregistered arms are production Final Score, deterministic SHA-256 random order, four continuous factors, an exact 25% composite, and four equal-weight leave-one-out variants. Candidate concentration is reapplied after each ranker orders candidates. Both baseline and challenger must meet the frozen sample floor. Formal execution rejects the current non-effective-dated classifications. No champion is selected automatically; formal Phase A, Phase B, and Phase C are not complete, and the point-in-time data gate remains NOT_READY."
+      "notes": "Preregistered arms are production Final Score, deterministic SHA-256 random order, four continuous factors, an exact 25% composite, and four equal-weight leave-one-out variants. Candidate concentration is reapplied after each ranker orders candidates. Both baseline and challenger must meet the frozen sample floor. Formal execution rejects the current non-effective-dated classifications. No champion is selected automatically; formal Phase A, Phase B, and Phase C are not complete, and the point-in-time data gate remains NOT_READY. The already-implemented production baseline ordering is governed separately by docs/PRODUCTION_CANDIDATE_ORDERING.md and is not authorized by this research record."
     },
     {
       "id": "pattern_discovery_reporting_phase_1",
