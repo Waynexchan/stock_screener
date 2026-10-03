@@ -1,6 +1,6 @@
 # Project Status
 
-Fast handoff as of 2026-10-02. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
+Fast handoff as of 2026-10-03. Read `AGENTS.md` before this file and `docs/PROJECT_MEMORY.md` for durable context.
 
 ## Current state
 
@@ -45,7 +45,13 @@ Fast handoff as of 2026-10-02. Read `AGENTS.md` before this file and `docs/PROJE
   machine is not implemented. Lane inputs/outputs are excluded from forward
   snapshots and cannot alter canonical decisions, production score, allocation,
   risk, shares, or trade-plan values. No trading-edge claim or production
-  promotion is made.
+  promotion is made. The 2026-10-03 Phase 2 audit corrected four research-only
+  semantics: the generic `Recent support` placeholder is not explicit pullback
+  confirmation, an explicitly lost higher low is weak/broken structure even
+  when the remaining score is high, missing support distance cannot leave an
+  unranked non-member with a favourable quality label, and absent breakout
+  history cannot use the verified-no-event near-pivot fallback. Canonical
+  production outputs remain unchanged.
 - `PORTFOLIO_RANKING_PHASE_A_V1` has substantially implemented engineering
   infrastructure, but formal Phase A infrastructure is not complete and no
   evidence study has run. Phase B and Phase C are not implemented. Production
@@ -254,6 +260,21 @@ Fast handoff as of 2026-10-02. Read `AGENTS.md` before this file and `docs/PROJE
 - Research verification: `powershell -ExecutionPolicy Bypass -File .\scripts\verify_research.ps1`.
 
 ## Last verification result
+
+Post-Phase-2-audit verification on 2026-10-03: PASS — four corrected
+research-only lane semantics have focused regressions, including the independent
+review case where high-scoring but missing support distance previously left an
+unranked non-member labelled `CONSTRUCTIVE`. Production-isolation coverage
+tampers every Phase 2 research input and lane output before comparing all
+non-Phase-2 canonical outputs. The affected set passed 198 tests; the research
+gate passed syntax, Ruff, mypy, 197 tests, the expected
+`BLOCKED_DATA_NOT_READY` baseline, and production isolation. The canonical FULL
+gate passed Python syntax, Ruff, mypy, 493 pytest tests, 118 legacy unittest
+tests, integration/invariant checks, the offline sample dry run, and generated
+report semantic validation. The deterministic sample's complete canonical
+fingerprint and 13 decision states matched before and after. This uncommitted
+evidence grants no commit, merge, push, production-run, release, or research-
+promotion authority.
 
 Post-second-independent-review-fix verification on 2026-10-03: PASS — the
 Markdown manifest must now be terminal non-whitespace content, duplicate visible

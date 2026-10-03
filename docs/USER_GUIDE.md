@@ -87,14 +87,20 @@ capacity, risk, or shares.
 - **Pullback to Support** separates constructive pullbacks from ambiguous or
   broken structure using support distance, reclaim evidence, ATR depth,
   higher-low preservation, volume, close strength, and prior advance. Merely
-  touching a moving average is not top-quality evidence.
+  touching a moving average is not top-quality evidence. The generic `Recent
+  support` placeholder is not confirmation, and an explicitly lost higher low
+  is labelled weak/broken even when the other research factors score well. A
+  row without usable support distance is unranked and cannot be labelled
+  constructive or potential.
 - **Breakout Retest / High Flag** distinguishes near-pivot, same-day unconfirmed
   breakout, bounded post-breakout hold/consolidation, and invalidation from a
   rolling lookback. It is not a persistent state machine. A same-day breakout
   is explicitly not a confirmed retest or high flag. Required OHLCV sessions
   are never deleted or replaced by older rows: incomplete event-search history
   is shown as `BREAKOUT_WINDOW_INCOMPLETE`, and incomplete post-breakout history
-  as `RECENT_BREAKOUT_DATA_INCOMPLETE`; both are unranked.
+  as `RECENT_BREAKOUT_DATA_INCOMPLETE`; both are unranked. A near-pivot fallback
+  is available only after a complete event-search window verifies that no recent
+  breakout occurred; missing history remains unranked.
 
 Missing evidence stays missing and is reported. An unassigned Pattern Watchlist
 row remains visible under **Unassigned / Insufficient Lane Evidence**.

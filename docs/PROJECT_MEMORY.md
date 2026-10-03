@@ -54,6 +54,14 @@ reasons, and deterministic ticker tie-breaks. Multi-lane membership represents
 multiple chart-review hypotheses for one canonical record, not multiple trades.
 The breakout lane uses a bounded rolling price-history lookback; the persistent
 Phase 4 lifecycle remains unimplemented.
+The Pullback lane treats the generic `Recent support` placeholder as missing
+confirmation and treats an explicitly lost higher low as weak/broken structure.
+It also restricts `CONSTRUCTIVE` and `POTENTIAL` quality to lane members, so
+missing usable support distance remains unranked and `AMBIGUOUS_SUPPORT` unless
+broken structure or excessive depth requires `WEAK_OR_BROKEN`.
+The Breakout lane permits near-pivot fallback only after a complete event-search
+window establishes that no qualifying recent breakout occurred; absent history
+remains unknown and unranked.
 
 Report/lane fields do not belong to `DISCOVERY_COLUMNS`; narrow Phase 2 OHLCV
 evidence may be calculated during discovery but it and all lane outputs are

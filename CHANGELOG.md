@@ -1,5 +1,20 @@
 # Project Changelog
 
+## 2026-10-03 - Phase 2 audit corrections
+
+- Corrected Pullback to Support confirmation so the generic `Recent support`
+  placeholder cannot receive explicit support/reclaim points or a
+  `CONSTRUCTIVE` quality label.
+- Corrected Pullback quality labelling so an explicitly lost higher low remains
+  `WEAK_OR_BROKEN` even when other factors keep the numerical score high.
+- Corrected Pullback quality labelling so missing usable support distance cannot
+  leave an unranked non-member labelled `CONSTRUCTIVE` or `POTENTIAL`.
+- Corrected Breakout Retest / High Flag missing-data handling so absent breakout
+  history cannot use the verified-no-event near-pivot fallback.
+- Expanded regression coverage to compare every canonical output after both
+  Phase 2 research inputs and lane outputs are tampered. No canonical production
+  decision, sizing, plan, allocation, or forward-snapshot behaviour changed.
+
 ## 2026-10-02 - Phase 1 independent-review safety fixes
 
 - Closed a canonical allocation defect where a non-finite observed target could

@@ -210,6 +210,13 @@ close strength are evaluated separately.
 | support/reclaim evidence | 10 | explicit reclaim/support evidence higher | zero; listed |
 | pivot/overhead context | 5 | smaller absolute pivot distance better | zero; listed |
 
+`Support Signal` values that only contain the generic `Recent support`
+placeholder are not explicit reclaim/support evidence. They receive no points,
+remain listed as missing confirmation, and cannot by themselves support a
+`CONSTRUCTIVE` label. A value containing an observable event such as an EMA/MA
+reclaim, close above a prior high, or top-quartile close remains explicit
+evidence even when the generic placeholder is also present.
+
 Penalties: broken MA50 structure −25, lost higher low −20, excessive pullback
 depth above 6 ATR −20, missing reclaim/support evidence −10, and
 `Extended`/`Overextended` −15/−30.
@@ -221,6 +228,17 @@ Quality label:
 - `POTENTIAL`: score ≥50 with structure not broken;
 - `AMBIGUOUS_SUPPORT`: observable proximity without enough confirming evidence;
 - `WEAK_OR_BROKEN`: broken structure or excessive depth.
+
+`CONSTRUCTIVE` and `POTENTIAL` apply only to Pullback lane members. When usable
+support distance is unavailable, or the row otherwise fails lane membership,
+the quality is `AMBIGUOUS_SUPPORT` unless broken structure or excessive depth
+requires `WEAK_OR_BROKEN`. A non-member must never retain a favourable quality
+label beside an unranked result.
+
+For the quality label, structure is broken when price is below MA50 or when
+higher-low preservation is explicitly false. The distinct documented penalties
+remain part of the score; this rule prevents a high score in the other factors
+from relabelling explicit structural failure as constructive.
 
 The quality label is explanatory research text only.
 
@@ -319,8 +337,10 @@ entry points, and canonical state names remain unchanged.
    production fields.
 9. A constructive pullback ranks above a broken-structure comparable pullback.
 10. Moving-average proximity without confirmation cannot receive
-    `CONSTRUCTIVE` quality.
-11. Missing ATR/support evidence is explicit and never favourable.
+    `CONSTRUCTIVE` quality. The generic `Recent support` placeholder is not
+    confirmation.
+11. Missing ATR/support evidence is explicit and never favourable; an unranked
+    non-member cannot retain `CONSTRUCTIVE` or `POTENTIAL` quality.
 12. A deep destructive pullback is labelled `WEAK_OR_BROKEN`.
 13. A same-day breakout is labelled `SAME_DAY_BREAKOUT_UNCONFIRMED`, never a
     confirmed retest/high flag; the breakout bar is excluded from hold,

@@ -251,7 +251,7 @@ def test_lane_inputs_scores_and_ranks_cannot_change_production_fields():
     assert np.isnan(second["Realistic Target"])
 
 
-def test_tampered_lane_fields_do_not_change_capacity_allocation_or_sizing():
+def test_tampered_phase2_fields_do_not_change_any_canonical_output():
     candidates = pd.DataFrame(
         [production_candidate("AAA", 90.0), production_candidate("BBB", 80.0)]
     )
@@ -259,25 +259,22 @@ def test_tampered_lane_fields_do_not_change_capacity_allocation_or_sizing():
         candidates, production_context()
     )
     tampered = candidates.copy(deep=True)
+    for field in PHASE2_RESEARCH_FIELDS:
+        tampered[field] = "999"
     for field in LANE_OUTPUT_FIELDS:
         tampered[field] = "999"
     replay = run_screener.apply_canonical_decision_pipeline(
         tampered, production_context()
     )
 
-    production_fields = [
-        "Ticker",
-        "Final Decision",
-        "Actionable",
-        "Confirmed Setup",
-        "Maximum Risk R",
-        "Maximum Risk Dollars",
-        "Maximum Shares",
-        "Concentration Exclusion Reason",
+    canonical_fields = [
+        column
+        for column in baseline.columns
+        if column not in set(PHASE2_RESEARCH_FIELDS + LANE_OUTPUT_FIELDS)
     ]
     pd.testing.assert_frame_equal(
-        baseline.reindex(columns=production_fields),
-        replay.reindex(columns=production_fields),
+        baseline.reindex(columns=canonical_fields),
+        replay.reindex(columns=canonical_fields),
         check_dtype=True,
     )
 
@@ -376,6 +373,35 @@ def test_constructive_pullback_ranks_above_broken_and_deep_pullback():
     assert annotated.at["BROKEN", "Pullback Lane Quality"] == "WEAK_OR_BROKEN"
 
 
+def test_lost_higher_low_cannot_be_labelled_constructive():
+    annotated = annotate_setup_lanes(
+        pd.DataFrame(
+            [
+                lane_row(
+                    "LOST_HIGHER_LOW",
+                    **{
+                        "Category": "Pullback Candidates",
+                        "Research Prior Advance 60D %": 30.0,
+                        "Recent RS Score": 90.0,
+                        "Nearest Support Distance ATR": 0.0,
+                        "Research Pullback Depth ATR": 2.0,
+                        "Distance From 50MA %": 5.0,
+                        "Research Higher Low Preserved": False,
+                        "Research Pullback Volume Ratio": 0.5,
+                        "Research Close Strength %": 85.0,
+                        "Support Signal": "EMA20 reclaim",
+                        "Distance From Pivot %": 0.0,
+                    },
+                )
+            ]
+        )
+    ).iloc[0]
+
+    assert annotated[f"{PULLBACK_LANE} Score"] >= 70.0
+    assert annotated["Pullback Lane Quality"] == "WEAK_OR_BROKEN"
+    assert "lost-higher-low penalty" in annotated[f"{PULLBACK_LANE} Reason"]
+
+
 def test_touching_a_moving_average_is_not_constructive_without_confirmation():
     annotated = annotate_setup_lanes(
         pd.DataFrame(
@@ -396,6 +422,49 @@ def test_touching_a_moving_average_is_not_constructive_without_confirmation():
         )
     ).iloc[0]
 
+    assert annotated[f"{PULLBACK_LANE} Member"]
+    assert annotated["Pullback Lane Quality"] != "CONSTRUCTIVE"
+    assert "no reclaim/support confirmation" in annotated[f"{PULLBACK_LANE} Reason"]
+    assert "support/reclaim evidence" in annotated[f"{PULLBACK_LANE} Missing"]
+
+
+def test_generic_recent_support_placeholder_is_not_explicit_confirmation():
+    latest = pd.Series(
+        {
+            "SUPPORT_SIGNAL_10EMA": "Recent support",
+            "SUPPORT_SIGNAL_20EMA": "Recent support",
+            "SUPPORT_SIGNAL_50MA": "Recent support",
+            "SUPPORT_SIGNAL_10EMA_BOOL": False,
+            "SUPPORT_SIGNAL_20EMA_BOOL": False,
+            "SUPPORT_SIGNAL_50MA_BOOL": False,
+        }
+    )
+    generic_signal = run_screener.strongest_support_signal(latest)
+
+    annotated = annotate_setup_lanes(
+        pd.DataFrame(
+            [
+                lane_row(
+                    "GENERIC_ONLY",
+                    **{
+                        "Category": "Pullback Candidates",
+                        "Nearest Support Distance ATR": 0.05,
+                        "Research Prior Advance 60D %": 30.0,
+                        "Recent RS Score": 90.0,
+                        "Research Pullback Depth ATR": 2.0,
+                        "Distance From 50MA %": 5.0,
+                        "Research Higher Low Preserved": True,
+                        "Research Pullback Volume Ratio": 0.5,
+                        "Research Close Strength %": 85.0,
+                        "Support Signal": generic_signal,
+                        "Distance From Pivot %": 0.0,
+                    },
+                )
+            ]
+        )
+    ).iloc[0]
+
+    assert generic_signal == "Recent support"
     assert annotated[f"{PULLBACK_LANE} Member"]
     assert annotated["Pullback Lane Quality"] != "CONSTRUCTIVE"
     assert "no reclaim/support confirmation" in annotated[f"{PULLBACK_LANE} Reason"]
@@ -447,8 +516,46 @@ def test_missing_support_and_atr_inputs_are_explicit_not_favourable():
 
     assert not annotated[f"{PULLBACK_LANE} Member"]
     assert np.isnan(annotated[f"{PULLBACK_LANE} Rank"])
+    assert annotated["Pullback Lane Quality"] == "AMBIGUOUS_SUPPORT"
     assert "support distance" in annotated[f"{PULLBACK_LANE} Missing"]
     assert "pullback depth ATR" in annotated[f"{PULLBACK_LANE} Missing"]
+
+
+def test_high_scoring_missing_support_distance_is_unranked_and_not_favourable():
+    annotated = annotate_setup_lanes(
+        pd.DataFrame(
+            [
+                lane_row(
+                    "NO_SUPPORT_HIGH_SCORE",
+                    **{
+                        "Category": "Pullback Candidates",
+                        "Nearest Support Distance ATR": np.nan,
+                        "Distance From EMA10 ATR": np.nan,
+                        "Distance From EMA20 ATR": np.nan,
+                        "Distance From MA50 ATR": np.nan,
+                        "Research Prior Advance 60D %": 30.0,
+                        "Recent RS Score": 95.0,
+                        "Research Pullback Depth ATR": 2.0,
+                        "Distance From 50MA %": 5.0,
+                        "Research Higher Low Preserved": True,
+                        "Research Pullback Volume Ratio": 0.5,
+                        "Research Close Strength %": 90.0,
+                        "Support Signal": "EMA20 reclaim",
+                        "Distance From Pivot %": 0.0,
+                    },
+                )
+            ]
+        )
+    ).iloc[0]
+
+    assert not annotated[f"{PULLBACK_LANE} Member"]
+    assert np.isnan(annotated[f"{PULLBACK_LANE} Rank"])
+    assert annotated["Pullback Lane Quality"] == "AMBIGUOUS_SUPPORT"
+    assert (
+        "insufficient support-distance evidence; AMBIGUOUS_SUPPORT"
+        in annotated[f"{PULLBACK_LANE} Reason"]
+    )
+    assert "support distance" in annotated[f"{PULLBACK_LANE} Missing"]
 
 
 def test_same_day_breakout_is_never_called_a_confirmed_retest_or_high_flag():
@@ -709,6 +816,28 @@ def test_missing_breakout_history_is_honest_and_unranked():
         )
     ).iloc[0]
 
+    assert not annotated[f"{BREAKOUT_LANE} Member"]
+    assert np.isnan(annotated[f"{BREAKOUT_LANE} Rank"])
+    assert "breakout history/state" in annotated[f"{BREAKOUT_LANE} Missing"]
+
+
+def test_missing_breakout_history_cannot_use_near_pivot_fallback():
+    annotated = annotate_setup_lanes(
+        pd.DataFrame(
+            [
+                lane_row(
+                    "UNKNOWN_NEAR_PIVOT",
+                    **{
+                        "Distance From Pivot %": -1.0,
+                        "Research Breakout Evidence": "",
+                        "Research Breakout Pivot": np.nan,
+                    },
+                )
+            ]
+        )
+    ).iloc[0]
+
+    assert annotated["Breakout Lane State"] == "UNKNOWN"
     assert not annotated[f"{BREAKOUT_LANE} Member"]
     assert np.isnan(annotated[f"{BREAKOUT_LANE} Rank"])
     assert "breakout history/state" in annotated[f"{BREAKOUT_LANE} Missing"]

@@ -155,6 +155,15 @@ def _support_distance(row: Mapping[str, object]) -> float | None:
     return min(usable) if usable else None
 
 
+def _explicit_support_signal(value: object) -> str:
+    """Return observable support evidence, excluding the generic placeholder."""
+    text = _text(value)
+    tokens = [
+        item.strip() for item in text.replace(";", ",").split(",") if item.strip()
+    ]
+    return text if any(item.casefold() != "recent support" for item in tokens) else ""
+
+
 def _tight_base_result(row: Mapping[str, object]) -> LaneResult:
     recent_rs = _number(row.get("Recent RS Score"))
     acceleration = _number(row.get("RS Momentum Acceleration"))
@@ -295,7 +304,7 @@ def _pullback_result(row: Mapping[str, object]) -> LaneResult:
     )
     pullback_volume = _number(row.get("Research Pullback Volume Ratio"))
     close_strength = _number(row.get("Research Close Strength %"))
-    support_signal = _text(row.get("Support Signal"))
+    support_signal = _explicit_support_signal(row.get("Support Signal"))
     pivot_distance = _number(row.get("Distance From Pivot %"))
 
     components = [
@@ -345,8 +354,11 @@ def _pullback_result(row: Mapping[str, object]) -> LaneResult:
     member = support_distance is not None and (
         support_distance <= 3.0 or category == "Pullback Candidates"
     )
-    if broken or excessive:
+    structure_broken = broken or higher_low is False
+    if structure_broken or excessive:
         quality = "WEAK_OR_BROKEN"
+    elif not member:
+        quality = "AMBIGUOUS_SUPPORT"
     elif score >= 70.0 and support_signal:
         quality = "CONSTRUCTIVE"
     elif score >= 50.0:
@@ -384,11 +396,10 @@ def _pullback_result(row: Mapping[str, object]) -> LaneResult:
 def _breakout_state(row: Mapping[str, object]) -> str:
     state = _text(row.get("Research Breakout Evidence")).upper()
     pivot_distance = _number(row.get("Distance From Pivot %"))
-    if state in {"", "NO_RECENT_BREAKOUT_EVIDENCE"}:
+    if state == "NO_RECENT_BREAKOUT_EVIDENCE":
         if pivot_distance is not None and abs(pivot_distance) <= 3.0:
             return "NEAR_PIVOT_UNCONFIRMED"
-        return state or "UNKNOWN"
-    return state
+    return state or "UNKNOWN"
 
 
 def _breakout_result(row: Mapping[str, object]) -> LaneResult:
