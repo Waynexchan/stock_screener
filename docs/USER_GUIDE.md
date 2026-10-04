@@ -61,6 +61,9 @@ The main candidate report separates three different uses:
   lanes: **Tight Base / VCP**, **Pullback to Support**, and **Breakout Retest /
   High Flag**. A ticker can appear in more than one lane while remaining one
   canonical record with one unchanged production decision and risk amount.
+  Phase 3 adds seven separately visible chart-quality descriptions to explain
+  the observable structure behind those lanes; it does not create a combined
+  trading score.
 - **Avoid / Failed** is `RESEARCH_ONLY`. It contains non-actionable rows with
   existing explicit failure evidence such as failed setup integrity, excessive
   extension, stale/warned critical price data, or invalid present stop geometry.
@@ -71,8 +74,8 @@ entry, stop, target, or R/R. A structurally interesting candidate blocked by
 portfolio heat may therefore remain in Pattern Watchlist while its canonical
 decision remains `NO TRADE` with zero risk.
 Immutable forward snapshots retain the untouched canonical production frame;
-the Pattern Discovery report/lane fields and narrow Phase 2 research evidence
-are not added to snapshot candidates.
+the Pattern Discovery report/lane fields and Phase 2/3 research evidence are
+not added to snapshot candidates.
 
 ### Reading Phase 2 setup lanes
 
@@ -104,6 +107,36 @@ capacity, risk, or shares.
 
 Missing evidence stays missing and is reported. An unassigned Pattern Watchlist
 row remains visible under **Unassigned / Insufficient Lane Evidence**.
+
+### Reading Phase 3 chart quality
+
+Phase 3 is `RESEARCH_ONLY` explanation, not a trading-edge claim or a production
+gate. The report keeps seven components separate:
+
+- **Prior Advance Quality** compares return with path efficiency, constructive
+  sessions, internal drawdown, reversals, and one-day concentration.
+- **Trend Smoothness** requires positive direction as well as orderly movement;
+  a flat quiet stock is not a smooth uptrend.
+- **Distribution / Wide-Bar Penalty** counts repeated wide-range, high-volume,
+  weak-close downside events. Its numeric direction is reversed: higher is
+  worse.
+- **Overhead Supply** uses observable recent highs and price congestion only.
+  It does not claim volume-profile evidence.
+- **Contraction Quality** combines 10D/20D range, ADR20/ADR60, sequential range,
+  and recent/prior volume behaviour. Missing volume is not dry-up.
+- **Support Respect** requires observed tests, holds, or reclaims around one
+  deterministically selected EMA/MA/pivot reference. Proximity alone is
+  ambiguous.
+- **Relative Strength Persistence** keeps the current Recent RS level separate
+  from the multi-session SPY-relative path and detects one-day concentration or
+  deterioration.
+
+Each component reports a status, interpretation, optional descriptive value,
+raw/derived evidence, warnings, and deterministic reason. `UNKNOWN`,
+`INSUFFICIENT_HISTORY`, `MISSING_DATA`, and `NOT_APPLICABLE` are intentional;
+they never mean favourable zero. Phase 2 may show these states in lane reasons,
+but its membership, scores, ranks, pullback quality, and breakout state remain
+unchanged.
 
 ## Daily workflow
 

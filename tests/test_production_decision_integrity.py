@@ -23,6 +23,7 @@ from decision_system import (
     size_authorised_candidate,
 )
 import run_screener
+from research.chart_quality import calculate_chart_quality_fields
 import send_email
 from scripts.validate_report import (
     manifest_record,
@@ -945,6 +946,7 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
                         "Research Close Strength %": 78.0,
                         "Research Volume Dry-Up Ratio": 0.66,
                         "Research Breakout Evidence": "NEAR_PIVOT_UNCONFIRMED",
+                        **calculate_chart_quality_fields(pd.DataFrame()),
                     },
                 ),
             ]
@@ -1022,6 +1024,11 @@ def test_internal_csv_html_email_and_validator_use_same_decision(tmp_path: Path)
         assert lane in markdown
         assert lane in email
     assert canonical.loc[canonical["Ticker"].eq("PATTERN_MULTI"), "Setup Lanes"].iloc[0]
+    assert (
+        canonical.loc[canonical["Ticker"].eq("PATTERN_MULTI"), "Chart Quality Summary"]
+        .iloc[0]
+        .startswith("RESEARCH_ONLY")
+    )
 
     expected_manifest = run_screener.decision_manifest_records(canonical)
     assert read_html_manifest(html) == expected_manifest

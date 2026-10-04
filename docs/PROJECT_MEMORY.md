@@ -41,13 +41,19 @@ AI commentary is optional. It receives the validated Top Action List and may ass
 
 After canonical decisions are complete, Pattern Discovery reporting first adds
 the Phase 1 section/status/reason and then applies the Phase 2 `RESEARCH_ONLY`
-setup lanes on a copy of Pattern Watchlist rows.
+setup lanes on a copy of Pattern Watchlist rows. Phase 3 chart-quality evidence
+is calculated from point-in-time stock/SPY history during discovery, carried as
+inert research metadata through the canonical frame, and displayed only after
+the canonical decision. Complete-field tamper tests protect that boundary.
 `Actionable Now` is exactly canonical FULL/HALF. `Pattern Watchlist` and
 `Avoid / Failed` are `RESEARCH_ONLY`, zero-authority views over already decided
 records; they cannot change decision, risk, shares, entry, stop, target, R/R,
 confirmation, capacity, or concentration. See
 `docs/PATTERN_DISCOVERY_PHASE_1.md` and
-`docs/PATTERN_DISCOVERY_PHASE_2.md`.
+`docs/PATTERN_DISCOVERY_PHASE_2.md`. Phase 3 is specified in
+`docs/PATTERN_DISCOVERY_PHASE_3.md` and keeps Prior Advance, Trend Smoothness,
+Distribution, Overhead Supply, Contraction, Support Respect, and RS Persistence
+separate rather than creating an aggregate score.
 The Phase 2 Tight Base / VCP, Pullback to Support, and Breakout Retest / High
 Flag lanes have independent membership, fixed scores, missing-last ranks,
 reasons, and deterministic ticker tie-breaks. Multi-lane membership represents
@@ -63,9 +69,10 @@ The Breakout lane permits near-pivot fallback only after a complete event-search
 window establishes that no qualifying recent breakout occurred; absent history
 remains unknown and unranked.
 
-Report/lane fields do not belong to `DISCOVERY_COLUMNS`; narrow Phase 2 OHLCV
-evidence may be calculated during discovery but it and all lane outputs are
-removed from immutable forward snapshots. CSV semantic validation independently enforces the classifier's
+Report/lane outputs do not belong to `DISCOVERY_COLUMNS`; narrow Phase 2 OHLCV
+and Phase 3 chart-quality evidence may be calculated during discovery, but all
+Phase 1/2/3 report/research fields are removed from immutable forward snapshots.
+CSV semantic validation independently enforces the classifier's
 explicit failure-evidence precedence so consistently misclassified reports do
 not pass merely because their manifests agree. Present non-numeric or non-finite
 entry, stop, target, and R/R values are explicit failure evidence; genuinely
@@ -148,6 +155,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_daily_run.ps1
 - `docs/RESEARCH_ARCHITECTURE.md` and `docs/DATA_READINESS.md`: dependency/reuse audit and verified data limitations.
 - `docs/PATTERN_DISCOVERY_PHASE_1.md`: Phase 1 post-canonical report separation,
   acceptance criteria, and explicit Phase 2 non-goals.
+- `docs/PATTERN_DISCOVERY_PHASE_2.md`: three independent research-only setup
+  lanes and their point-in-time/missing-data contract.
+- `docs/PATTERN_DISCOVERY_PHASE_3.md`: seven explainable chart-quality
+  components, report integration, production isolation, and deferred phases.
 - `scripts/verify_research.ps1`: focused research verification and production-file hash-isolation gate.
 - `BACKTEST_REQUIREMENTS.md`: requirements for a future point-in-time replay engine; it is not an implemented backtest.
 

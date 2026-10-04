@@ -13,6 +13,16 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from research.chart_quality import (
+    CONTRACTION,
+    DISTRIBUTION,
+    OVERHEAD_SUPPLY,
+    PRIOR_ADVANCE,
+    RS_PERSISTENCE,
+    SUPPORT_RESPECT,
+    TREND_SMOOTHNESS,
+)
+
 
 TIGHT_BASE_LANE = "Tight Base / VCP"
 PULLBACK_LANE = "Pullback to Support"
@@ -164,6 +174,16 @@ def _explicit_support_signal(value: object) -> str:
     return text if any(item.casefold() != "recent support" for item in tokens) else ""
 
 
+def _phase3_context(row: Mapping[str, object], components: tuple[str, ...]) -> str:
+    """Return concise Phase 3 context without affecting lane calculations."""
+    states = []
+    for component in components:
+        state = _text(row.get(f"CQ {component} State"))
+        if state:
+            states.append(f"{component}={state}")
+    return "Phase 3 RESEARCH_ONLY: " + ", ".join(states) if states else ""
+
+
 def _tight_base_result(row: Mapping[str, object]) -> LaneResult:
     recent_rs = _number(row.get("Recent RS Score"))
     acceleration = _number(row.get("RS Momentum Acceleration"))
@@ -284,6 +304,11 @@ def _tight_base_result(row: Mapping[str, object]) -> LaneResult:
         evidence.append("missing: " + ", ".join(missing))
     if not member:
         evidence.insert(0, "insufficient observable contraction evidence")
+    phase3 = _phase3_context(
+        row, (PRIOR_ADVANCE, TREND_SMOOTHNESS, CONTRACTION, RS_PERSISTENCE)
+    )
+    if phase3:
+        evidence.append(phase3)
     return LaneResult(member, score if member else None, "; ".join(evidence), missing)
 
 
@@ -384,6 +409,18 @@ def _pullback_result(row: Mapping[str, object]) -> LaneResult:
         reason_parts.append("missing: " + ", ".join(missing))
     if not member:
         reason_parts.insert(0, "insufficient support-distance evidence")
+    phase3 = _phase3_context(
+        row,
+        (
+            PRIOR_ADVANCE,
+            TREND_SMOOTHNESS,
+            OVERHEAD_SUPPLY,
+            SUPPORT_RESPECT,
+            RS_PERSISTENCE,
+        ),
+    )
+    if phase3:
+        reason_parts.append(phase3)
     return LaneResult(
         member,
         score if member else None,
@@ -474,6 +511,11 @@ def _breakout_result(row: Mapping[str, object]) -> LaneResult:
     reason_parts.extend(penalty_reasons)
     if missing:
         reason_parts.append("missing: " + ", ".join(missing))
+    phase3 = _phase3_context(
+        row, (PRIOR_ADVANCE, DISTRIBUTION, OVERHEAD_SUPPLY, RS_PERSISTENCE)
+    )
+    if phase3:
+        reason_parts.append(phase3)
     return LaneResult(
         member,
         score if member else None,

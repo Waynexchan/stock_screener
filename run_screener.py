@@ -65,6 +65,11 @@ from research.setup_lanes import (
     annotate_setup_lanes,
     calculate_phase2_history_features,
 )
+from research.chart_quality import (
+    CHART_QUALITY_COMPONENTS,
+    PHASE3_RESEARCH_FIELDS,
+    calculate_chart_quality_fields,
+)
 
 
 OUTPUT_CSV = "daily_watchlist.csv"
@@ -101,7 +106,9 @@ PATTERN_REPORT_FIELDS = (
     "Pattern Discovery Status",
     "Pattern Discovery Reason",
 ) + LANE_OUTPUT_FIELDS
-FORWARD_SNAPSHOT_EXCLUDED_FIELDS = PATTERN_REPORT_FIELDS + PHASE2_RESEARCH_FIELDS
+FORWARD_SNAPSHOT_EXCLUDED_FIELDS = (
+    PATTERN_REPORT_FIELDS + PHASE2_RESEARCH_FIELDS + PHASE3_RESEARCH_FIELDS
+)
 DISCOVERY_COLUMNS = [
     "Generated At",
     "Signal Date",
@@ -150,6 +157,7 @@ DISCOVERY_COLUMNS = [
     "VCP Ratio",
     "VCP Label",
     *PHASE2_RESEARCH_FIELDS,
+    *PHASE3_RESEARCH_FIELDS,
     "Pullback Quality",
     "Extension Status",
     "Risk/Reward Quality",
@@ -2092,6 +2100,7 @@ def candidate_row(
     profile: dict,
     recent_metric: dict[str, object] | None = None,
     history: pd.DataFrame | None = None,
+    benchmark_history: pd.DataFrame | None = None,
 ) -> dict:
     recent_metric = recent_metric or {}
     rs_score = rs_metric.get("RS Score")
@@ -2118,6 +2127,13 @@ def candidate_row(
         )
         if history is not None
         else {field: None for field in PHASE2_RESEARCH_FIELDS}
+    )
+    chart_quality = calculate_chart_quality_fields(
+        history if history is not None else pd.DataFrame(),
+        benchmark=benchmark_history,
+        as_of=latest.get("SIGNAL_DATE") or latest.get("PRICE_DATA_AS_OF"),
+        recent_rs_score=recent_metric.get("Recent RS Score"),
+        pivot=latest.get("PIVOT_PRICE"),
     )
     row = {
         "Generated At": latest.get("GENERATED_AT", ""),
@@ -2176,6 +2192,7 @@ def candidate_row(
         "VCP Ratio": round(vcp_ratio, 2),
         "VCP Label": vcp_label(vcp_ratio),
         **research_features,
+        **chart_quality,
         "Pullback Quality": pullback_quality_label(quality),
         "Extension Status": status,
         "Risk/Reward Quality": "Not Available",
@@ -2992,6 +3009,7 @@ def screen_stocks(
                 profiles.get(ticker, {}),
                 recent_metrics.get(ticker, {}),
                 fresh_histories.get(ticker),
+                spy_history,
             )
         )
 
@@ -3327,6 +3345,7 @@ def concise_decision_table(frame: pd.DataFrame) -> pd.DataFrame:
         "Pattern Discovery Status": "Pattern Status",
         "Pattern Discovery Reason": "Pattern / Waiting Reason",
         "Setup Lanes": "Setup Lanes",
+        "Chart Quality Summary": "Chart Quality (RESEARCH_ONLY)",
         f"{TIGHT_BASE_LANE} Member": f"{TIGHT_BASE_LANE} Member",
         f"{TIGHT_BASE_LANE} Rank": f"{TIGHT_BASE_LANE} Rank",
         f"{TIGHT_BASE_LANE} Score": f"{TIGHT_BASE_LANE} Score",
@@ -3585,6 +3604,16 @@ def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
     def truth(value: object) -> bool:
         return value is True or str(value).strip().lower() == "true"
 
+    def component_text(value: object) -> str:
+        if value is None:
+            return ""
+        try:
+            if pd.isna(value):
+                return ""
+        except (TypeError, ValueError):
+            pass
+        return str(value).strip()
+
     records = []
     classified = classify_pattern_discovery_sections(frame)
     for row in classified.sort_values("Ticker").to_dict("records"):
@@ -3605,6 +3634,17 @@ def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
             lane_ranks[lane] = None if pd.isna(rank) else int(rank)
             lane_reasons[lane] = str(row.get(f"{lane} Reason", ""))
             lane_missing[lane] = str(row.get(f"{lane} Missing", ""))
+        chart_quality = {}
+        for component in CHART_QUALITY_COMPONENTS:
+            value = pd.to_numeric(row.get(f"CQ {component} Value"), errors="coerce")
+            chart_quality[component] = {
+                "status": component_text(row.get(f"CQ {component} Status", "")),
+                "state": component_text(row.get(f"CQ {component} State", "")),
+                "value": None if pd.isna(value) else float(value),
+                "evidence": component_text(row.get(f"CQ {component} Evidence", "")),
+                "warnings": component_text(row.get(f"CQ {component} Warnings", "")),
+                "reason": component_text(row.get(f"CQ {component} Reason", "")),
+            }
         records.append(
             {
                 "ticker": str(row.get("Ticker", "")),
@@ -3634,6 +3674,10 @@ def decision_manifest_records(frame: pd.DataFrame) -> list[dict[str, object]]:
                 "lane_missing": lane_missing,
                 "pullback_lane_quality": str(row.get("Pullback Lane Quality", "")),
                 "breakout_lane_state": str(row.get("Breakout Lane State", "")),
+                "chart_quality_summary": _report_text(
+                    row.get("Chart Quality Summary", "")
+                ),
+                "chart_quality": chart_quality,
             }
         )
     return records
@@ -6281,9 +6325,15 @@ def prepare_preview_watchlist(frame: pd.DataFrame) -> pd.DataFrame:
         "Support Signal": "",
         "TradingView": "",
     }
-    for column in DISCOVERY_COLUMNS:
-        if column not in table.columns:
-            table[column] = defaults.get(column, np.nan)
+    missing_columns = {
+        column: defaults.get(column, np.nan)
+        for column in DISCOVERY_COLUMNS
+        if column not in table.columns
+    }
+    if missing_columns:
+        table = pd.concat(
+            [table, pd.DataFrame(missing_columns, index=table.index)], axis=1
+        )
 
     numeric_columns = [
         "RS Score",

@@ -52,6 +52,34 @@ Fast handoff as of 2026-10-03. Read `AGENTS.md` before this file and `docs/PROJE
   unranked non-member with a favourable quality label, and absent breakout
   history cannot use the verified-no-event near-pivot fallback. Canonical
   production outputs remain unchanged.
+- `PATTERN_DISCOVERY_CHART_QUALITY_PHASE_3` adds seven deterministic,
+  independently visible `RESEARCH_ONLY` descriptions: Prior Advance Quality,
+  Trend Smoothness, Distribution / Wide-Bar Penalty, Overhead Supply,
+  Contraction Quality, Support Respect, and Relative Strength Persistence.
+  Each exposes status, interpretation, optional descriptive value, raw/derived
+  JSON evidence, warnings, and a concise deterministic reason. There is no
+  aggregate score. Phase 2 lane explanations may display relevant states, but
+  lane membership, scores, ranks, pullback quality, and breakout lifecycle
+  semantics are unchanged. All Phase 3 fields are excluded from immutable
+  forward snapshots and are ignored by canonical decisions and capacity
+  allocation. Overhead Supply uses price congestion rather than unsupported
+  volume profile; missing price, volume, support, benchmark, or history remains
+  explicit. Independent-review repairs make all three sequential contraction
+  blocks non-empty, fail closed on unsafe as-of indices, give one-day RS spike
+  classification precedence, and make report validation reconstruct the exact
+  component summary while enforcing enums and value ranges. A subsequent
+  review repair rejects negative volume and non-positive relative-volume
+  baselines, fails closed on impossible OHLC geometry in required windows, and
+  prevents zero/non-finite contraction denominators from receiving score
+  credit. Prior/recent volume means and their ratio must also remain finite
+  before contraction volume evidence is available. No outcome evaluation,
+  predictive-edge claim, or Phase 4+ work is included. Focused Phase 1/2/3 and
+  production-integrity verification passed 146 tests; focused research
+  verification passed 197 tests plus the expected
+  `BLOCKED_DATA_NOT_READY` baseline and production-file hash isolation; FULL
+  verification passed 549 pytest tests, 118 legacy tests, all configured
+  integration/invariant checks, the offline dry run, and generated report
+  semantic validation.
 - `PORTFOLIO_RANKING_PHASE_A_V1` has substantially implemented engineering
   infrastructure, but formal Phase A infrastructure is not complete and no
   evidence study has run. Phase B and Phase C are not implemented. Production

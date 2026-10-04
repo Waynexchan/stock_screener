@@ -18,6 +18,49 @@ LANES = (
     "Pullback to Support",
     "Breakout Retest / High Flag",
 )
+CHART_QUALITY_COMPONENTS = (
+    "Prior Advance Quality",
+    "Trend Smoothness",
+    "Distribution / Wide-Bar Penalty",
+    "Overhead Supply",
+    "Contraction Quality",
+    "Support Respect",
+    "Relative Strength Persistence",
+)
+CHART_QUALITY_STATUSES = {
+    "AVAILABLE",
+    "INSUFFICIENT_HISTORY",
+    "MISSING_DATA",
+    "NOT_APPLICABLE",
+}
+CHART_QUALITY_STATES = {
+    "Prior Advance Quality": {"STRONG", "CONSTRUCTIVE", "MIXED", "WEAK"},
+    "Trend Smoothness": {
+        "SMOOTH_UPTREND",
+        "ORDERLY_UPTREND",
+        "FLAT_OR_DIRECTIONLESS",
+        "ERRATIC",
+        "WEAK_DOWNTREND",
+    },
+    "Distribution / Wide-Bar Penalty": {"NONE", "LIGHT", "MODERATE", "HEAVY"},
+    "Overhead Supply": {"LOW", "MODERATE", "HEAVY", "NO_OBSERVED_OVERHEAD"},
+    "Contraction Quality": {
+        "STRONG_MULTI_DIMENSIONAL",
+        "PRICE_CONTRACTION_ONLY",
+        "VOLUME_DRY_UP_ONLY",
+        "WEAK_OR_NONE",
+        "EXPANDING",
+        "PRICE_CONTRACTION_VOLUME_UNKNOWN",
+    },
+    "Support Respect": {"STRONG", "CONSTRUCTIVE", "AMBIGUOUS_PROXIMITY", "BROKEN"},
+    "Relative Strength Persistence": {
+        "PERSISTENTLY_STRONG",
+        "IMPROVING",
+        "STRONG_BUT_DETERIORATING",
+        "INCONSISTENT",
+        "WEAK",
+    },
+}
 
 
 def truth(value: object) -> bool:
@@ -72,6 +115,16 @@ def report_text(value: object) -> str:
         return ""
     parsed = str(value).strip()
     return "" if parsed.lower() in {"nan", "none"} else parsed
+
+
+def component_text(value: object) -> str:
+    """Normalize missing values while preserving the valid state string NONE."""
+    if value is None:
+        return ""
+    if isinstance(value, float) and math.isnan(value):
+        return ""
+    parsed = str(value).strip()
+    return "" if parsed.lower() == "nan" else parsed
 
 
 def has_pattern_failure_evidence(row: dict[str, object]) -> bool:
@@ -151,6 +204,58 @@ def manifest_record(row: dict[str, object]) -> dict[str, object]:
         )
         for lane in LANES
     }
+    chart_quality_raw = row.get("chart_quality")
+    chart_quality: dict[str, dict[str, object]] = {}
+    for component in CHART_QUALITY_COMPONENTS:
+        raw = (
+            chart_quality_raw.get(component, {})
+            if isinstance(chart_quality_raw, dict)
+            else {}
+        )
+        chart_quality[component] = {
+            "status": component_text(
+                raw.get("status")
+                if isinstance(raw, dict)
+                else row.get(f"CQ {component} Status")
+            )
+            if isinstance(chart_quality_raw, dict)
+            else component_text(row.get(f"CQ {component} Status")),
+            "state": component_text(
+                raw.get("state")
+                if isinstance(raw, dict)
+                else row.get(f"CQ {component} State")
+            )
+            if isinstance(chart_quality_raw, dict)
+            else component_text(row.get(f"CQ {component} State")),
+            "value": number(
+                raw.get("value")
+                if isinstance(raw, dict)
+                else row.get(f"CQ {component} Value")
+            )
+            if isinstance(chart_quality_raw, dict)
+            else number(row.get(f"CQ {component} Value")),
+            "evidence": component_text(
+                raw.get("evidence")
+                if isinstance(raw, dict)
+                else row.get(f"CQ {component} Evidence")
+            )
+            if isinstance(chart_quality_raw, dict)
+            else component_text(row.get(f"CQ {component} Evidence")),
+            "warnings": component_text(
+                raw.get("warnings")
+                if isinstance(raw, dict)
+                else row.get(f"CQ {component} Warnings")
+            )
+            if isinstance(chart_quality_raw, dict)
+            else component_text(row.get(f"CQ {component} Warnings")),
+            "reason": component_text(
+                raw.get("reason")
+                if isinstance(raw, dict)
+                else row.get(f"CQ {component} Reason")
+            )
+            if isinstance(chart_quality_raw, dict)
+            else component_text(row.get(f"CQ {component} Reason")),
+        }
     return {
         "ticker": str(row.get("Ticker", row.get("ticker", ""))),
         "decision": str(row.get("Final Decision", row.get("decision", ""))),
@@ -185,6 +290,10 @@ def manifest_record(row: dict[str, object]) -> dict[str, object]:
         "breakout_lane_state": str(
             row.get("Breakout Lane State", row.get("breakout_lane_state", ""))
         ),
+        "chart_quality_summary": report_text(
+            row.get("Chart Quality Summary", row.get("chart_quality_summary", ""))
+        ),
+        "chart_quality": chart_quality,
     }
 
 
@@ -278,6 +387,7 @@ def read_markdown_body_records(body: str) -> list[dict[str, object]]:
     visible_to_source = {
         "Pattern Status": "Pattern Discovery Status",
         "Pattern / Waiting Reason": "Pattern Discovery Reason",
+        "Chart Quality (RESEARCH_ONLY)": "Chart Quality Summary",
     }
     by_ticker: dict[str, dict[str, object]] = {}
     for offset, section_name in enumerate(section_names):
@@ -309,6 +419,27 @@ def read_markdown_body_records(body: str) -> list[dict[str, object]]:
             if ticker in by_ticker:
                 raise ValueError(f"Markdown duplicate visible ticker: {ticker}")
             by_ticker[ticker] = normalized
+
+    # Phase 1 tables deliberately keep chart quality concise.  The component
+    # evidence remains visible in the later category tables, so reconstruct it
+    # from those rows before comparing the visible Markdown with its manifest.
+    component_status_columns = {
+        f"CQ {component} Status" for component in CHART_QUALITY_COMPONENTS
+    }
+    for visible_row in _markdown_table_rows(body):
+        if "Ticker" not in visible_row or not component_status_columns.intersection(
+            visible_row
+        ):
+            continue
+        ticker = str(visible_row["Ticker"])
+        if ticker not in by_ticker:
+            continue
+        source_row = {
+            visible_to_source.get(key, key): value for key, value in visible_row.items()
+        }
+        detailed = manifest_record(source_row)
+        by_ticker[ticker]["chart_quality_summary"] = detailed["chart_quality_summary"]
+        by_ticker[ticker]["chart_quality"] = detailed["chart_quality"]
     return [by_ticker[ticker] for ticker in sorted(by_ticker)]
 
 
@@ -332,6 +463,7 @@ def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
         setup_lanes = {
             item.strip() for item in str(row["setup_lanes"]).split(";") if item.strip()
         }
+        chart_quality_summary = str(row["chart_quality_summary"])
         if state not in STATES:
             errors.append(f"{ticker}: unsupported state {state}")
             continue
@@ -380,6 +512,107 @@ def validate_manifest(rows: list[dict[str, object]]) -> list[str]:
                 )
         if not pattern_reason:
             errors.append(f"{ticker}: pattern discovery reason missing")
+        has_chart_quality = bool(chart_quality_summary) or any(
+            component["value"] is not None
+            or any(
+                str(component[key]).strip()
+                for key in ("status", "state", "evidence", "warnings", "reason")
+            )
+            for component in row["chart_quality"].values()
+        )
+        if has_chart_quality:
+            expected_summary = "; ".join(
+                ["RESEARCH_ONLY"]
+                + [
+                    f"{component_name}: {component['state']}"
+                    for component_name, component in row["chart_quality"].items()
+                ]
+            )
+            if chart_quality_summary != expected_summary:
+                errors.append(f"{ticker}: chart quality summary contradicts components")
+            for component_name, component in row["chart_quality"].items():
+                status = str(component["status"])
+                state = str(component["state"])
+                reason = str(component["reason"])
+                value = component["value"]
+                evidence = str(component["evidence"])
+                warnings = str(component["warnings"])
+                if not status or not state or not reason or not evidence:
+                    errors.append(
+                        f"{ticker}: incomplete chart quality component {component_name}"
+                    )
+                    continue
+                allowed_statuses = CHART_QUALITY_STATUSES.copy()
+                if component_name != "Support Respect":
+                    allowed_statuses.remove("NOT_APPLICABLE")
+                if status not in allowed_statuses:
+                    errors.append(
+                        f"{ticker}: unsupported chart quality status: {component_name}"
+                    )
+                available_states = CHART_QUALITY_STATES[component_name]
+                valid_states = available_states.union(
+                    {"INSUFFICIENT_HISTORY", "MISSING_DATA"}
+                )
+                if component_name == "Support Respect":
+                    valid_states.add("NOT_APPLICABLE")
+                if state not in valid_states:
+                    errors.append(
+                        f"{ticker}: unsupported chart quality state: {component_name}"
+                    )
+                if status == "AVAILABLE" and state not in available_states:
+                    errors.append(
+                        f"{ticker}: chart quality status/state contradiction: {component_name}"
+                    )
+                if (
+                    status in {"INSUFFICIENT_HISTORY", "NOT_APPLICABLE"}
+                    and state != status
+                ):
+                    errors.append(
+                        f"{ticker}: chart quality status/state contradiction: {component_name}"
+                    )
+                if status == "MISSING_DATA" and not (
+                    state == "MISSING_DATA"
+                    or (
+                        component_name == "Contraction Quality"
+                        and state
+                        in {
+                            "PRICE_CONTRACTION_VOLUME_UNKNOWN",
+                            "EXPANDING",
+                            "WEAK_OR_NONE",
+                        }
+                    )
+                ):
+                    errors.append(
+                        f"{ticker}: chart quality status/state contradiction: {component_name}"
+                    )
+                if status == "AVAILABLE" and value is None:
+                    errors.append(
+                        f"{ticker}: available chart quality component lacks value: {component_name}"
+                    )
+                if status != "AVAILABLE" and value is not None:
+                    errors.append(
+                        f"{ticker}: unavailable chart quality component has value: {component_name}"
+                    )
+                if value is not None and not 0.0 <= value <= 100.0:
+                    errors.append(
+                        f"{ticker}: chart quality value outside 0-100: {component_name}"
+                    )
+                if (
+                    component_name == "Distribution / Wide-Bar Penalty"
+                    and status == "AVAILABLE"
+                    and "Penalty direction: higher is worse." not in warnings
+                ):
+                    errors.append(
+                        f"{ticker}: distribution penalty direction warning missing"
+                    )
+                try:
+                    parsed_evidence = json.loads(evidence)
+                except (TypeError, ValueError):
+                    parsed_evidence = None
+                if not isinstance(parsed_evidence, dict):
+                    errors.append(
+                        f"{ticker}: invalid chart quality evidence: {component_name}"
+                    )
         unknown_lanes = setup_lanes.difference(LANES)
         if unknown_lanes:
             errors.append(f"{ticker}: unsupported setup lane")
